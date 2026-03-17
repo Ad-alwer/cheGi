@@ -36,7 +36,7 @@ def scan(
     
     # Concurrently analyze all found repositories to maximize performance
     analyzer = GitAnalyzer(max_workers=workers)
-    statuses = analyzer.analyze_multiple(repo_paths)
+    statuses = analyzer.analyze_concurrently(repo_paths)
     
     ui.display_results_table(statuses)
 
