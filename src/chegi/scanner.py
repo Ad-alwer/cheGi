@@ -10,6 +10,14 @@ def find_git_repos(start_path: str, max_depth: int, exclude_dirs: List[str]) -> 
     1. Ignores directories listed in `exclude_dirs` (Performance boost).
     2. Smart Pruning: Once a git repo is found, it stops searching its subdirectories.
     3. Depth Limit: Stops scanning directories deeper than `max_depth`.
+
+    Args:
+        start_path (str): The base directory to start the scan from.
+        max_depth (int): The maximum number of levels to traverse down the directory tree.
+        exclude_dirs (List[str]): A list of directory names to skip during the scan.
+
+    Yields:
+        Path: A Path object representing the root directory of a discovered Git repository.
     """
     exclude_set = set(exclude_dirs)
     base_path = Path(start_path).resolve()

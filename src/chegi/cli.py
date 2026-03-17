@@ -13,8 +13,15 @@ def scan(
     path: str = typer.Argument(".", help="Base directory to scan"),
     max_depth: int = typer.Option(3, "--max-depth", "-d", help="Max depth to search"),
     workers: int = typer.Option(5, "--workers", "-w", help="Number of concurrent workers"),
-):
-    """Scan directory for Git repositories and report their status."""
+) -> None:
+    """
+    Scan directory for Git repositories and report their status.
+
+    Args:
+        path (str): The root directory where the scanning process begins. Defaults to current directory (".").
+        max_depth (int): The maximum folder depth to traverse looking for repositories.
+        workers (int): The number of threads to use for analyzing repositories concurrently.
+    """
     ui = TerminalUI()
     base_path = Path(path).resolve()
     
@@ -40,5 +47,8 @@ def scan(
     
     ui.display_results_table(statuses)
 
-def main():
+def main() -> None:
+    """
+    Main entry point for the Typer CLI application.
+    """
     app()

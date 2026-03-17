@@ -6,12 +6,22 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 @dataclass
 class GitStatus:
-    """Represents the extracted status of a single Git repository."""
+    """
+    Represents the extracted status of a single Git repository.
+    
+    Attributes:
+        path (Path): Absolute path to the repository.
+        repo_name (str): The name of the repository folder.
+        branch (str): Current active branch name.
+        is_dirty (bool): True if there are uncommitted changes.
+        has_remote (bool): True if the repository has a configured remote URL.
+        error (str): Error message if the repository analysis fails.
+    """
     path: Path
     repo_name: str
     branch: str
-    is_dirty: bool      # True if there are uncommitted changes
-    has_remote: bool    # True if the repository has a configured remote
+    is_dirty: bool
+    has_remote: bool
     error: str = ""    
 
 
@@ -21,12 +31,27 @@ class GitAnalyzer:
     """
     
     def __init__(self, max_workers: int = 10):
+        """
+        Initializes the GitAnalyzer with a specific concurrency limit.
+
+        Args:
+            max_workers (int): Maximum number of threads to use for concurrent analysis.
+        """
         self.max_workers = max_workers
 
     def _run_git_command(self, cwd: Path, *args: str) -> str:
         """
         Executes a git command in the specified directory.
-        Private method used internally by the class.
+
+        Args:
+            cwd (Path): The current working directory where the command should be run.
+            *args (str): The git arguments (e.g., "status", "--porcelain").
+
+        Returns:
+            str: The standard output of the git command, stripped of leading/trailing whitespace.
+            
+        Raises:
+            RuntimeError: If the git command execution fails.
         """
         try:
             result = subprocess.run(
@@ -43,7 +68,13 @@ class GitAnalyzer:
 
     def analyze_single_repo(self, repo_path: Path) -> GitStatus:
         """
-        Extracts the git status for a single repository path.
+        Extracts the git status (branch, dirty state, remote state) for a single repository.
+
+        Args:
+            repo_path (Path): The path to the git repository.
+
+        Returns:
+            GitStatus: An object containing the analyzed status of the repository.
         """
         repo_name = repo_path.name
         
@@ -83,7 +114,12 @@ class GitAnalyzer:
     def analyze_concurrently(self, repo_paths: Iterable[Path]) -> Iterator[GitStatus]:
         """
         Processes an iterable of repository paths concurrently using a thread pool.
-        Yields results as soon as they are completed (Lazy Evaluation).
+
+        Args:
+            repo_paths (Iterable[Path]): A collection of repository paths to analyze.
+
+        Yields:
+            GitStatus: The status object for each repository as soon as its analysis is completed.
         """
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Map the execution of analyze_single_repo to the thread pool

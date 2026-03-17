@@ -12,16 +12,29 @@ class TerminalUI:
         self.console = Console()
 
     def print_error(self, message: str) -> None:
-        """Prints a red error message."""
+        """
+        Prints a formatted error message in red.
+
+        Args:
+            message (str): The error message to display.
+        """
         self.console.print(f"[bold red]Error:[/bold red] {message}")
 
     def print_warning(self, message: str) -> None:
-        """Prints a yellow warning message."""
+        """
+        Prints a formatted warning message in yellow.
+
+        Args:
+            message (str): The warning message to display.
+        """
         self.console.print(f"[bold yellow]Warning:[/bold yellow] {message}")
 
     def display_results_table(self, statuses: List[GitStatus]) -> None:
         """
         Builds and displays a formatted, color-coded table of Git repository statuses.
+
+        Args:
+            statuses (List[GitStatus]): A list of parsed GitStatus objects to render in the table.
         """
         if not statuses:
             self.console.print("[bold yellow]No Git repositories found in the specified path.[/bold yellow]")

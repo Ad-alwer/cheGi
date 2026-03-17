@@ -18,6 +18,12 @@ def load_config(base_path: str) -> set:
     """
     Load custom configurations from .chegi.json if it exists,
     and merge them with the default exclude list.
+
+    Args:
+        base_path (str): The root directory where the configuration file might be located.
+
+    Returns:
+        set: A combined set of default and user-defined directory names to exclude from scanning.
     """
     config_file = Path(base_path) / ".chegi.json"
     
