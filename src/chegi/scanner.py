@@ -1,55 +1,59 @@
 import os
 from pathlib import Path
-from typing import Iterator, List
+from typing import Iterator
 
-def find_git_repos(start_path: str, max_depth: int, exclude_dirs: List[str]) -> Iterator[Path]:
-    """
-    Scans the given path to find directories containing a .git folder.
-    
-    Key features:
-    1. Ignores directories listed in `exclude_dirs` (Performance boost).
-    2. Smart Pruning: Once a git repo is found, it stops searching its subdirectories.
-    3. Depth Limit: Stops scanning directories deeper than `max_depth`.
+from chegi.config import ChegiConfig
+
+def find_git_repos(start_path: str, config: ChegiConfig) -> Iterator[Path]:
+    """Scans directories recursively to find Git repositories.
+
+    It uses the provided configuration object to limit depth and 
+    exclude specific directories. It stops traversing deeper if a 
+    Git repository is found (smart pruning).
 
     Args:
-        start_path (str): The base directory to start the scan from.
-        max_depth (int): The maximum number of levels to traverse down the directory tree.
-        exclude_dirs (List[str]): A list of directory names to skip during the scan.
+        start_path (str): The base directory where the scan begins.
+        config (ChegiConfig): Configuration object containing settings 
+            like max_depth and exclude_dirs.
 
     Yields:
-        Path: A Path object representing the root directory of a discovered Git repository.
+        Path: The absolute path to a discovered Git repository.
+
+    Raises:
+        NotADirectoryError: If the start_path is not a valid directory.
     """
-    exclude_set = set(exclude_dirs)
     base_path = Path(start_path).resolve()
     
-    if not base_path.exists() or not base_path.is_dir():
-        # Will be replaced with Rich console error logging later
-        print(f"Error: The directory '{start_path}' does not exist.")
-        return
+    if not base_path.is_dir():
+        raise NotADirectoryError(f"Error: '{base_path}' does not exist or is not a directory.")
 
-    base_depth = len(base_path.parts)
+    exclude_set = set(config.exclude_dirs)
 
-    # Use os.walk for fine-grained control over directory traversal
     for root, dirs, files in os.walk(base_path):
-        current_dir = Path(root)
+        current_path = Path(root)
         
-        current_depth = len(current_dir.parts) - base_depth
-        
-        if current_depth >= max_depth:
-            dirs[:] = []
-            continue
-        
-        # 1. Filter out blacklisted directories in-place
-        # By modifying 'dirs', we tell os.walk to skip these completely
-        dirs[:] = [d for d in dirs if d not in exclude_set]
-        
-        git_dir = current_dir / ".git"
-        
-        if git_dir.is_dir():
-            # Found a repository! Yield it immediately.
-            yield current_dir
+        # Calculate depth relative to the starting path
+        try:
+            rel_path = current_path.relative_to(base_path)
+            depth = len(rel_path.parts)
+        except ValueError:
+            depth = 0
             
-            # 2. Smart Pruning
-            # Since we found a repo, we shouldn't scan its internal folders.
-            # Clearing 'dirs' tells os.walk to stop going deeper from here.
-            dirs[:] = []
+        # If the current depth has reached or exceeded max_depth, 
+        # we do not check it for a repo and we do not go any deeper.
+        if depth >= config.max_depth:
+            dirs.clear()  
+            continue
+
+        # Check if current directory is a Git repository
+        if ".git" in dirs or ".git" in files:
+            yield current_path
+            # Smart pruning: Do not scan subdirectories of a discovered repository
+            dirs.clear()  
+            continue
+
+        # Prune excluded directories and standard hidden folders (except .git)
+        dirs[:] = [
+            d for d in dirs 
+            if d not in exclude_set and not d.startswith('.')
+        ]
