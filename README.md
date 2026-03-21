@@ -12,7 +12,7 @@ While it currently excels at rapid repository discovery and status analysis, `ch
 - **Beautiful Terminal UI:** Say goodbye to boring logs. `cheGi` displays complex data in highly readable, colorful tables powered by `Rich`.
 - **Smart Workspace Scanning:** Quickly discover Git repositories across your system. It intelligently prunes irrelevant directories (like `.venv`, `node_modules`) to save time.
 - **Instant Status Insights:** Get a bird's-eye view of your projects—instantly see branch names, dirty working trees (uncommitted changes), and remote configurations.
-- **Extensible Architecture:** Designed from the ground up to support a wide range of Git automation and management commands (More features coming soon!).
+- **Extensible Architecture:** Designed from the ground up to support a wide range of Git automation and management commands.
 
 ## Prerequisites
 
@@ -24,12 +24,14 @@ While it currently excels at rapid repository discovery and status analysis, `ch
 You can install `cheGi` locally for development and usage using `pip`:
 
 1. Clone the repository:
+
 ```bash
 git clone <your-repo-url>
 cd cheGi
 ```
 
 2. Create and activate a virtual environment:
+
 ```bash
 python -m venv .venv
 source .venv/bin/activate  # On Linux/macOS
@@ -37,6 +39,7 @@ source .venv/bin/activate  # On Linux/macOS
 ```
 
 3. Install the package in editable mode:
+
 ```bash
 pip install -e .
 ```
@@ -46,43 +49,63 @@ pip install -e .
 Once installed, the `chegi` command will be available globally in your terminal environment.
 
 To quickly analyze all repositories in your current directory:
+
 ```bash
-chegi .
+chegi scan .
 ```
 
 To target a specific workspace path:
+
 ```bash
-chegi /path/to/your/projects/folder
+chegi scan /path/to/your/projects/folder
+```
+
+You can also override the maximum scanning depth on the fly:
+
+```bash
+chegi scan . --max-depth 5
 ```
 
 ### Example Output
 
 The tool will output a beautiful summary table showing:
 
-- **Repository Name**
-- **Path**
+- **Repository**
 - **Branch**
-- **Status** (Clean/Dirty)
-- **Remote** (Yes/No)
+- **Local Status** (Clean/Dirty)
+- **Remote** (Synced/No Remote/Pending Commits)
 
 ## Configuration
 
-`cheGi` is highly customizable. It currently reads a `config.json` file in the root directory to set rules like `max_depth` and `exclude_dirs`.
-*(Note: Dedicated CLI configuration management commands are planned for version `v0.2.0`)*.
+`cheGi` is highly customizable. You can easily manage your settings directly via the CLI:
 
-Default configuration fallback:
-```json
-{
-  "max_depth": 3,
-  "exclude_dirs": [".git", "node_modules", "venv", ".venv", "__pycache__"]
-}
+**View current configuration:**
+
+```bash
+chegi config list
 ```
+
+**Change a setting (e.g., maximum search depth):**
+
+```bash
+chegi config set max_depth 5
+```
+
+**Manage ignored directories (to optimize scanning speed):**
+
+```bash
+chegi config exclude-add node_modules
+chegi config exclude-remove .env
+```
+
+Configurations are persistently saved in a `config.json` file in your root directory.
 
 ## Development and Testing
 
 `cheGi` comes with a comprehensive test suite covering 100% of the core modules to ensure maximum reliability. We use `pytest` for testing.
 
 To run the full test suite:
+
 ```bash
 pytest -v
 ```
@@ -90,4 +113,3 @@ pytest -v
 ## License
 
 This project is licensed under the MIT License.
-
