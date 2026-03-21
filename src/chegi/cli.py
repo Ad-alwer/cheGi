@@ -4,12 +4,24 @@ from typing import Optional
 
 from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
-from chegi.git_utils import GitAnalyzer
+from chegi.git_utils import GitAnalyzer, check_git_environment
 from chegi.ui import TerminalUI
 
 app = typer.Typer(help="cheGi - Fast & Concurrent Git Repository Manager")
 config_app = typer.Typer(help="Manage cheGi configuration")
 app.add_typer(config_app, name="config")
+
+@app.callback()
+def global_setup():
+    """
+    Global setup executed before any command.
+    Ensures that Git is installed and meets the minimum version requirement.
+    """
+    is_ok, message = check_git_environment()
+    if not is_ok:
+        ui = TerminalUI()
+        ui.print_error(message)
+        raise typer.Exit(code=1)
 
 @app.command("scan")
 def scan(

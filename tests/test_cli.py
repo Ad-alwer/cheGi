@@ -6,6 +6,7 @@ from pathlib import Path
 from chegi.cli import app
 from chegi.git_utils import GitStatus
 
+
 runner = CliRunner()
 
 def test_scan_invalid_path():
@@ -128,3 +129,18 @@ def test_config_exclude_add_remove(tmp_path: Path):
     res_rem = runner.invoke(app, ["config", "exclude-remove", "my_junk_folder", "--path", str(tmp_path)])
     assert res_rem.exit_code == 0
     assert "Removed 'my_junk_folder'" in res_rem.stdout
+
+
+@patch("chegi.cli.check_git_environment")
+def test_cli_global_setup_git_failure(mock_check_git):
+    """Tests that the CLI exits before running commands if Git validation fails.
+
+    Args:
+        mock_check_git (MagicMock): Mocked check_git_environment function.
+    """
+    mock_check_git.return_value = (False, "Git version is too old: 2.10.0")
+    
+    result = runner.invoke(app, ["scan"])
+    
+    assert result.exit_code == 1
+    assert "Git version is too old" in result.stdout

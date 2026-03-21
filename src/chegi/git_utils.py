@@ -1,8 +1,47 @@
+import re
 import subprocess
-from pathlib import Path
-from dataclasses import dataclass
-from typing import Iterator, Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable, Iterator, Tuple
+
+MIN_GIT_VERSION = (2, 25, 0)
+
+def check_git_environment() -> Tuple[bool, str]:
+    """
+    Checks if Git is installed and meets the minimum version requirement.
+
+    Returns:
+        Tuple[bool, str]: A tuple containing:
+            - bool: True if Git is installed and the version is valid, False otherwise.
+            - str: A message describing the status, error, or current Git version.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "--version"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        version_str = result.stdout.strip()
+        
+        match = re.search(r"(\d+)\.(\d+)\.(\d+)", version_str)
+        if match:
+            current_version = tuple(map(int, match.groups()))
+            
+            if current_version < MIN_GIT_VERSION:
+                min_v_str = '.'.join(map(str, MIN_GIT_VERSION))
+                return False, f"Git version is too old: {version_str}. Minimum required: {min_v_str}"
+            
+            return True, version_str
+        
+        return False, "Could not determine Git version."
+
+    except FileNotFoundError:
+        return False, "Git is not installed or not found in system PATH."
+    except Exception as e:
+        return False, f"An unexpected error occurred while checking Git: {str(e)}"
+
 
 @dataclass
 class GitStatus:

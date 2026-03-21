@@ -2,7 +2,7 @@ import pytest
 import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from chegi.git_utils import GitAnalyzer, GitStatus
+from chegi.git_utils import GitAnalyzer, GitStatus, check_git_environment
 
 def test_run_git_command_success():
     """
@@ -155,3 +155,43 @@ def test_analyze_concurrently():
         # We check if all repo names are present in the results.
         result_names = [res.repo_name for res in results]
         assert set(result_names) == {"repo1", "repo2", "repo3"}
+
+
+
+def test_check_git_environment_success():
+    """Tests successful Git environment validation with a supported version."""
+    mock_result = MagicMock()
+    mock_result.stdout = "git version 2.34.1\n"
+    
+    with patch("subprocess.run", return_value=mock_result):
+        is_ok, msg = check_git_environment()
+        
+    assert is_ok is True
+    assert "2.34.1" in msg
+
+def test_check_git_environment_old_version():
+    """Tests Git environment validation when the installed version is too old."""
+    mock_result = MagicMock()
+    mock_result.stdout = "git version 2.20.0\n"
+    
+    with patch("subprocess.run", return_value=mock_result):
+        is_ok, msg = check_git_environment()
+        
+    assert is_ok is False
+    assert "too old" in msg
+
+def test_check_git_environment_not_installed():
+    """Tests Git environment validation when Git is not installed."""
+    with patch("subprocess.run", side_effect=FileNotFoundError):
+        is_ok, msg = check_git_environment()
+        
+    assert is_ok is False
+    assert "not installed" in msg
+
+def test_check_git_environment_unexpected_error():
+    """Tests Git environment validation handling of unexpected exceptions."""
+    with patch("subprocess.run", side_effect=Exception("Unknown Error")):
+        is_ok, msg = check_git_environment()
+        
+    assert is_ok is False
+    assert "unexpected error" in msg
