@@ -6,22 +6,54 @@ from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
 from chegi.git_utils import GitAnalyzer, check_git_environment
 from chegi.ui import TerminalUI
+from chegi.installer import SystemInstaller
 
 app = typer.Typer(help="cheGi - Fast & Concurrent Git Repository Manager")
 config_app = typer.Typer(help="Manage cheGi configuration")
 app.add_typer(config_app, name="config")
 
+
 @app.callback()
-def global_setup():
+def global_setup() -> None:
+    """Global setup executed before any command.
+
+    Validates the Git environment. If Git is missing or outdated, it prompts 
+    the user to automatically install or update it using the SystemInstaller.
+
+    Raises:
+        typer.Exit: If the user aborts the installation, if the installation 
+            fails, or upon successful installation requiring a terminal restart.
     """
-    Global setup executed before any command.
-    Ensures that Git is installed and meets the minimum version requirement.
-    """
-    is_ok, message = check_git_environment()
-    if not is_ok:
+    is_valid, message = check_git_environment()
+    
+    if not is_valid:
         ui = TerminalUI()
-        ui.print_error(message)
-        raise typer.Exit(code=1)
+        ui.print_error(f"Environment Check Failed: {message}")
+        
+        install_now = typer.confirm(
+            "Git is missing or outdated. Do you want cheGi to automatically install/update Git for you?"
+        )
+        
+        if not install_now:
+            ui.print_error("Installation aborted. cheGi requires Git to function properly.")
+            raise typer.Exit(code=1)
+            
+        ui.console.print("\n[bold cyan]Starting installation process...[/bold cyan]")
+        success = SystemInstaller.install_package("git")
+        
+        if success:
+            ui.console.print("\n[bold green]Success! Git has been installed/updated.[/bold green]")
+            ui.console.print(
+                "[bold magenta]IMPORTANT: Please restart your terminal (close and open it again) "
+                "so the system can recognize the 'git' command.[/bold magenta]"
+            )
+            raise typer.Exit(code=0)
+        else:
+            ui.print_error(
+                "Failed to install Git automatically. Please install it manually from https://git-scm.com/"
+            )
+            raise typer.Exit(code=1)
+
 
 @app.command("scan")
 def scan(
@@ -29,12 +61,16 @@ def scan(
     max_depth: Optional[int] = typer.Option(None, "--max-depth", "-d", help="Override max depth from config"),
     workers: int = typer.Option(5, "--workers", "-w", help="Number of concurrent workers"),
 ) -> None:
-    """Scan directory for Git repositories and report their status.
+    """Scans a directory recursively for Git repositories and reports their status.
 
     Args:
-        path (str): The root directory where scanning begins.
-        max_depth (Optional[int]): Overrides config's max folder depth if provided.
-        workers (int): Number of threads for analyzing repositories.
+        path (str): The root directory where the scanning process begins.
+        max_depth (Optional[int]): Overrides the configuration's maximum folder depth.
+        workers (int): Number of concurrent threads for analyzing repositories.
+
+    Raises:
+        typer.Exit: If the specified path is not a valid directory or if no 
+            repositories are found.
     """
     ui = TerminalUI()
     base_path = Path(path).resolve()
@@ -64,82 +100,102 @@ def scan(
     
     ui.display_results_table(statuses)
 
+
 @config_app.command("list")
-def config_list(path: str = typer.Option(".", "--path", "-p", help="Base directory for config")):
-    """List current configuration settings.
+def config_list(
+    path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
+) -> None:
+    """Lists the current configuration settings.
 
     Args:
-        path (str): The base directory where the .chegi.json config resides.
+        path (str): The base directory where the '.chegi.json' configuration file resides.
     """
     config = ChegiConfig(base_path=path)
     config.load()
     ui = TerminalUI()
+    
     ui.console.print("[bold]Current Configuration:[/bold]")
     ui.console.print(f"  Max Depth: {config.max_depth}")
     ui.console.print(f"  MCTS: {getattr(config, 'mcts', 10)}")
     ui.console.print(f"  Exclude Dirs: {', '.join(config.exclude_dirs)}")
+
 
 @config_app.command("set")
 def config_set(
     key: str = typer.Argument(..., help="Configuration key (e.g., max_depth, mcts)"),
     value: int = typer.Argument(..., help="New integer value"),
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
-):
-    """Set a configuration value.
+) -> None:
+    """Updates a specific configuration setting.
 
     Args:
-        key (str): The setting name to update.
-        value (int): The new value for the setting.
-        path (str): The base directory where the .chegi.json config resides.
+        key (str): The name of the configuration setting to update.
+        value (int): The new integer value to assign to the setting.
+        path (str): The base directory where the configuration file resides.
+
+    Raises:
+        typer.Exit: If the provided key is invalid or the update process fails.
     """
     config = ChegiConfig(base_path=path)
     config.load()
+    ui = TerminalUI()
+    
     try:
         config.update_setting(key, value)
         config.save()
-        TerminalUI().console.print(f"[green]Successfully updated {key} to {value}.[/green]")
+        ui.console.print(f"[green]Successfully updated '{key}' to {value}.[/green]")
     except ValueError as e:
-        TerminalUI().print_error(str(e))
+        ui.print_error(str(e))
         raise typer.Exit(code=1)
+
 
 @config_app.command("exclude-add")
 def config_exclude_add(
     folder: str = typer.Argument(..., help="Folder name to ignore"),
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
-):
-    """Add a folder to the exclude list.
+) -> None:
+    """Adds a directory name to the scanning exclusion list.
 
     Args:
         folder (str): The name of the directory to add to the blacklist.
-        path (str): The base directory where the config resides.
+        path (str): The base directory where the configuration file resides.
     """
     config = ChegiConfig(base_path=path)
     config.load()
     config.add_exclude(folder)
     config.save()
-    TerminalUI().console.print(f"[green]Added '{folder}' to exclude list.[/green]")
+    
+    ui = TerminalUI()
+    ui.console.print(f"[green]Added '{folder}' to the exclude list.[/green]")
+
 
 @config_app.command("exclude-remove")
 def config_exclude_remove(
     folder: str = typer.Argument(..., help="Folder name to stop ignoring"),
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
-):
-    """Remove a folder from the exclude list.
+) -> None:
+    """Removes a directory name from the scanning exclusion list.
 
     Args:
         folder (str): The name of the directory to remove from the blacklist.
-        path (str): The base directory where the config resides.
+        path (str): The base directory where the configuration file resides.
+
+    Raises:
+        typer.Exit: If the specified folder is not found in the exclude list.
     """
     config = ChegiConfig(base_path=path)
     config.load()
+    ui = TerminalUI()
+    
     try:
         config.remove_exclude(folder)
         config.save()
-        TerminalUI().console.print(f"[green]Removed '{folder}' from exclude list.[/green]")
+        ui.console.print(f"[green]Removed '{folder}' from the exclude list.[/green]")
     except ValueError as e:
-        TerminalUI().print_error(str(e))
+        ui.print_error(str(e))
         raise typer.Exit(code=1)
 
+
 def main() -> None:
-    """Main entry point for the Typer CLI application."""
+    """Main entry point for the cheGi Typer CLI application."""
     app()
