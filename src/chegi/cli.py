@@ -1,6 +1,6 @@
 import typer
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Annotated
 
 from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
@@ -103,7 +103,9 @@ def scan(
 
 
 @app.command("guard")
-def guard() -> None:
+def guard(
+    fix: Annotated[bool, typer.Option("--fix", "-f", help="Automatically unstage sensitive files without prompting")] = False
+) -> None:
     """Checks staged files for sensitive data to prevent accidental commits.
 
     This command runs a standalone security check. It fetches staged files
@@ -133,14 +135,21 @@ def guard() -> None:
         exact_command = f"git rm --cached {files_str}"
         ui.console.print(f"\n[bold yellow]To fix this manually, run:[/bold yellow] [cyan]{exact_command}[/cyan]\n")
         
-        should_unstage = typer.confirm("Do you want cheGi to automatically unstage these files for you?")
-        
-        if should_unstage:
+        if fix:
             success = SecurityGuard.unstage_files(sensitive_files)
             if success:
-                ui.console.print("\n[bold green]✅ Files successfully unstaged. You can now commit safely.[/bold green]")
+                ui.console.print("\n[bold green]✅ Files successfully unstaged automatically (via --fix). You can now commit safely.[/bold green]")
             else:
                 ui.print_error("\nFailed to unstage files automatically. Please run the command manually.")
+        else:
+            should_unstage = typer.confirm("Do you want cheGi to automatically unstage these files for you?")
+            
+            if should_unstage:
+                success = SecurityGuard.unstage_files(sensitive_files)
+                if success:
+                    ui.console.print("\n[bold green]✅ Files successfully unstaged. You can now commit safely.[/bold green]")
+                else:
+                    ui.print_error("\nFailed to unstage files automatically. Please run the command manually.")
         
         raise typer.Exit(code=1)
     else:

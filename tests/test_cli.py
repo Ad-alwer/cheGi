@@ -163,6 +163,26 @@ def test_guard_failure_secrets_found_decline_unstage(mock_get_staged: MagicMock,
     assert result.exit_code == 1
     mock_unstage.assert_not_called()
 
+
+@patch("chegi.cli.SecurityGuard.unstage_files")
+@patch("chegi.cli.SecurityGuard.find_sensitive_files")
+@patch("chegi.cli.SecurityGuard.get_staged_files")
+def test_guard_failure_secrets_found_with_fix_flag(mock_get_staged: MagicMock, mock_find_sensitive: MagicMock, mock_unstage: MagicMock):
+    """Tests guard command with --fix flag to automatically unstage sensitive files without prompting."""
+    mock_get_staged.return_value = [".env"]
+    mock_find_sensitive.return_value = [".env"]
+    mock_unstage.return_value = True
+    
+    result = runner.invoke(app, ["guard", "--fix"])
+    
+    assert result.exit_code == 1
+    assert "WARNING: Sensitive files detected" in result.stdout
+    assert "automatically (via --fix)" in result.stdout
+    mock_get_staged.assert_called_once()
+    mock_find_sensitive.assert_called_once_with([".env"])
+    mock_unstage.assert_called_once_with([".env"])
+
+
 # ==========================================
 # Configuration Command Tests
 # ==========================================
