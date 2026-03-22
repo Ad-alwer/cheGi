@@ -126,37 +126,55 @@ def test_analyze_single_repo_exception_fallback():
         assert status.has_remote is False
         assert "Permission Denied" in status.error
 
-def test_analyze_concurrently():
-    """
-    Test concurrent processing of multiple repositories.
+def test_analyze_single_repo_with_security_scanner():
+    analyzer = GitAnalyzer()
+    repo_path = Path("/projects/secure_repo")
+    
+    def mock_git_command(cwd, *args):
+        if args == ("branch", "--show-current"):
+            return "main"
+        elif args == ("status", "--porcelain"):
+            return ""
+        elif args == ("remote",):
+            return "origin"
+        return ""
+        
+    mock_scanner = MagicMock(return_value="[green]Safe[/green]")
+        
+    with patch.object(analyzer, "_run_git_command", side_effect=mock_git_command):
+        status = analyzer.analyze_single_repo(repo_path, security_scanner=mock_scanner)
+        
+        assert isinstance(status, GitStatus)
+        assert status.security_status == "[green]Safe[/green]"
+        mock_scanner.assert_called_once_with(repo_path)
 
-    Mocks `analyze_single_repo` directly to avoid testing subprocess logic again,
-    and ensures the ThreadPoolExecutor processes all items and yields results.
-    """
+
+def test_analyze_concurrently():
     analyzer = GitAnalyzer(max_workers=2)
     paths = [Path("/repo1"), Path("/repo2"), Path("/repo3")]
     
-    # Create a dummy GitStatus generator function
-    def mock_analyze(repo_path):
+    mock_scanner = MagicMock()
+    
+    def mock_analyze(repo_path, security_scanner=None):
         return GitStatus(
             path=repo_path,
             repo_name=repo_path.name,
             branch="main",
             is_dirty=False,
-            has_remote=True
+            has_remote=True,
+            security_status="Scanned" if security_scanner else None
         )
         
     with patch.object(analyzer, "analyze_single_repo", side_effect=mock_analyze):
-        # Convert the generator to a list to trigger execution
-        results = list(analyzer.analyze_concurrently(paths))
+        results = list(analyzer.analyze_concurrently(paths, security_scanner=mock_scanner))
         
         assert len(results) == 3
-        # Since ThreadPoolExecutor yields as completed, order is not guaranteed.
-        # We check if all repo names are present in the results.
+        
+        for res in results:
+            assert res.security_status == "Scanned"
+            
         result_names = [res.repo_name for res in results]
         assert set(result_names) == {"repo1", "repo2", "repo3"}
-
-
 
 def test_check_git_environment_success():
     """Tests successful Git environment validation with a supported version."""

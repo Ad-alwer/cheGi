@@ -3,7 +3,7 @@ import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Tuple
+from typing import Iterable, Iterator, Tuple, Callable, Optional
 
 MIN_GIT_VERSION = (2, 25, 0)
 
@@ -55,13 +55,15 @@ class GitStatus:
         is_dirty (bool): True if there are uncommitted changes.
         has_remote (bool): True if the repository has a configured remote URL.
         error (str): Error message if the repository analysis fails.
+        security_status (Optional[str]): Security scan result (e.g., "Safe", "1 Staged Secret") if requested.
     """
     path: Path
     repo_name: str
     branch: str
     is_dirty: bool
     has_remote: bool
-    error: str = ""    
+    error: str = ""
+    security_status: Optional[str] = None
 
 
 class GitAnalyzer:
@@ -105,12 +107,13 @@ class GitAnalyzer:
             error_msg = e.stderr.strip() or "Git command execution failed"
             raise RuntimeError(error_msg)
 
-    def analyze_single_repo(self, repo_path: Path) -> GitStatus:
+    def analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], str]] = None) -> GitStatus:
         """
         Extracts the git status (branch, dirty state, remote state) for a single repository.
 
         Args:
             repo_path (Path): The path to the git repository.
+            security_scanner (Callable, optional): A function that takes a Path and returns a security status string.
 
         Returns:
             GitStatus: An object containing the analyzed status of the repository.
@@ -131,12 +134,21 @@ class GitAnalyzer:
             remote_output = self._run_git_command(repo_path, "remote")
             has_remote = len(remote_output) > 0
             
+            # 4. Optional Security Scan
+            sec_status = None
+            if security_scanner:
+                try:
+                    sec_status = security_scanner(repo_path)
+                except Exception:
+                    sec_status = "Scan Failed"
+            
             return GitStatus(
                 path=repo_path,
                 repo_name=repo_name,
                 branch=branch,
                 is_dirty=is_dirty,
-                has_remote=has_remote
+                has_remote=has_remote,
+                security_status=sec_status
             )
             
         except Exception as e:
@@ -150,12 +162,13 @@ class GitAnalyzer:
                 error=str(e)
             )
 
-    def analyze_concurrently(self, repo_paths: Iterable[Path]) -> Iterator[GitStatus]:
+    def analyze_concurrently(self, repo_paths: Iterable[Path], security_scanner: Optional[Callable[[Path], str]] = None) -> Iterator[GitStatus]:
         """
         Processes an iterable of repository paths concurrently using a thread pool.
 
         Args:
             repo_paths (Iterable[Path]): A collection of repository paths to analyze.
+            security_scanner (Callable, optional): A function to scan security for each repo.
 
         Yields:
             GitStatus: The status object for each repository as soon as its analysis is completed.
@@ -163,7 +176,7 @@ class GitAnalyzer:
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             # Map the execution of analyze_single_repo to the thread pool
             future_to_path = {
-                executor.submit(self.analyze_single_repo, path): path 
+                executor.submit(self.analyze_single_repo, path, security_scanner): path 
                 for path in repo_paths
             }
             

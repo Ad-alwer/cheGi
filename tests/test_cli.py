@@ -113,6 +113,37 @@ def test_scan_with_repos(mock_find_repos: MagicMock, mock_analyze: MagicMock, tm
     assert "feature-branch" in result.stdout
 
 
+
+@patch("chegi.cli.GitAnalyzer.analyze_concurrently")
+@patch("chegi.cli.find_git_repos")
+def test_scan_with_security_flag(mock_find_repos: MagicMock, mock_analyze: MagicMock, tmp_path: Path):
+    """Tests the scan command with the --security flag to ensure the security scanner is passed."""
+    mock_find_repos.return_value = [tmp_path]
+    
+    mock_status = GitStatus(
+        path=tmp_path,
+        repo_name="mock_project_sec",
+        branch="main",
+        is_dirty=True,
+        has_remote=True,
+        security_status="[green]✅ Safe[/green]"
+    )
+    mock_analyze.return_value = [mock_status]
+    
+    result = runner.invoke(app, ["scan", "--security", str(tmp_path)])
+    
+    assert result.exit_code == 0
+    assert "Scanning" in result.stdout
+    
+    mock_analyze.assert_called_once()
+    
+    call_kwargs = mock_analyze.call_args.kwargs
+    
+    assert "security_scanner" in call_kwargs
+    assert call_kwargs["security_scanner"] is not None
+    assert call_kwargs["security_scanner"].__name__ == "scan_repo"
+
+
 # ==========================================
 # Guard Command Tests
 # ==========================================

@@ -61,6 +61,7 @@ def scan(
     path: str = typer.Argument(".", help="Base directory to scan"),
     max_depth: Optional[int] = typer.Option(None, "--max-depth", "-d", help="Override max depth from config"),
     workers: int = typer.Option(5, "--workers", "-w", help="Number of concurrent workers"),
+    security: Annotated[bool, typer.Option("--security", "-s", help="Perform security scan on repositories")] = False,
 ) -> None:
     """Scans a directory recursively for Git repositories and reports their status.
 
@@ -68,6 +69,7 @@ def scan(
         path (str): The root directory where the scanning process begins.
         max_depth (Optional[int]): Overrides the configuration's maximum folder depth.
         workers (int): Number of concurrent threads for analyzing repositories.
+        security (bool): If True, performs a security scan on staged files for each repository.
 
     Raises:
         typer.Exit: If the specified path is not a valid directory or if no 
@@ -97,7 +99,10 @@ def scan(
     ui.console.print(f"[dim]⚡ Analyzing {len(repo_paths)} repositories...[/dim]")
     
     analyzer = GitAnalyzer(max_workers=workers)
-    statuses = analyzer.analyze_concurrently(repo_paths)
+
+    scanner_func = SecurityGuard.scan_repo if security else None
+    
+    statuses = analyzer.analyze_concurrently(repo_paths, security_scanner=scanner_func)
     
     ui.display_results_table(statuses)
 
