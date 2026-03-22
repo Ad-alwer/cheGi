@@ -7,6 +7,7 @@ from chegi.scanner import find_git_repos
 from chegi.git_utils import GitAnalyzer, check_git_environment
 from chegi.ui import TerminalUI
 from chegi.installer import SystemInstaller
+from chegi.security import SecurityGuard
 
 app = typer.Typer(help="cheGi - Fast & Concurrent Git Repository Manager")
 config_app = typer.Typer(help="Manage cheGi configuration")
@@ -99,6 +100,39 @@ def scan(
     statuses = analyzer.analyze_concurrently(repo_paths)
     
     ui.display_results_table(statuses)
+
+
+@app.command("guard")
+def guard() -> None:
+    """Checks staged files for sensitive data to prevent accidental commits.
+
+    This command runs a standalone security check. It fetches staged files
+    and checks them against predefined sensitive patterns (like .env or private keys).
+    If sensitive files are found, it displays a warning and exits with a non-zero status code.
+
+    Raises:
+        typer.Exit: Exits with code 1 if sensitive files are detected.
+    """
+    ui = TerminalUI()
+    ui.console.print("[dim]🔒 Running Security Guard...[/dim]")
+    
+    staged_files = SecurityGuard.get_staged_files()
+    if not staged_files:
+        ui.console.print("[bold blue]No staged files found. Nothing to check.[/bold blue]")
+        raise typer.Exit()
+        
+    sensitive_files = SecurityGuard.find_sensitive_files(staged_files)
+    
+    if sensitive_files:
+        ui.console.print("\n[bold red]⚠️  WARNING: Sensitive files detected in staging area![/bold red]")
+        for f in sensitive_files:
+            ui.console.print(f"  [red]- {f}[/red]")
+        ui.console.print(
+            "\n[bold yellow]Please run 'git rm --cached <file>' to unstage them before committing.[/bold yellow]"
+        )
+        raise typer.Exit(code=1)
+    else:
+        ui.console.print("[bold green]✅ Security check passed. No sensitive files found in staging.[/bold green]")
 
 
 @config_app.command("list")

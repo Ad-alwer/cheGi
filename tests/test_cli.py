@@ -13,7 +13,7 @@ runner = CliRunner()
 def mock_valid_git_env():
     """Automatically mocks the Git environment check to pass for all tests.
     
-    This ensures that standard tests (like 'scan' or 'config') are not 
+    This ensures that standard tests (like 'scan', 'config', or 'guard') are not 
     blocked by the global_setup environment check. Specific tests can 
     override this behavior by modifying the yielded mock object.
     """
@@ -28,10 +28,8 @@ def mock_valid_git_env():
 
 def test_global_setup_git_failure_abort(mock_valid_git_env, tmp_path: Path):
     """Tests if the CLI gracefully exits when the user aborts Git installation."""
-    # Simulate Git check failure
     mock_valid_git_env.return_value = (False, "Git version is too old: 2.10.0")
     
-    # input="n\n" simulates the user typing 'n' and hitting Enter
     result = runner.invoke(app, ["scan", str(tmp_path)], input="n\n")
     
     assert result.exit_code == 1
@@ -43,9 +41,8 @@ def test_global_setup_git_failure_abort(mock_valid_git_env, tmp_path: Path):
 def test_global_setup_git_install_success(mock_install: MagicMock, mock_valid_git_env, tmp_path: Path):
     """Tests successful automatic installation flow when Git is missing."""
     mock_valid_git_env.return_value = (False, "Git is missing")
-    mock_install.return_value = True  # Simulate successful installation
+    mock_install.return_value = True
     
-    # input="y\n" simulates the user agreeing to install
     result = runner.invoke(app, ["scan", str(tmp_path)], input="y\n")
     
     assert result.exit_code == 0
@@ -59,9 +56,8 @@ def test_global_setup_git_install_success(mock_install: MagicMock, mock_valid_gi
 def test_global_setup_git_install_fail(mock_install: MagicMock, mock_valid_git_env, tmp_path: Path):
     """Tests the failure flow when the automatic Git installation fails."""
     mock_valid_git_env.return_value = (False, "Git is missing")
-    mock_install.return_value = False  # Simulate failed installation
+    mock_install.return_value = False
     
-    # User agrees, but installation fails
     result = runner.invoke(app, ["scan", str(tmp_path)], input="y\n")
     
     assert result.exit_code == 1
@@ -71,7 +67,7 @@ def test_global_setup_git_install_fail(mock_install: MagicMock, mock_valid_git_e
 
 
 # ==========================================
-# Standard Command Tests (scan, config, etc.)
+# Standard Command Tests (scan)
 # ==========================================
 
 def test_scan_invalid_path():
@@ -117,6 +113,42 @@ def test_scan_with_repos(mock_find_repos: MagicMock, mock_analyze: MagicMock, tm
     assert "feature-branch" in result.stdout
 
 
+# ==========================================
+# Guard Command Tests
+# ==========================================
+
+@patch("chegi.cli.SecurityGuard.find_sensitive_files")
+@patch("chegi.cli.SecurityGuard.get_staged_files")
+def test_guard_success_no_secrets(mock_get_staged: MagicMock, mock_find_sensitive: MagicMock):
+    """Tests the guard command when no sensitive data is found in staged files."""
+    mock_get_staged.return_value = ["clean_code.py"]
+    mock_find_sensitive.return_value = []
+    
+    result = runner.invoke(app, ["guard"])
+    
+    assert result.exit_code == 0
+    mock_get_staged.assert_called_once()
+    mock_find_sensitive.assert_called_once_with(["clean_code.py"])
+
+
+@patch("chegi.cli.SecurityGuard.find_sensitive_files")
+@patch("chegi.cli.SecurityGuard.get_staged_files")
+def test_guard_failure_secrets_found(mock_get_staged: MagicMock, mock_find_sensitive: MagicMock):
+    """Tests the guard command when sensitive data is detected in staged files."""
+    mock_get_staged.return_value = ["config.py"]
+    mock_find_sensitive.return_value = ["API_KEY detected in config.py"]
+    
+    result = runner.invoke(app, ["guard"])
+    
+    assert result.exit_code == 1
+    mock_get_staged.assert_called_once()
+    mock_find_sensitive.assert_called_once_with(["config.py"])
+
+
+# ==========================================
+# Configuration Command Tests
+# ==========================================
+
 def test_config_list(tmp_path: Path):
     """Tests listing current configuration settings via CLI."""
     result = runner.invoke(app, ["config", "list", "--path", str(tmp_path)])
@@ -138,8 +170,8 @@ def test_config_exclude_add_remove(tmp_path: Path):
     res_add = runner.invoke(app, ["config", "exclude-add", "my_junk_folder", "--path", str(tmp_path)])
     assert res_add.exit_code == 0
     assert "Added 'my_junk_folder'" in res_add.stdout
-
+    
     # Test Removing
-    res_rem = runner.invoke(app, ["config", "exclude-remove", "my_junk_folder", "--path", str(tmp_path)])
-    assert res_rem.exit_code == 0
-    assert "Removed 'my_junk_folder'" in res_rem.stdout
+    res_remove = runner.invoke(app, ["config", "exclude-remove", "my_junk_folder", "--path", str(tmp_path)])
+    assert res_remove.exit_code == 0
+    assert "Removed 'my_junk_folder'" in res_remove.stdout

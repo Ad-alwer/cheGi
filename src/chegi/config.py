@@ -1,6 +1,20 @@
 import json
 from pathlib import Path
-from typing import Set, Dict, Any, List
+from typing import Set, Dict, Any, List, Tuple
+
+# Git requirements
+MIN_GIT_VERSION: Tuple[int, int, int] = (2, 25, 0)
+
+# Security Constants (Immutable)
+DEFAULT_SENSITIVE_PATTERNS: Tuple[str, ...] = (
+    ".env*",
+    "*.pem",
+    "*.key",
+    "id_rsa*",
+    "*.pk8",
+    "*secret*",
+    "credentials.json",
+)
 
 # Default settings
 DEFAULT_EXCLUDES: List[str] = [
