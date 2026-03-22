@@ -63,3 +63,36 @@ def test_get_staged_files_no_git_installed(mock_run) -> None:
     files = SecurityGuard.get_staged_files()
     
     assert files == []
+
+
+@patch("chegi.security.subprocess.run")
+def test_unstage_files_success(mock_run) -> None:
+    """Tests successful unstaging of files."""
+    files_to_unstage = [".env", "config.json"]
+    
+    result = SecurityGuard.unstage_files(files_to_unstage)
+    
+    assert result is True
+    mock_run.assert_called_once_with(
+        ["git", "rm", "--cached", ".env", "config.json"],
+        capture_output=True,
+        check=True
+    )
+
+
+def test_unstage_files_empty_list() -> None:
+    """Tests that passing an empty list returns True without running subprocess."""
+    result = SecurityGuard.unstage_files([])
+    
+    assert result is True
+
+
+@patch("chegi.security.subprocess.run")
+def test_unstage_files_failure(mock_run) -> None:
+    """Tests unstaging failure handling when git command fails."""
+    mock_run.side_effect = subprocess.CalledProcessError(1, "git")
+    
+    result = SecurityGuard.unstage_files([".env"])
+    
+    assert result is False
+    mock_run.assert_called_once()

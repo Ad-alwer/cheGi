@@ -131,19 +131,37 @@ def test_guard_success_no_secrets(mock_get_staged: MagicMock, mock_find_sensitiv
     mock_find_sensitive.assert_called_once_with(["clean_code.py"])
 
 
+@patch("chegi.cli.SecurityGuard.unstage_files")
 @patch("chegi.cli.SecurityGuard.find_sensitive_files")
 @patch("chegi.cli.SecurityGuard.get_staged_files")
-def test_guard_failure_secrets_found(mock_get_staged: MagicMock, mock_find_sensitive: MagicMock):
-    """Tests the guard command when sensitive data is detected in staged files."""
-    mock_get_staged.return_value = ["config.py"]
-    mock_find_sensitive.return_value = ["API_KEY detected in config.py"]
+def test_guard_failure_secrets_found_accept_unstage(mock_get_staged: MagicMock, mock_find_sensitive: MagicMock, mock_unstage: MagicMock):
+    """Tests guard command when sensitive files are found and user chooses to unstage them automatically."""
+    mock_get_staged.return_value = [".env"]
+    mock_find_sensitive.return_value = [".env"]
+    mock_unstage.return_value = True
     
-    result = runner.invoke(app, ["guard"])
+    result = runner.invoke(app, ["guard"], input="y\n")
     
     assert result.exit_code == 1
+    assert "WARNING: Sensitive files detected" in result.stdout
+    assert "Files successfully unstaged" in result.stdout
     mock_get_staged.assert_called_once()
-    mock_find_sensitive.assert_called_once_with(["config.py"])
+    mock_find_sensitive.assert_called_once_with([".env"])
+    mock_unstage.assert_called_once_with([".env"])
 
+
+@patch("chegi.cli.SecurityGuard.unstage_files")
+@patch("chegi.cli.SecurityGuard.find_sensitive_files")
+@patch("chegi.cli.SecurityGuard.get_staged_files")
+def test_guard_failure_secrets_found_decline_unstage(mock_get_staged: MagicMock, mock_find_sensitive: MagicMock, mock_unstage: MagicMock):
+    """Tests guard command when sensitive files are found but user declines automatic unstaging."""
+    mock_get_staged.return_value = [".env"]
+    mock_find_sensitive.return_value = [".env"]
+    
+    result = runner.invoke(app, ["guard"], input="n\n")
+    
+    assert result.exit_code == 1
+    mock_unstage.assert_not_called()
 
 # ==========================================
 # Configuration Command Tests

@@ -57,3 +57,27 @@ class SecurityGuard:
                     break
         
         return detected_files
+    
+    @staticmethod
+    def unstage_files(files_to_unstage: List[str]) -> bool:
+        """Unstages the specified files using git rm --cached.
+
+        Args:
+            files_to_unstage (List[str]): A list of file paths to unstage.
+
+        Returns:
+            bool: True if successfully unstaged, False otherwise.
+        """
+        if not files_to_unstage:
+            return True
+            
+        try:
+            subprocess.run(
+                ["git", "rm", "--cached"] + files_to_unstage,
+                capture_output=True,
+                check=True
+            )
+            return True
+        except subprocess.CalledProcessError:
+            return False
+

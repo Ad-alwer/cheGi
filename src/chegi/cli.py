@@ -108,7 +108,8 @@ def guard() -> None:
 
     This command runs a standalone security check. It fetches staged files
     and checks them against predefined sensitive patterns (like .env or private keys).
-    If sensitive files are found, it displays a warning and exits with a non-zero status code.
+    If sensitive files are found, it displays a warning, offers to unstage them,
+    and exits with a non-zero status code.
 
     Raises:
         typer.Exit: Exits with code 1 if sensitive files are detected.
@@ -127,13 +128,23 @@ def guard() -> None:
         ui.console.print("\n[bold red]⚠️  WARNING: Sensitive files detected in staging area![/bold red]")
         for f in sensitive_files:
             ui.console.print(f"  [red]- {f}[/red]")
-        ui.console.print(
-            "\n[bold yellow]Please run 'git rm --cached <file>' to unstage them before committing.[/bold yellow]"
-        )
+            
+        files_str = " ".join(sensitive_files)
+        exact_command = f"git rm --cached {files_str}"
+        ui.console.print(f"\n[bold yellow]To fix this manually, run:[/bold yellow] [cyan]{exact_command}[/cyan]\n")
+        
+        should_unstage = typer.confirm("Do you want cheGi to automatically unstage these files for you?")
+        
+        if should_unstage:
+            success = SecurityGuard.unstage_files(sensitive_files)
+            if success:
+                ui.console.print("\n[bold green]✅ Files successfully unstaged. You can now commit safely.[/bold green]")
+            else:
+                ui.print_error("\nFailed to unstage files automatically. Please run the command manually.")
+        
         raise typer.Exit(code=1)
     else:
         ui.console.print("[bold green]✅ Security check passed. No sensitive files found in staging.[/bold green]")
-
 
 @config_app.command("list")
 def config_list(
