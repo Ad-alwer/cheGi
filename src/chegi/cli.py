@@ -1,6 +1,7 @@
 import typer
 from pathlib import Path
 from typing import Optional, Annotated
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
 
 from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
@@ -62,6 +63,8 @@ def scan(
     max_depth: Optional[int] = typer.Option(None, "--max-depth", "-d", help="Override max depth from config"),
     workers: int = typer.Option(5, "--workers", "-w", help="Number of concurrent workers"),
     security: Annotated[bool, typer.Option("--security", "-s", help="Perform security scan on repositories")] = False,
+    dirty: Annotated[bool, typer.Option("--dirty", help="Only show repositories with uncommitted changes")] = False,
+    staged: Annotated[bool, typer.Option("--staged", help="Only show repositories with staged files")] = False,
 ) -> None:
     """Scans a directory recursively for Git repositories and reports their status.
 
@@ -70,10 +73,12 @@ def scan(
         max_depth (Optional[int]): Overrides the configuration's maximum folder depth.
         workers (int): Number of concurrent threads for analyzing repositories.
         security (bool): If True, performs a security scan on staged files for each repository.
+        dirty (bool): If True, filters the output to only show repositories with uncommitted changes.
+        staged (bool): If True, filters the output to only show repositories with staged files.
 
     Raises:
-        typer.Exit: If the specified path is not a valid directory or if no 
-            repositories are found.
+        typer.Exit: If the specified path is not a valid directory, if no 
+            repositories are found, or if no repositories match the applied filters.
     """
     ui = TerminalUI()
     base_path = Path(path).resolve()
@@ -96,14 +101,36 @@ def scan(
         ui.display_results_table([])
         raise typer.Exit()
 
-    ui.console.print(f"[dim]⚡ Analyzing {len(repo_paths)} repositories...[/dim]")
-    
     analyzer = GitAnalyzer(max_workers=workers)
 
     scanner_func = SecurityGuard.scan_repo if security else None
     
-    statuses = analyzer.analyze_concurrently(repo_paths, security_scanner=scanner_func)
+    statuses = []
     
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TaskProgressColumn(),
+        console=ui.console,
+        transient=True
+    ) as progress:
+        task = progress.add_task("[cyan]⚡ Analyzing repositories...", total=len(repo_paths))
+        
+        for status in analyzer.analyze_concurrently(repo_paths, security_scanner=scanner_func):
+            statuses.append(status)
+            progress.advance(task)
+    
+    if dirty:
+        statuses = [s for s in statuses if s.is_dirty]
+    
+    if staged:
+        statuses = [s for s in statuses if s.has_staged_files]
+
+    if not statuses:
+        ui.console.print("\n[bold yellow]No repositories matched your filters.[/bold yellow]")
+        raise typer.Exit()
+
     ui.display_results_table(statuses)
 
 

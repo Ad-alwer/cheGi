@@ -50,11 +50,11 @@ def test_display_results_table_with_data(mock_print, ui: TerminalUI):
     """
     statuses = [
         # Clean and synced repo
-        GitStatus(Path("/dummy/repo1"), "repo1", "main", is_dirty=False, has_remote=True),
+        GitStatus(Path("/dummy/repo1"), "repo1", "main", is_dirty=False, has_remote=True, has_staged_files=False ),
         # Dirty and no remote repo
-        GitStatus(Path("/dummy/repo2"), "repo2", "dev", is_dirty=True, has_remote=False),
+        GitStatus(Path("/dummy/repo2"), "repo2", "dev", is_dirty=True, has_remote=False, has_staged_files=True ),
         # Repo with error
-        GitStatus(Path("/dummy/repo3"), "repo3", "Unknown", is_dirty=False, has_remote=False, error="Permission denied"),
+        GitStatus(Path("/dummy/repo3"), "repo3", "Unknown", is_dirty=False, has_remote=False, has_staged_files=False ,error="Permission denied"),
     ]
     
     ui.display_results_table(statuses)
@@ -80,12 +80,13 @@ def test_display_results_table_with_security_data(mock_print, ui: TerminalUI):
     """
     statuses = [
         # Clean repo with a security status
-        GitStatus(Path("/dummy/repo1"), "repo1", "main", is_dirty=False, has_remote=True, security_status="[green]✅ Safe[/green]"),
+        GitStatus(Path("/dummy/repo1"), "repo1", "main", is_dirty=False, has_remote=True, has_staged_files=False, security_status="[green]✅ Safe[/green]"),
         # Repo without security status (to test the N/A fallback)
-        GitStatus(Path("/dummy/repo2"), "repo2", "dev", is_dirty=True, has_remote=False, security_status=None),
+        GitStatus(Path("/dummy/repo2"), "repo2", "dev", is_dirty=True, has_remote=False, has_staged_files=True, security_status=None),
         # Repo with error (to test the "-" fallback)
-        GitStatus(Path("/dummy/repo3"), "repo3", "Unknown", is_dirty=False, has_remote=False, error="Permission denied", security_status="[red]❌ 1 Secret[/red]"),
+        GitStatus(Path("/dummy/repo3"), "repo3", "Unknown", is_dirty=False, has_remote=False, has_staged_files=False, error="Permission denied", security_status="[red]❌ 1 Secret[/red]"),
     ]
+
     
     ui.display_results_table(statuses)
     
