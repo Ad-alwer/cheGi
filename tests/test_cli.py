@@ -42,7 +42,7 @@ def test_global_setup_git_install_success(mock_install: MagicMock, mock_valid_gi
     mock_install.assert_called_once_with("git")
 
 # ==========================================
-# Scan Command Tests (with v0.3.0 features)
+# Scan Command Tests
 # ==========================================
 
 def test_scan_invalid_path():
@@ -169,3 +169,51 @@ def test_config_exclude_add_remove(tmp_path: Path):
     res_remove = runner.invoke(app, ["config", "exclude-remove", "junk", "--path", str(tmp_path)])
     assert res_remove.exit_code == 0
     assert "Removed 'junk'" in res_remove.stdout
+
+# ==========================================
+# Gitignore Command Tests
+# ==========================================
+
+@patch("chegi.cli.subprocess.run")
+def test_gitignore_success_without_commit(mock_subprocess, tmp_path: Path):
+    """Tests successful .gitignore creation but user declines commit."""
+    mock_subprocess.return_value = MagicMock(returncode=0)
+    
+    # Input: '1' for the first language option, 'n' to decline commit
+    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="1\nn\n")
+    
+    assert result.exit_code == 0
+    assert "Created:" in result.stdout
+    assert "Skipping commit." in result.stdout
+    assert (tmp_path / ".gitignore").exists()
+
+
+@patch("chegi.cli.subprocess.run")
+def test_gitignore_success_with_commit(mock_subprocess, tmp_path: Path):
+    """Tests .gitignore creation with user accepting the automatic commit."""
+    mock_subprocess.return_value = MagicMock(returncode=0)
+    
+    # Input: '1' for the first language option, 'y' to accept commit
+    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="1\ny\n")
+    
+    assert result.exit_code == 0
+    assert "Committed with message:" in result.stdout
+    # Should call subprocess for rev-parse, add, and commit
+    assert mock_subprocess.call_count >= 3 
+
+
+@patch("chegi.cli.subprocess.run")
+def test_gitignore_overwrite_abort(mock_subprocess, tmp_path: Path):
+    """Tests that the command asks before overwriting and aborts if declined."""
+    # Create a dummy .gitignore first
+    dummy_file = tmp_path / ".gitignore"
+    dummy_file.write_text("# Old config")
+    
+    # Input: '1' for language option, 'n' to decline overwrite
+    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="1\nn\n")
+    
+    assert result.exit_code == 0  # Typer Exit without code evaluates to 0
+    assert "already exists" in result.stdout
+    assert "Aborted" in result.stdout
+    # Ensure the file was not overwritten
+    assert dummy_file.read_text() == "# Old config"
