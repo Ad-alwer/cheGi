@@ -6,13 +6,13 @@
 
 While it currently excels at rapid repository discovery and status analysis, `cheGi` is evolving into a comprehensive suite for all your daily Git operations.
 
-## Key Features
+## 🌟 Key Features
 
-- **Blazing Fast Concurrent Operations:** Utilizes Python's `ThreadPoolExecutor` to process multiple repositories simultaneously without bottlenecking your system.
-- **Beautiful Terminal UI:** Say goodbye to boring logs. `cheGi` displays complex data in highly readable, colorful tables powered by `Rich`.
-- **Smart Workspace Scanning:** Quickly discover Git repositories across your system. It intelligently prunes irrelevant directories (like `.venv`, `node_modules`) to save time.
-- **Instant Status Insights:** Get a bird's-eye view of your projects—instantly see branch names, dirty working trees (uncommitted changes), and remote configurations.
-- **Extensible Architecture:** Designed from the ground up to support a wide range of Git automation and management commands.
+- **Blazing Fast Concurrent Operations:** Processes multiple repositories simultaneously using Python's `ThreadPoolExecutor`.
+- **Built-in Security Guard:** Scans for secrets (API keys, tokens, `.env` files) before you commit or during a workspace scan.
+- **Beautiful Terminal UI:** High-readability tables powered by `Rich` with color-coded status updates.
+- **Smart Workspace Scanning:** Quickly discover Git repositories while intelligently pruning folders like `node_modules` or `.venv`.
+- **Instant Status Insights:** Bird's-eye view of branches, dirty trees, and remote sync status.
 
 ## Prerequisites
 
@@ -66,14 +66,31 @@ You can also override the maximum scanning depth on the fly:
 chegi scan . --max-depth 5
 ```
 
+To include a **Security Audit** 🛡️ (checks for staged secrets in all repos):
+
+```bash
+chegi scan . --security # or -s
+```
+
+### 🛡️ Security Guard
+
+Protect your current repository before committing. This command checks for sensitive information in staged files:
+
+```bash
+chegi guard
+```
+
+_If secrets are found, `cheGi` will offer an interactive prompt to unstage them automatically._
+
 ### Example Output
 
-The tool will output a beautiful summary table showing:
+The tool outputs a beautiful summary table. Depending on the flags used, it shows:
 
-- **Repository**
-- **Branch**
-- **Local Status** (Clean/Dirty)
-- **Remote** (Synced/No Remote/Pending Commits)
+- **Repository**: Name of the folder.
+- **Branch**: Current active branch.
+- **Local Status**: Clean or Dirty (with uncommitted changes).
+- **Remote**: Sync status (Synced, No Remote, or Pending Commits).
+- **Security 🛡️**: (Only with `--security`) Shows if staged files are Safe or contain Secrets.
 
 ## Configuration
 
