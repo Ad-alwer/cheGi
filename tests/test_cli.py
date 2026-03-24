@@ -276,3 +276,68 @@ def test_gitignore_no_selection_abort(mock_checkbox: MagicMock, tmp_path: Path):
     
     assert result.exit_code == 1
     assert "Operation cancelled or no technologies selected." in result.stdout
+
+# ==========================================
+# Reword Command Tests
+# ==========================================
+
+@patch("chegi.cli.subprocess.run")
+def test_reword_success(mock_subprocess: MagicMock):
+    """Tests successful execution of the reword command."""
+    mock_subprocess.return_value = MagicMock(returncode=0)
+    
+    result = runner.invoke(app, ["reword", "chore: fix typos"])
+    
+    assert result.exit_code == 0
+    assert "Commit message successfully updated!" in result.stdout
+    
+    mock_subprocess.assert_called_with(
+        ["git", "commit", "--amend", "-m", "chore: fix typos"],
+        check=True, capture_output=True
+    )
+
+
+@patch("chegi.cli.subprocess.run")
+def test_reword_not_a_git_repo(mock_subprocess: MagicMock):
+    """Tests reword command when executed outside a git repository."""
+    import subprocess
+    
+    mock_subprocess.side_effect = subprocess.CalledProcessError(1, "git")
+    result = runner.invoke(app, ["reword", "new message"])
+    
+    assert result.exit_code == 1
+    assert "Not a git repository" in result.stdout
+
+
+@patch("chegi.cli.subprocess.run")
+def test_reword_no_commits(mock_subprocess: MagicMock):
+    """Tests reword command when there are no commits in the repository."""
+    import subprocess
+    
+    def mock_run_side_effect(*args, **kwargs):
+        if "HEAD" in args[0]:
+            raise subprocess.CalledProcessError(1, "git")
+        return MagicMock(returncode=0)
+        
+    mock_subprocess.side_effect = mock_run_side_effect
+    result = runner.invoke(app, ["reword", "new message"])
+    
+    assert result.exit_code == 1
+    assert "No commits found in this repository" in result.stdout
+
+
+@patch("chegi.cli.subprocess.run")
+def test_reword_amend_fails(mock_subprocess: MagicMock):
+    """Tests reword command when the actual git commit --amend fails."""
+    import subprocess
+    
+    def mock_run_side_effect(*args, **kwargs):
+        if "commit" in args[0]:
+            raise subprocess.CalledProcessError(1, "git")
+        return MagicMock(returncode=0)
+        
+    mock_subprocess.side_effect = mock_run_side_effect
+    result = runner.invoke(app, ["reword", "new message"])
+    
+    assert result.exit_code == 1
+    assert "Failed to reword commit" in result.stdout

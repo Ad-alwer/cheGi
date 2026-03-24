@@ -315,6 +315,60 @@ def gitignore(
     else:
         ui.console.print("[bold yellow]⚠️  Skipped commit: Not a git repository.[/bold yellow]")
 
+@app.command("reword")
+def reword(
+    message: str = typer.Argument(..., help="The new commit message for the last commit")
+) -> None:
+    """Changes the message of the last commit.
+
+    Useful for fixing typos or updating the message of the most recent commit.
+    This command only modifies the commit message and does not alter the 
+    files included in the commit (equivalent to `git commit --amend -m`).
+
+    Args:
+        message (str): The new commit message to replace the old one.
+
+    Raises:
+        typer.Exit: If the current directory is not a Git repository, if there 
+            are no commits to reword, or if the git command fails.
+    """
+    ui = TerminalUI()
+    
+    # 1. Check if inside a git repository
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "--is-inside-work-tree"], 
+            check=True, capture_output=True, text=True
+        )
+    except subprocess.CalledProcessError:
+        ui.print_error("❌ Not a git repository. Cannot reword here.")
+        raise typer.Exit(1)
+
+    # 2. Check if there is at least one commit
+    try:
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"], 
+            check=True, capture_output=True, text=True
+        )
+    except subprocess.CalledProcessError:
+        ui.print_error("❌ No commits found in this repository to reword.")
+        raise typer.Exit(1)
+
+    # 3. Execute the reword command
+    try:
+        ui.console.print(f"[dim]Rewording last commit message to: '{message}'...[/dim]")
+        
+        # Runs: git commit --amend -m "new message"
+        subprocess.run(
+            ["git", "commit", "--amend", "-m", message], 
+            check=True, capture_output=True
+        )
+        ui.console.print("[bold green]✅ Commit message successfully updated![/bold green]")
+        
+    except subprocess.CalledProcessError as e:
+        ui.print_error("❌ Failed to reword commit. Ensure you have no unresolved conflicts.")
+        raise typer.Exit(1)
+
 
 @config_app.command("list")
 def config_list(
