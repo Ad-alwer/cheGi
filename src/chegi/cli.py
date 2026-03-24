@@ -9,7 +9,7 @@ from rich.prompt import Confirm
 
 from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
-from chegi.git_utils import GitAnalyzer, check_git_environment
+from chegi.git_utils import GitAnalyzer, check_git_environment,perform_automated_rebase
 from chegi.ui import TerminalUI
 from chegi.installer import SystemInstaller
 from chegi.security import SecurityGuard
@@ -317,58 +317,116 @@ def gitignore(
 
 @app.command("reword")
 def reword(
-    message: str = typer.Argument(..., help="The new commit message for the last commit")
+    message: Optional[str] = typer.Argument(None, help="The new commit message"),
+    last: Optional[int] = typer.Option(
+        None, "--last", "-l", help="Number of recent commits to choose from", min=1, max=10
+    )
 ) -> None:
-    """Changes the message of the last commit.
+    """Changes a commit message interactively or directly.
 
-    Useful for fixing typos or updating the message of the most recent commit.
-    This command only modifies the commit message and does not alter the 
-    files included in the commit (equivalent to `git commit --amend -m`).
+    If no flags are provided, it modifies the last commit (HEAD).
+    If --last/-l $N$ is provided, it lists the last $N$ commits for interactive selection.
 
     Args:
-        message (str): The new commit message to replace the old one.
+        message (Optional[str]): The new commit message. Prompts if not provided.
+        last (Optional[int]): Number of recent commits to display for selection.
 
     Raises:
-        typer.Exit: If the current directory is not a Git repository, if there 
-            are no commits to reword, or if the git command fails.
+        typer.Exit: If the directory is not a Git repository, if no commits are found,
+            or if the git operations fail.
     """
     ui = TerminalUI()
-    
-    # 1. Check if inside a git repository
+
     try:
-        subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"], 
-            check=True, capture_output=True, text=True
-        )
+        subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], check=True, capture_output=True)
     except subprocess.CalledProcessError:
-        ui.print_error("❌ Not a git repository. Cannot reword here.")
+        ui.print_error("❌ Not a git repository.")
         raise typer.Exit(1)
 
-    # 2. Check if there is at least one commit
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "HEAD"], 
-            check=True, capture_output=True, text=True
-        )
-    except subprocess.CalledProcessError:
-        ui.print_error("❌ No commits found in this repository to reword.")
-        raise typer.Exit(1)
+    target_hash = "HEAD"
+    is_head = True
 
-    # 3. Execute the reword command
+    if last:
+        try:
+            result = subprocess.run(
+                ["git", "log", f"-{last}", "--format=%h %s"],
+                check=True, capture_output=True, text=True
+            )
+            commits = result.stdout.strip().split('\n')
+
+            if not commits or commits == ['']:
+                ui.print_error("❌ No commits found.")
+                raise typer.Exit(1)
+
+            selected = questionary.select(
+                "Which commit do you want to reword?",
+                choices=commits
+            ).ask()
+
+            if not selected:
+                ui.console.print("[yellow]Operation cancelled.[/yellow]")
+                raise typer.Exit(0)
+
+            target_hash = selected.split(' ')[0]
+            head_hash = commits[0].split(' ')[0]
+            is_head = (target_hash == head_hash)
+
+            if not is_head:
+                ui.console.print("\n[bold yellow]⚠️  WARNING: Rewording an older commit changes git history![/bold yellow]")
+                ui.console.print("[yellow]If pushed, you will need to 'force push' to update the remote.[/yellow]\n")
+                if not questionary.confirm("Do you want to proceed?").ask():
+                    raise typer.Exit(0)
+
+        except subprocess.CalledProcessError:
+            ui.print_error("❌ Failed to fetch commit history.")
+            raise typer.Exit(1)
+
+    if not message:
+        try:
+            # Fetch the existing commit message to use as default
+            old_msg_result = subprocess.run(
+                ["git", "log", "--format=%B", "-n", "1", target_hash],
+                check=True, capture_output=True, text=True
+            )
+            old_message = old_msg_result.stdout.strip()
+        except subprocess.CalledProcessError:
+            old_message = ""
+
+        message = questionary.text(
+            "Enter the new commit message:",
+            default=old_message
+        ).ask()
+
+        if not message:
+            ui.print_error("❌ Message cannot be empty.")
+            raise typer.Exit(1)
+            
+        if message == old_message:
+            ui.console.print("[yellow]Message unchanged. Exiting without changes.[/yellow]")
+            raise typer.Exit(0)
+
     try:
-        ui.console.print(f"[dim]Rewording last commit message to: '{message}'...[/dim]")
-        
-        # Runs: git commit --amend -m "new message"
-        subprocess.run(
-            ["git", "commit", "--amend", "-m", message], 
-            check=True, capture_output=True
-        )
-        ui.console.print("[bold green]✅ Commit message successfully updated![/bold green]")
-        
+        if is_head:
+            subprocess.run(["git", "commit", "--amend", "-m", message], check=True, capture_output=True)
+        else:
+            perform_automated_rebase(target_hash, message)
+
+        ui.console.print("[bold green]✅ Success! Commit message updated.[/bold green]")
+
+        # Only ask to force push if we rewrote older history
+        if not is_head:
+            if questionary.confirm("Would you like to 'git push --force' to update the remote?").ask():
+                ui.console.print("[dim]Pushing changes...[/dim]")
+                subprocess.run(["git", "push", "--force"], check=True)
+                ui.console.print("[bold green]🚀 Remote updated successfully![/bold green]")
+
     except subprocess.CalledProcessError as e:
-        ui.print_error("❌ Failed to reword commit. Ensure you have no unresolved conflicts.")
+        ui.print_error(f"❌ Failed to reword commit. Git error: {e}")
+        subprocess.run(["git", "rebase", "--abort"], capture_output=True)
         raise typer.Exit(1)
-
+    except Exception as e:
+        ui.print_error(f"❌ An unexpected error occurred: {str(e)}")
+        raise typer.Exit(1)
 
 @config_app.command("list")
 def config_list(

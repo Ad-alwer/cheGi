@@ -213,3 +213,45 @@ def test_check_git_environment_unexpected_error():
         
     assert is_ok is False
     assert "unexpected error" in msg
+
+
+@patch("chegi.git_utils.subprocess.run")
+def test_perform_automated_rebase_success(mock_subprocess: MagicMock):
+    """Tests successful automated interactive rebase."""
+    from chegi.git_utils import perform_automated_rebase
+    import os
+    
+    # Mock successful subprocess execution
+    mock_subprocess.return_value = MagicMock(returncode=0)
+    
+    perform_automated_rebase("abc1234", "new commit message")
+    
+    # Check if git rebase -i was called with correct target
+    called_args, called_kwargs = mock_subprocess.call_args_list[0]
+    assert called_args[0] == ["git", "rebase", "-i", "abc1234^"]
+    
+    # Check if custom environment variables were set for the fake editors
+    env = called_kwargs.get("env", {})
+    assert "GIT_SEQUENCE_EDITOR" in env
+    assert "GIT_EDITOR" in env
+
+@patch("chegi.git_utils.subprocess.run")
+def test_perform_automated_rebase_failure(mock_subprocess: MagicMock):
+    """Tests that a failed rebase automatically aborts the process and raises an error."""
+    from chegi.git_utils import perform_automated_rebase
+    import subprocess
+    
+    # Make the first subprocess.run (the rebase itself) fail, 
+    # and the second (the abort command) succeed.
+    mock_subprocess.side_effect = [
+        subprocess.CalledProcessError(1, ["git", "rebase"]),
+        MagicMock(returncode=0)
+    ]
+    
+    with pytest.raises(subprocess.CalledProcessError):
+        perform_automated_rebase("abc1234", "failed message")
+        
+    # Verify that git rebase --abort was automatically called after the failure
+    mock_subprocess.assert_called_with(
+        ["git", "rebase", "--abort"], capture_output=True
+    )

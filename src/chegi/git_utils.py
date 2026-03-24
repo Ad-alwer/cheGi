@@ -1,11 +1,15 @@
+import os
 import re
 import subprocess
+import sys
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Tuple, Callable, Optional
 
 MIN_GIT_VERSION = (2, 25, 0)
+
 
 def check_git_environment() -> Tuple[bool, str]:
     """Checks if Git is installed and meets the minimum version requirement.
@@ -179,3 +183,69 @@ class GitAnalyzer:
             
             for future in as_completed(future_to_path):
                 yield future.result()
+
+def perform_automated_rebase(target_hash: str, new_message: str) -> None:
+    """
+    Performs an automated interactive rebase to reword a specific commit.
+    
+    Args:
+        target_hash: The commit hash to modify.
+        new_message: The new commit message.
+        
+    Raises:
+        subprocess.CalledProcessError: If the rebase process fails.
+    """
+    # Create temporary files for the fake editors
+    with tempfile.NamedTemporaryFile(mode="w", delete=False) as seq_editor, \
+         tempfile.NamedTemporaryFile(mode="w", delete=False) as msg_editor:
+        
+        # Script 1: Sequence Editor (changes 'pick' to 'reword' for our target commit)
+        seq_editor.write(f"""#!{sys.executable}
+import sys
+with open(sys.argv[1], 'r') as f:
+    lines = f.readlines()
+with open(sys.argv[1], 'w') as f:
+    for line in lines:
+        if line.startswith('pick ') and '{target_hash}' in line:
+            f.write(line.replace('pick ', 'reword ', 1))
+        else:
+            f.write(line)
+""")
+        
+        # Script 2: Message Editor (replaces the commit message)
+        msg_editor.write(f"""#!{sys.executable}
+import sys
+with open(sys.argv[1], 'w') as f:
+    f.write('''{new_message}''')
+""")
+        
+        seq_editor_path = seq_editor.name
+        msg_editor_path = msg_editor.name
+
+    # Make the temp scripts executable (required for Unix-like systems)
+    os.chmod(seq_editor_path, 0o755)
+    os.chmod(msg_editor_path, 0o755)
+
+    # Set up environment variables to inject our fake editors
+    env = os.environ.copy()
+    env["GIT_SEQUENCE_EDITOR"] = seq_editor_path
+    env["GIT_EDITOR"] = msg_editor_path
+
+    try:
+        # Start the interactive rebase, targeting the parent of our target commit
+        subprocess.run(
+            ["git", "rebase", "-i", f"{target_hash}^"],
+            env=env,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        # Abort rebase if something goes wrong
+        subprocess.run(["git", "rebase", "--abort"], capture_output=True)
+        raise e
+    finally:
+        # Clean up temporary files
+        if os.path.exists(seq_editor_path):
+            os.remove(seq_editor_path)
+        if os.path.exists(msg_editor_path):
+            os.remove(msg_editor_path)
+

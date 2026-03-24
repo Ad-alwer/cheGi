@@ -282,62 +282,114 @@ def test_gitignore_no_selection_abort(mock_checkbox: MagicMock, tmp_path: Path):
 # ==========================================
 
 @patch("chegi.cli.subprocess.run")
-def test_reword_success(mock_subprocess: MagicMock):
-    """Tests successful execution of the reword command."""
+def test_reword_head_direct_message(mock_subprocess: MagicMock):
+    """Tests rewording HEAD directly by providing the message argument."""
     mock_subprocess.return_value = MagicMock(returncode=0)
     
-    result = runner.invoke(app, ["reword", "chore: fix typos"])
+    result = runner.invoke(app, ["reword", "chore: new message"])
     
     assert result.exit_code == 0
-    assert "Commit message successfully updated!" in result.stdout
+    assert "Success! Commit message updated" in result.stdout
     
-    mock_subprocess.assert_called_with(
-        ["git", "commit", "--amend", "-m", "chore: fix typos"],
+    # Check if correct git amend command was called
+    mock_subprocess.assert_any_call(
+        ["git", "commit", "--amend", "-m", "chore: new message"],
         check=True, capture_output=True
     )
-
 
 @patch("chegi.cli.subprocess.run")
 def test_reword_not_a_git_repo(mock_subprocess: MagicMock):
     """Tests reword command when executed outside a git repository."""
     import subprocess
     
+    # Force the first subprocess.run (rev-parse) to fail
     mock_subprocess.side_effect = subprocess.CalledProcessError(1, "git")
+    
     result = runner.invoke(app, ["reword", "new message"])
     
     assert result.exit_code == 1
     assert "Not a git repository" in result.stdout
 
-
 @patch("chegi.cli.subprocess.run")
-def test_reword_no_commits(mock_subprocess: MagicMock):
-    """Tests reword command when there are no commits in the repository."""
-    import subprocess
+@patch("chegi.cli.questionary.select")
+@patch("chegi.cli.questionary.text")
+def test_reword_last_interactive_head(mock_text: MagicMock, mock_select: MagicMock, mock_subprocess: MagicMock):
+    """Tests interactive selection of HEAD using --last flag."""
+    # Mock git log output
+    mock_log_result = MagicMock()
+    mock_log_result.stdout = "abc1234 feat: old msg\ndef5678 chore: older msg"
     
     def mock_run_side_effect(*args, **kwargs):
-        if "HEAD" in args[0]:
-            raise subprocess.CalledProcessError(1, "git")
+        if "log" in args[0]:
+            return mock_log_result
         return MagicMock(returncode=0)
         
     mock_subprocess.side_effect = mock_run_side_effect
-    result = runner.invoke(app, ["reword", "new message"])
     
-    assert result.exit_code == 1
-    assert "No commits found in this repository" in result.stdout
-
+    # User selects the first commit (HEAD)
+    mock_select.return_value.ask.return_value = "abc1234 feat: old msg"
+    mock_text.return_value.ask.return_value = "feat: updated msg"
+    
+    result = runner.invoke(app, ["reword", "--last", "2"])
+    
+    assert result.exit_code == 0
+    assert "Success! Commit message updated" in result.stdout
+    mock_subprocess.assert_any_call(
+        ["git", "commit", "--amend", "-m", "feat: updated msg"],
+        check=True, capture_output=True
+    )
 
 @patch("chegi.cli.subprocess.run")
-def test_reword_amend_fails(mock_subprocess: MagicMock):
-    """Tests reword command when the actual git commit --amend fails."""
-    import subprocess
+@patch("chegi.cli.perform_automated_rebase")
+@patch("chegi.cli.questionary.confirm")
+@patch("chegi.cli.questionary.select")
+def test_reword_last_interactive_older_commit(
+    mock_select: MagicMock, mock_confirm: MagicMock, mock_rebase: MagicMock, mock_subprocess: MagicMock
+):
+    """Tests modifying an older commit which triggers a rebase and force push prompt."""
+    mock_log_result = MagicMock()
+    mock_log_result.stdout = "abc1234 feat: head msg\ndef5678 chore: target msg"
     
     def mock_run_side_effect(*args, **kwargs):
-        if "commit" in args[0]:
-            raise subprocess.CalledProcessError(1, "git")
+        if "log" in args[0]:
+            return mock_log_result
         return MagicMock(returncode=0)
         
     mock_subprocess.side_effect = mock_run_side_effect
-    result = runner.invoke(app, ["reword", "new message"])
     
-    assert result.exit_code == 1
-    assert "Failed to reword commit" in result.stdout
+    # User selects the older commit
+    mock_select.return_value.ask.return_value = "def5678 chore: target msg"
+    # User confirms the warning, then confirms force push
+    mock_confirm.return_value.ask.side_effect = [True, True]
+    
+    result = runner.invoke(app, ["reword", "chore: fixed target msg", "--last", "2"])
+    
+    assert result.exit_code == 0
+    mock_rebase.assert_called_once_with("def5678", "chore: fixed target msg")
+    
+    # Verify force push was executed
+    mock_subprocess.assert_any_call(["git", "push", "--force"], check=True)
+    assert "Remote updated successfully" in result.stdout
+
+@patch("chegi.cli.subprocess.run")
+@patch("chegi.cli.questionary.text")
+def test_reword_unchanged_message(mock_text: MagicMock, mock_subprocess: MagicMock):
+    """Tests that rewording gracefully exits if the message is left unchanged."""
+    
+    def mock_run_side_effect(cmd, *args, **kwargs):
+        if "rev-parse" in cmd:
+            return MagicMock(returncode=0)
+        if "log" in cmd:
+            # Mock git log returning the existing commit message
+            return MagicMock(stdout="chore: old message\n", returncode=0)
+        return MagicMock(returncode=0)
+        
+    mock_subprocess.side_effect = mock_run_side_effect
+    
+    # Simulate the user submitting the exact same message
+    mock_text.return_value.ask.return_value = "chore: old message"
+    
+    result = runner.invoke(app, ["reword"])
+    
+    assert result.exit_code == 0
+    assert "Message unchanged. Exiting without changes" in result.stdout
