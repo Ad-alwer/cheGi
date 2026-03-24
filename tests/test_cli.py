@@ -174,18 +174,18 @@ def test_config_exclude_add_remove(tmp_path: Path):
 # Gitignore Command Tests
 # ==========================================
 
-@patch("chegi.cli.questionary.select")
+@patch("chegi.cli.questionary.checkbox")
 @patch("chegi.cli.subprocess.run")
-def test_gitignore_success_without_commit(mock_subprocess, mock_select, tmp_path: Path):
+def test_gitignore_success_without_commit(mock_subprocess: MagicMock, mock_checkbox: MagicMock, tmp_path: Path):
     """Tests successful .gitignore creation but user declines commit.
 
     Args:
         mock_subprocess (MagicMock): Mock for subprocess.run.
-        mock_select (MagicMock): Mock for questionary.select.
+        mock_checkbox (MagicMock): Mock for questionary.checkbox.
         tmp_path (Path): Pytest fixture for temporary directory path.
     """
     mock_subprocess.return_value = MagicMock(returncode=0)
-    mock_select.return_value.ask.return_value = "Python"
+    mock_checkbox.return_value.ask.return_value = ["Python"]
     
     result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="n\n")
     
@@ -195,18 +195,18 @@ def test_gitignore_success_without_commit(mock_subprocess, mock_select, tmp_path
     assert (tmp_path / ".gitignore").exists()
 
 
-@patch("chegi.cli.questionary.select")
+@patch("chegi.cli.questionary.checkbox")
 @patch("chegi.cli.subprocess.run")
-def test_gitignore_success_with_commit(mock_subprocess, mock_select, tmp_path: Path):
+def test_gitignore_success_with_commit(mock_subprocess: MagicMock, mock_checkbox: MagicMock, tmp_path: Path):
     """Tests .gitignore creation with user accepting the automatic commit.
 
     Args:
         mock_subprocess (MagicMock): Mock for subprocess.run.
-        mock_select (MagicMock): Mock for questionary.select.
+        mock_checkbox (MagicMock): Mock for questionary.checkbox.
         tmp_path (Path): Pytest fixture for temporary directory path.
     """
     mock_subprocess.return_value = MagicMock(returncode=0)
-    mock_select.return_value.ask.return_value = "Python"
+    mock_checkbox.return_value.ask.return_value = ["Python"]
     
     result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="y\n")
     
@@ -215,20 +215,18 @@ def test_gitignore_success_with_commit(mock_subprocess, mock_select, tmp_path: P
     assert mock_subprocess.call_count >= 3 
 
 
-@patch("chegi.cli.questionary.select")
-@patch("chegi.cli.subprocess.run")
-def test_gitignore_overwrite_abort(mock_subprocess, mock_select, tmp_path: Path):
+@patch("chegi.cli.questionary.checkbox")
+def test_gitignore_overwrite_abort(mock_checkbox: MagicMock, tmp_path: Path):
     """Tests that the command asks before overwriting and aborts if declined.
 
     Args:
-        mock_subprocess (MagicMock): Mock for subprocess.run.
-        mock_select (MagicMock): Mock for questionary.select.
+        mock_checkbox (MagicMock): Mock for questionary.checkbox.
         tmp_path (Path): Pytest fixture for temporary directory path.
     """
     dummy_file = tmp_path / ".gitignore"
     dummy_file.write_text("# Old config")
     
-    mock_select.return_value.ask.return_value = "Python"
+    mock_checkbox.return_value.ask.return_value = ["Python"]
     
     result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="n\n")
     
@@ -236,3 +234,45 @@ def test_gitignore_overwrite_abort(mock_subprocess, mock_select, tmp_path: Path)
     assert "already exists" in result.stdout
     assert "Aborted" in result.stdout
     assert dummy_file.read_text() == "# Old config"
+
+
+@patch("chegi.cli.questionary.checkbox")
+@patch("chegi.cli.subprocess.run")
+def test_gitignore_multiple_languages(mock_subprocess: MagicMock, mock_checkbox: MagicMock, tmp_path: Path):
+    """Tests if multiple selected templates and global rules are correctly combined.
+
+    Args:
+        mock_subprocess (MagicMock): Mock for subprocess.run.
+        mock_checkbox (MagicMock): Mock for questionary.checkbox.
+        tmp_path (Path): Pytest fixture for temporary directory path.
+    """
+    mock_subprocess.return_value = MagicMock(returncode=0)
+    mock_checkbox.return_value.ask.return_value = ["Python", "Node"]
+    
+    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="n\n")
+    
+    assert result.exit_code == 0
+    
+    gitignore_file = tmp_path / ".gitignore"
+    assert gitignore_file.exists()
+    
+    content = gitignore_file.read_text()
+    assert "# Python" in content
+    assert "# Node" in content
+    assert "# Global (OS/IDE)" in content
+
+
+@patch("chegi.cli.questionary.checkbox")
+def test_gitignore_no_selection_abort(mock_checkbox: MagicMock, tmp_path: Path):
+    """Tests the command behavior when the user cancels or selects no languages.
+
+    Args:
+        mock_checkbox (MagicMock): Mock for questionary.checkbox.
+        tmp_path (Path): Pytest fixture for temporary directory path.
+    """
+    mock_checkbox.return_value.ask.return_value = []
+    
+    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)])
+    
+    assert result.exit_code == 1
+    assert "Operation cancelled or no technologies selected." in result.stdout
