@@ -289,13 +289,14 @@ def test_reword_head_direct_message(mock_subprocess: MagicMock):
     result = runner.invoke(app, ["reword", "chore: new message"])
     
     assert result.exit_code == 0
-    assert "Success! Commit message updated" in result.stdout
+    assert "Last commit message updated successfully" in result.stdout
     
-    # Check if correct git amend command was called
+    # Removed capture_output=True to match actual code
     mock_subprocess.assert_any_call(
         ["git", "commit", "--amend", "-m", "chore: new message"],
-        check=True, capture_output=True
+        check=True
     )
+
 
 @patch("chegi.cli.subprocess.run")
 def test_reword_not_a_git_repo(mock_subprocess: MagicMock):
@@ -311,17 +312,21 @@ def test_reword_not_a_git_repo(mock_subprocess: MagicMock):
     assert "Not a git repository" in result.stdout
 
 @patch("chegi.cli.subprocess.run")
+@patch("chegi.cli.perform_automated_rebase")
 @patch("chegi.cli.questionary.select")
 @patch("chegi.cli.questionary.text")
-def test_reword_last_interactive_head(mock_text: MagicMock, mock_select: MagicMock, mock_subprocess: MagicMock):
+def test_reword_last_interactive_head(
+    mock_text: MagicMock, mock_select: MagicMock, mock_rebase: MagicMock, mock_subprocess: MagicMock
+):
     """Tests interactive selection of HEAD using --last flag."""
-    # Mock git log output
     mock_log_result = MagicMock()
     mock_log_result.stdout = "abc1234 feat: old msg\ndef5678 chore: older msg"
     
-    def mock_run_side_effect(*args, **kwargs):
-        if "log" in args[0]:
+    def mock_run_side_effect(cmd, *args, **kwargs):
+        if "log" in cmd:
             return mock_log_result
+        if "rev-parse" in cmd and "--short" in cmd:
+            return MagicMock(stdout="abc1234\n", returncode=0)
         return MagicMock(returncode=0)
         
     mock_subprocess.side_effect = mock_run_side_effect
@@ -333,43 +338,43 @@ def test_reword_last_interactive_head(mock_text: MagicMock, mock_select: MagicMo
     result = runner.invoke(app, ["reword", "--last", "2"])
     
     assert result.exit_code == 0
-    assert "Success! Commit message updated" in result.stdout
+    assert "updated successfully" in result.stdout
+    
+    # Since the selected commit is HEAD, it should use 'commit --amend' instead of automated rebase
+    mock_rebase.assert_not_called()
     mock_subprocess.assert_any_call(
-        ["git", "commit", "--amend", "-m", "feat: updated msg"],
-        check=True, capture_output=True
+        ["git", "commit", "--amend", "-m", "feat: updated msg"], check=True
     )
 
 @patch("chegi.cli.subprocess.run")
 @patch("chegi.cli.perform_automated_rebase")
-@patch("chegi.cli.questionary.confirm")
 @patch("chegi.cli.questionary.select")
 def test_reword_last_interactive_older_commit(
-    mock_select: MagicMock, mock_confirm: MagicMock, mock_rebase: MagicMock, mock_subprocess: MagicMock
+    mock_select: MagicMock, mock_rebase: MagicMock, mock_subprocess: MagicMock
 ):
-    """Tests modifying an older commit which triggers a rebase and force push prompt."""
+    """Tests modifying an older commit which triggers a rebase."""
     mock_log_result = MagicMock()
     mock_log_result.stdout = "abc1234 feat: head msg\ndef5678 chore: target msg"
     
-    def mock_run_side_effect(*args, **kwargs):
-        if "log" in args[0]:
+    def mock_run_side_effect(cmd, *args, **kwargs):
+        if "log" in cmd:
             return mock_log_result
+        if "rev-parse" in cmd and "--short" in cmd:
+            return MagicMock(stdout="abc1234\n", returncode=0)
         return MagicMock(returncode=0)
         
     mock_subprocess.side_effect = mock_run_side_effect
     
     # User selects the older commit
     mock_select.return_value.ask.return_value = "def5678 chore: target msg"
-    # User confirms the warning, then confirms force push
-    mock_confirm.return_value.ask.side_effect = [True, True]
     
+    # Run the command with the new message directly as argument, using --last 2
     result = runner.invoke(app, ["reword", "chore: fixed target msg", "--last", "2"])
     
     assert result.exit_code == 0
     mock_rebase.assert_called_once_with("def5678", "chore: fixed target msg")
-    
-    # Verify force push was executed
-    mock_subprocess.assert_any_call(["git", "push", "--force"], check=True)
-    assert "Remote updated successfully" in result.stdout
+    assert "updated successfully" in result.stdout
+
 
 @patch("chegi.cli.subprocess.run")
 @patch("chegi.cli.questionary.text")
@@ -392,4 +397,85 @@ def test_reword_unchanged_message(mock_text: MagicMock, mock_subprocess: MagicMo
     result = runner.invoke(app, ["reword"])
     
     assert result.exit_code == 0
-    assert "Message unchanged. Exiting without changes" in result.stdout
+    # Updated to match the new unchanged message
+    assert "Message is unchanged" in result.stdout
+
+@patch("chegi.cli.subprocess.run")
+def test_reword_pagination_invalid_range(mock_subprocess: MagicMock):
+    """Tests that providing a start index >= end index raises an error."""
+    # Mock is-inside-work-tree to pass
+    mock_subprocess.return_value = MagicMock(returncode=0)
+    
+    result = runner.invoke(app, ["reword", "--start", "20", "--end", "15"])
+    
+    assert result.exit_code == 1
+    assert "Error: --start must be less than --end" in result.stdout
+
+@patch("chegi.cli.subprocess.run")
+@patch("chegi.cli.questionary.select")
+@patch("chegi.cli.questionary.text")
+def test_reword_pagination_start_and_end(
+    mock_text: MagicMock, mock_select: MagicMock, mock_subprocess: MagicMock
+):
+    """Tests the correct calculation of skip and limit when both start and end are provided."""
+    
+    def mock_run_side_effect(cmd, *args, **kwargs):
+        if "rev-parse" in cmd:
+            return MagicMock(stdout="abc1234\n", returncode=0)
+        if "log" in cmd and "--format=%h %s" in cmd:
+            # This is the menu fetch call
+            return MagicMock(stdout="abc1234 feat: msg1\ndef5678 chore: msg2\n", returncode=0)
+        if "log" in cmd and "--format=%B" in cmd:
+            # This is the old message fetch call
+            return MagicMock(stdout="feat: msg1\n", returncode=0)
+        return MagicMock(returncode=0)
+        
+    mock_subprocess.side_effect = mock_run_side_effect
+    
+    # User selects the first option and changes the message
+    mock_select.return_value.ask.return_value = "abc1234 feat: msg1"
+    mock_text.return_value.ask.return_value = "feat: new msg1"
+    
+    # We want to list commits from index 10 to 15 (skip 10, limit 5)
+    result = runner.invoke(app, ["reword", "--start", "10", "--end", "15"])
+    
+    assert result.exit_code == 0
+    
+    # Verify the correct git log pagination command was constructed
+    mock_subprocess.assert_any_call(
+        ["git", "log", "--max-count=5", "--skip=10", "--format=%h %s"],
+        check=True, capture_output=True, text=True
+    )
+
+@patch("chegi.cli.subprocess.run")
+@patch("chegi.cli.questionary.select")
+@patch("chegi.cli.questionary.text")
+def test_reword_pagination_only_end(
+    mock_text: MagicMock, mock_select: MagicMock, mock_subprocess: MagicMock
+):
+    """Tests the logic $skip = max(0, end - 10)$ when only --end is provided."""
+    
+    def mock_run_side_effect(cmd, *args, **kwargs):
+        if "rev-parse" in cmd:
+            return MagicMock(stdout="abc1234\n", returncode=0)
+        if "log" in cmd and "--format=%h %s" in cmd:
+            return MagicMock(stdout="abc1234 feat: msg1\n", returncode=0)
+        if "log" in cmd and "--format=%B" in cmd:
+            return MagicMock(stdout="feat: msg1\n", returncode=0)
+        return MagicMock(returncode=0)
+        
+    mock_subprocess.side_effect = mock_run_side_effect
+    
+    mock_select.return_value.ask.return_value = "abc1234 feat: msg1"
+    mock_text.return_value.ask.return_value = "feat: new msg1"
+    
+    # If end is 25, formula says: skip = max(0, 25-10) = 15. limit = 25 - 15 = 10.
+    result = runner.invoke(app, ["reword", "--end", "25"])
+    
+    assert result.exit_code == 0
+    
+    # Verify the formula calculated correctly
+    mock_subprocess.assert_any_call(
+        ["git", "log", "--max-count=10", "--skip=15", "--format=%h %s"],
+        check=True, capture_output=True, text=True
+    )

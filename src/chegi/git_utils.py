@@ -185,22 +185,25 @@ class GitAnalyzer:
                 yield future.result()
 
 def perform_automated_rebase(target_hash: str, new_message: str) -> None:
-    """
-    Performs an automated interactive rebase to reword a specific commit.
-    
+    """Performs an automated interactive rebase to reword a specific commit.
+
+    This function automates the interactive rebase process by injecting temporary
+    Python scripts as Git's sequence and message editors. It automatically marks
+    the target commit for rewording and supplies the new message.
+
     Args:
-        target_hash: The commit hash to modify.
-        new_message: The new commit message.
-        
+        target_hash (str): The exact commit hash to be modified.
+        new_message (str): The new commit message to apply.
+
     Raises:
-        subprocess.CalledProcessError: If the rebase process fails.
+        subprocess.CalledProcessError: If the git rebase operation fails.
     """
-    # Create temporary files for the fake editors
-    with tempfile.NamedTemporaryFile(mode="w", delete=False) as seq_editor, \
-         tempfile.NamedTemporaryFile(mode="w", delete=False) as msg_editor:
-        
-        # Script 1: Sequence Editor (changes 'pick' to 'reword' for our target commit)
-        seq_editor.write(f"""#!{sys.executable}
+    seq_editor_path = ""
+    msg_editor_path = ""
+    
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as seq_editor:
+            seq_editor.write(f"""#!{sys.executable}
 import sys
 with open(sys.argv[1], 'r') as f:
     lines = f.readlines()
@@ -211,41 +214,36 @@ with open(sys.argv[1], 'w') as f:
         else:
             f.write(line)
 """)
-        
-        # Script 2: Message Editor (replaces the commit message)
-        msg_editor.write(f"""#!{sys.executable}
+            seq_editor_path = seq_editor.name
+
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as msg_editor:
+            msg_editor.write(f"""#!{sys.executable}
 import sys
 with open(sys.argv[1], 'w') as f:
     f.write('''{new_message}''')
 """)
-        
-        seq_editor_path = seq_editor.name
-        msg_editor_path = msg_editor.name
+            msg_editor_path = msg_editor.name
 
-    # Make the temp scripts executable (required for Unix-like systems)
-    os.chmod(seq_editor_path, 0o755)
-    os.chmod(msg_editor_path, 0o755)
+        os.chmod(seq_editor_path, 0o755)
+        os.chmod(msg_editor_path, 0o755)
 
-    # Set up environment variables to inject our fake editors
-    env = os.environ.copy()
-    env["GIT_SEQUENCE_EDITOR"] = seq_editor_path
-    env["GIT_EDITOR"] = msg_editor_path
+        env = os.environ.copy()
+        env["GIT_SEQUENCE_EDITOR"] = seq_editor_path
+        env["GIT_EDITOR"] = msg_editor_path
 
-    try:
-        # Start the interactive rebase, targeting the parent of our target commit
         subprocess.run(
             ["git", "rebase", "-i", f"{target_hash}^"],
             env=env,
-            check=True
+            check=True,
+            capture_output=True
         )
-    except subprocess.CalledProcessError as e:
-        # Abort rebase if something goes wrong
-        subprocess.run(["git", "rebase", "--abort"], capture_output=True)
-        raise e
-    finally:
-        # Clean up temporary files
-        if os.path.exists(seq_editor_path):
-            os.remove(seq_editor_path)
-        if os.path.exists(msg_editor_path):
-            os.remove(msg_editor_path)
 
+    except subprocess.CalledProcessError as e:
+        subprocess.run(["git", "rebase", "--abort"], capture_output=True, check=False)
+        raise RuntimeError(f"Automated rebase failed: {e.stderr.decode('utf-8') if e.stderr else str(e)}") from e
+
+    finally:
+        if seq_editor_path and os.path.exists(seq_editor_path):
+            os.remove(seq_editor_path)
+        if msg_editor_path and os.path.exists(msg_editor_path):
+            os.remove(msg_editor_path)

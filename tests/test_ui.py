@@ -108,3 +108,11 @@ def test_display_results_table_with_security_data(mock_print, ui: TerminalUI):
     assert security_cells[0] == "[green]✅ Safe[/green]"
     assert security_cells[1] == "[dim]N/A[/dim]"
     assert security_cells[2] == "-"
+
+@patch("chegi.ui.Console.print")
+def test_print_success(mock_print, ui: TerminalUI):
+    """
+    Tests if the success messages are printed with the correct green formatting.
+    """
+    ui.print_success("Test success message")
+    mock_print.assert_called_once_with("[bold green]Success:[/bold green] Test success message")

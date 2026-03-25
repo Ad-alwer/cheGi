@@ -319,23 +319,39 @@ def gitignore(
 def reword(
     message: Optional[str] = typer.Argument(None, help="The new commit message"),
     last: Optional[int] = typer.Option(
-        None, "--last", "-l", help="Number of recent commits to choose from", min=1, max=10
+        None, "--last", "-l", help="Number of recent commits to choose from", min=1
+    ),
+    start: Optional[int] = typer.Option(
+        None, "--start", "-s", help="Start index for commit list (e.g., 15)", min=0
+    ),
+    end: Optional[int] = typer.Option(
+        None, "--end", "-e", help="End index for commit list (e.g., 25)", min=1
     )
 ) -> None:
     """Changes a commit message interactively or directly.
 
     If no flags are provided, it modifies the last commit (HEAD).
-    If --last/-l $N$ is provided, it lists the last $N$ commits for interactive selection.
+    Use --last/-l to select from recent commits, or --start/-s and --end/-e 
+    to paginate through older commits in the repository history.
 
     Args:
         message (Optional[str]): The new commit message. Prompts if not provided.
         last (Optional[int]): Number of recent commits to display for selection.
+        start (Optional[int]): The starting index to skip before listing commits.
+        end (Optional[int]): The ending index for listing commits.
 
     Raises:
         typer.Exit: If the directory is not a Git repository, if no commits are found,
             or if the git operations fail.
     """
     ui = TerminalUI()
+
+    # --- Validation for --last ---
+    if last is not None and last > 20:
+        ui.print_error("❌ Maximum limit for --last is 20.")
+        ui.print_error("💡 Please use --start/-s and --end/-e flags to navigate older commits.")
+        raise typer.Exit(1)
+    # -----------------------------
 
     try:
         subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], check=True, capture_output=True)
@@ -346,87 +362,107 @@ def reword(
     target_hash = "HEAD"
     is_head = True
 
-    if last:
+    # Determine if we need to show the interactive commit selection menu
+    show_menu = last is not None or start is not None or end is not None
+
+    if show_menu:
+        # Pagination Logic: Calculate how many commits to skip and how many to fetch
+        if start is not None and end is not None:
+            if start >= end:
+                ui.print_error("❌ Error: --start must be less than --end.")
+                raise typer.Exit(1)
+            skip = start
+            limit = end - start
+        elif start is not None:
+            # Only start provided: fetch the next 10 commits starting from 'start'
+            skip = start
+            limit = 10
+        elif end is not None:
+            # Only end provided: fetch up to 10 commits preceding the 'end' index
+            # The formula is: $$skip = max(0, end - 10)$$
+            skip = max(0, end - 10)
+            limit = end - skip
+        else:
+            # Default to --last if start/end are not provided
+            skip = 0
+            limit = last if last else 10
+
         try:
+            # Use --skip and --max-count to fetch the exact window of commits
             result = subprocess.run(
-                ["git", "log", f"-{last}", "--format=%h %s"],
+                ["git", "log", f"--max-count={limit}", f"--skip={skip}", "--format=%h %s"],
                 check=True, capture_output=True, text=True
             )
-            commits = result.stdout.strip().split('\n')
-
-            if not commits or commits == ['']:
-                ui.print_error("❌ No commits found.")
+            commits = [line for line in result.stdout.strip().split("\n") if line]
+            
+            if not commits:
+                ui.print_error("❌ No commits found in the specified range.")
                 raise typer.Exit(1)
-
-            selected = questionary.select(
-                "Which commit do you want to reword?",
+                
+            choice = questionary.select(
+                "Select the commit to reword:",
                 choices=commits
             ).ask()
-
-            if not selected:
-                ui.console.print("[yellow]Operation cancelled.[/yellow]")
+            
+            if not choice:
+                # User cancelled the selection menu (e.g., pressed Ctrl+C)
                 raise typer.Exit(0)
-
-            target_hash = selected.split(' ')[0]
-            head_hash = commits[0].split(' ')[0]
+                
+            target_hash = choice.split(" ")[0]
+            
+            # Check if the selected hash is actually the current HEAD
+            head_hash = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"], 
+                capture_output=True, text=True
+            ).stdout.strip()
+            
             is_head = (target_hash == head_hash)
 
-            if not is_head:
-                ui.console.print("\n[bold yellow]⚠️  WARNING: Rewording an older commit changes git history![/bold yellow]")
-                ui.console.print("[yellow]If pushed, you will need to 'force push' to update the remote.[/yellow]\n")
-                if not questionary.confirm("Do you want to proceed?").ask():
-                    raise typer.Exit(0)
-
         except subprocess.CalledProcessError:
-            ui.print_error("❌ Failed to fetch commit history.")
+            ui.print_error("❌ Failed to fetch git history.")
             raise typer.Exit(1)
 
-    if not message:
-        try:
-            # Fetch the existing commit message to use as default
-            old_msg_result = subprocess.run(
-                ["git", "log", "--format=%B", "-n", "1", target_hash],
-                check=True, capture_output=True, text=True
-            )
-            old_message = old_msg_result.stdout.strip()
-        except subprocess.CalledProcessError:
-            old_message = ""
+    # Fetch the old message of the target commit to use as default input
+    try:
+        old_msg_result = subprocess.run(
+            ["git", "log", "--format=%B", "-n", "1", target_hash],
+            check=True, capture_output=True, text=True
+        )
+        old_message = old_msg_result.stdout.strip()
+    except subprocess.CalledProcessError:
+        ui.print_error("❌ Failed to fetch the commit message.")
+        raise typer.Exit(1)
 
+    if not message:
         message = questionary.text(
-            "Enter the new commit message:",
+            "Enter new commit message:",
             default=old_message
         ).ask()
 
         if not message:
-            ui.print_error("❌ Message cannot be empty.")
+            ui.print_error("❌ Commit message cannot be empty.")
             raise typer.Exit(1)
-            
-        if message == old_message:
-            ui.console.print("[yellow]Message unchanged. Exiting without changes.[/yellow]")
-            raise typer.Exit(0)
 
-    try:
-        if is_head:
-            subprocess.run(["git", "commit", "--amend", "-m", message], check=True, capture_output=True)
-        else:
+    # Graceful exit if the user leaves the message unchanged
+    if message == old_message:
+        ui.print_success("✅ Message is unchanged. Exiting without modifying history.")
+        return
+
+    # Apply the change
+    if is_head:
+        try:
+            subprocess.run(["git", "commit", "--amend", "-m", message], check=True)
+            ui.print_success("✅ Last commit message updated successfully!")
+        except subprocess.CalledProcessError:
+            ui.print_error("❌ Failed to amend the commit.")
+            raise typer.Exit(1)
+    else:
+        try:
             perform_automated_rebase(target_hash, message)
-
-        ui.console.print("[bold green]✅ Success! Commit message updated.[/bold green]")
-
-        # Only ask to force push if we rewrote older history
-        if not is_head:
-            if questionary.confirm("Would you like to 'git push --force' to update the remote?").ask():
-                ui.console.print("[dim]Pushing changes...[/dim]")
-                subprocess.run(["git", "push", "--force"], check=True)
-                ui.console.print("[bold green]🚀 Remote updated successfully![/bold green]")
-
-    except subprocess.CalledProcessError as e:
-        ui.print_error(f"❌ Failed to reword commit. Git error: {e}")
-        subprocess.run(["git", "rebase", "--abort"], capture_output=True)
-        raise typer.Exit(1)
-    except Exception as e:
-        ui.print_error(f"❌ An unexpected error occurred: {str(e)}")
-        raise typer.Exit(1)
+            ui.print_success(f"✅ Commit {target_hash} updated successfully!")
+        except Exception as e:
+            ui.print_error(f"❌ Failed to rebase: {e}")
+            raise typer.Exit(1)
 
 @config_app.command("list")
 def config_list(
