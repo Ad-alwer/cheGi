@@ -116,3 +116,11 @@ def test_print_success(mock_print, ui: TerminalUI):
     """
     ui.print_success("Test success message")
     mock_print.assert_called_once_with("[bold green]Success:[/bold green] Test success message")
+
+@patch("chegi.ui.Console.print")
+def test_print_info(mock_print, ui: TerminalUI):
+    """
+    Tests if the info messages are printed with the correct cyan formatting.
+    """
+    ui.print_info("Test info message")
+    mock_print.assert_called_once_with("[bold cyan]ℹ Test info message[/bold cyan]")

@@ -9,7 +9,7 @@ from rich.prompt import Confirm
 
 from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
-from chegi.git_utils import GitAnalyzer, check_git_environment,perform_automated_rebase
+from chegi.git_utils import GitAnalyzer, check_git_environment,perform_automated_rebase,is_workspace_clean, stash_changes,pop_stash,pull_rebase,push_changes
 from chegi.ui import TerminalUI
 from chegi.installer import SystemInstaller
 from chegi.security import SecurityGuard
@@ -463,6 +463,95 @@ def reword(
         except Exception as e:
             ui.print_error(f"❌ Failed to rebase: {e}")
             raise typer.Exit(1)
+
+
+@app.command()
+def sync():
+    """Synchronizes the local repository with the remote safely.
+
+    Performs a `git pull --rebase` to fetch and apply upstream changes,
+    followed by a `git push` to publish local commits. If the workspace
+    contains uncommitted changes, it prompts the user with a double
+    confirmation to safely stash and restore them.
+
+    Raises:
+        typer.Exit: If the user aborts the operation or if a Git command fails.
+    """
+    ui = TerminalUI()
+    ui.print_info("Starting synchronization process...")
+
+    needs_stash = False
+
+    # 1. Workspace Validation & Double Confirmation
+    if not is_workspace_clean():
+        ui.print_warning("You have uncommitted changes in your workspace.")
+        
+        # First confirmation: Ask if user wants to auto-stash (Default: No)
+        confirm_stash = typer.confirm(
+            "Do you want to automatically stash changes, sync, and restore them?",
+            default=False
+        )
+        if not confirm_stash:
+            ui.print_error("Sync aborted. Please commit or stash your changes manually.")
+            raise typer.Exit(1)
+        
+        # Second confirmation: Emphasize the risk of merge conflicts (Default: No)
+        ui.print_warning("Restoring changes (stash pop) after sync might result in merge conflicts.")
+        confirm_again = typer.confirm(
+            "Are you absolutely sure you want to proceed?",
+            default=False
+        )
+        if not confirm_again:
+            ui.print_error("Sync aborted. Please commit or stash your changes manually.")
+            raise typer.Exit(1)
+        
+        needs_stash = True
+
+    # 2. Stash uncommitted changes securely
+    if needs_stash:
+        ui.print_info("Stashing uncommitted changes...")
+        try:
+            stash_changes()
+        except RuntimeError as e:
+            ui.print_error(str(e))
+            raise typer.Exit(1)
+
+    # 3. Pull latest changes using rebase to maintain a linear history
+    ui.print_info("Pulling latest changes from remote (rebase)...")
+    try:
+        pull_rebase()
+    except RuntimeError as e:
+        ui.print_error("❌ Conflict or error during pull --rebase.")
+        ui.print_error(str(e))
+        ui.print_warning("💡 Please resolve conflicts manually, then run 'git rebase --continue'.")
+        if needs_stash:
+            ui.print_info("ℹ️ Your uncommitted changes are safely stored in git stash.")
+        raise typer.Exit(1)
+
+    # 4. Push local commits to the remote repository
+    ui.print_info("Pushing local commits to remote...")
+    try:
+        push_changes()
+    except RuntimeError as e:
+        ui.print_error("❌ Error during push.")
+        ui.print_error(str(e))
+        if needs_stash:
+            ui.print_info("ℹ️ Your uncommitted changes are safely stored in git stash.")
+        raise typer.Exit(1)
+
+    # 5. Restore previously stashed changes
+    if needs_stash:
+        ui.print_info("Restoring stashed changes...")
+        try:
+            pop_stash()
+        except RuntimeError as e:
+            # Do not exit with 1 here; the sync was successful, only stash pop had conflicts
+            ui.print_warning("⚠️ Conflict or error occurred while restoring stashed changes.")
+            ui.print_error(str(e))
+            ui.print_warning("💡 Please resolve the conflicts manually in your code editor.")
+
+    ui.print_success("Synchronization completed successfully! 🚀")
+
 
 @config_app.command("list")
 def config_list(

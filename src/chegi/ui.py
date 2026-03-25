@@ -46,6 +46,15 @@ class TerminalUI:
             None
         """
         self.console.print(f"[bold green]Success:[/bold green] {message}")
+        
+    def print_info(self, message: str) -> None:
+        """
+        Prints an informational message to the console.
+        
+        Args:
+            message (str): The information message to display.
+        """
+        self.console.print(f"[bold cyan]ℹ {message}[/bold cyan]")
 
     def display_results_table(self, statuses: List[GitStatus]) -> None:
         """Builds and displays a formatted, color-coded table of Git repository statuses.

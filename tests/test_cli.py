@@ -479,3 +479,111 @@ def test_reword_pagination_only_end(
         ["git", "log", "--max-count=10", "--skip=15", "--format=%h %s"],
         check=True, capture_output=True, text=True
     )
+
+# ==========================================
+# Sync Command Tests
+# ==========================================
+
+@patch("chegi.cli.push_changes")
+@patch("chegi.cli.pull_rebase")
+@patch("chegi.cli.is_workspace_clean")
+def test_sync_clean_workspace_success(
+    mock_is_clean: MagicMock, mock_pull: MagicMock, mock_push: MagicMock
+):
+    """Tests normal sync flow when the workspace has no uncommitted changes."""
+    mock_is_clean.return_value = True
+    
+    result = runner.invoke(app, ["sync"])
+    
+    assert result.exit_code == 0
+    assert "Synchronization completed successfully" in result.stdout
+    mock_pull.assert_called_once()
+    mock_push.assert_called_once()
+
+
+@patch("chegi.cli.is_workspace_clean")
+def test_sync_dirty_workspace_abort_first_confirm(mock_is_clean: MagicMock):
+    """Tests if sync aborts when the user declines the first stash confirmation."""
+    mock_is_clean.return_value = False
+    
+    # Input "N" for the first confirmation prompt
+    result = runner.invoke(app, ["sync"], input="N\n")
+    
+    assert result.exit_code == 1
+    assert "Sync aborted. Please commit or stash" in result.stdout
+
+
+@patch("chegi.cli.is_workspace_clean")
+def test_sync_dirty_workspace_abort_second_confirm(mock_is_clean: MagicMock):
+    """Tests if sync aborts when the user declines the second safety confirmation."""
+    mock_is_clean.return_value = False
+    
+    # Input "Y" for first confirm, "N" for the second
+    result = runner.invoke(app, ["sync"], input="Y\nN\n")
+    
+    assert result.exit_code == 1
+    assert "Sync aborted. Please commit or stash" in result.stdout
+
+
+@patch("chegi.cli.pop_stash")
+@patch("chegi.cli.push_changes")
+@patch("chegi.cli.pull_rebase")
+@patch("chegi.cli.stash_changes")
+@patch("chegi.cli.is_workspace_clean")
+def test_sync_dirty_workspace_full_success(
+    mock_is_clean: MagicMock, mock_stash: MagicMock, mock_pull: MagicMock, 
+    mock_push: MagicMock, mock_pop: MagicMock
+):
+    """Tests the full flow: stash -> pull -> push -> pop when user confirms both prompts."""
+    mock_is_clean.return_value = False
+    
+    # Input "Y" for both confirmations
+    result = runner.invoke(app, ["sync"], input="Y\nY\n")
+    
+    assert result.exit_code == 0
+    assert "Synchronization completed successfully" in result.stdout
+    
+    # Developer Note: Ensure all 4 git operations were called in order
+    mock_stash.assert_called_once()
+    mock_pull.assert_called_once()
+    mock_push.assert_called_once()
+    mock_pop.assert_called_once()
+
+
+@patch("chegi.cli.pull_rebase")
+@patch("chegi.cli.is_workspace_clean")
+def test_sync_pull_rebase_conflict(mock_is_clean: MagicMock, mock_pull: MagicMock):
+    """Tests if sync handles a git pull --rebase failure (e.g., merge conflict)."""
+    mock_is_clean.return_value = True
+    mock_pull.side_effect = RuntimeError("Git rebase conflict detected.")
+    
+    result = runner.invoke(app, ["sync"])
+    
+    assert result.exit_code == 1
+    assert "Conflict or error during pull --rebase" in result.stdout
+    assert "Please resolve conflicts manually" in result.stdout
+
+
+@patch("chegi.cli.pop_stash")
+@patch("chegi.cli.push_changes")
+@patch("chegi.cli.pull_rebase")
+@patch("chegi.cli.stash_changes")
+@patch("chegi.cli.is_workspace_clean")
+def test_sync_pop_stash_conflict_warning(
+    mock_is_clean: MagicMock, mock_stash: MagicMock, mock_pull: MagicMock, 
+    mock_push: MagicMock, mock_pop: MagicMock
+):
+    """
+    Tests that a conflict during 'stash pop' only issues a warning 
+    but DOES NOT fail the sync command (exit 0).
+    """
+    mock_is_clean.return_value = False
+    # Simulate a conflict when popping stash
+    mock_pop.side_effect = RuntimeError("Auto-merging failed; conflicts in app.py")
+    
+    result = runner.invoke(app, ["sync"], input="Y\nY\n")
+    
+    # Developer Note: Exit code must be 0 because sync to remote was successful!
+    assert result.exit_code == 0
+    assert "Conflict or error occurred while restoring stashed changes" in result.stdout
+    assert "Synchronization completed successfully" in result.stdout

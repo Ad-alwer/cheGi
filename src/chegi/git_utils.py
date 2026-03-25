@@ -247,3 +247,97 @@ with open(sys.argv[1], 'w') as f:
             os.remove(seq_editor_path)
         if msg_editor_path and os.path.exists(msg_editor_path):
             os.remove(msg_editor_path)
+
+def is_workspace_clean() -> bool:
+    """Checks if the Git workspace is clean (no uncommitted changes).
+
+    Uses `git status --porcelain` to check for any modified, staged, 
+    or untracked files in a stable, machine-readable format.
+
+    Returns:
+        bool: True if the workspace is clean, False otherwise.
+
+    Raises:
+        RuntimeError: If the Git command fails to execute properly.
+    """
+    try:
+        # --porcelain guarantees a stable output format across git versions
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return len(result.stdout.strip()) == 0
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to check git status: {e.stderr}")
+
+def stash_changes() -> None:
+    """Stashes uncommitted changes securely with a descriptive message.
+
+    Raises:
+        RuntimeError: If the stash operation fails.
+    """
+    try:
+        # Explicitly use 'push' with a message to identify our stash entry
+        subprocess.run(
+            ["git", "stash", "push", "-m", "chegi auto stash before sync"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to stash changes: {e.stderr}")
+
+def pop_stash() -> None:
+    """Pops the most recently stashed changes back into the workspace.
+
+    Raises:
+        RuntimeError: If the pop operation fails, typically due to conflicts.
+    """
+    try:
+        subprocess.run(
+            ["git", "stash", "pop"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        # git stash pop returns non-zero if a merge conflict occurs
+        raise RuntimeError(f"Conflict or error popping stash:\n{e.stdout}\n{e.stderr}")
+
+def pull_rebase() -> None:
+    """Executes a git pull using rebase to maintain a linear history.
+
+    Fetches from the remote and rebases current local commits on top of 
+    the remote tracking branch.
+
+    Raises:
+        RuntimeError: If the pull/rebase fails due to network issues or conflicts.
+    """
+    try:
+        subprocess.run(
+            ["git", "pull", "--rebase"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        # Rebase stops and exits with non-zero on conflicts
+        raise RuntimeError(f"Failed to pull changes (Conflict or network error):\n{e.stdout}\n{e.stderr}")
+
+def push_changes() -> None:
+    """Pushes local commits to the remote repository.
+
+    Raises:
+        RuntimeError: If the push operation is rejected or fails.
+    """
+    try:
+        subprocess.run(
+            ["git", "push"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to push changes: {e.stderr}")

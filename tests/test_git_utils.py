@@ -2,7 +2,16 @@ import pytest
 import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from chegi.git_utils import GitAnalyzer, GitStatus, check_git_environment
+from chegi.git_utils import (
+    GitStatus, 
+    GitAnalyzer,
+    is_workspace_clean,
+    stash_changes,
+    pop_stash,
+    pull_rebase,
+    push_changes,
+    check_git_environment
+)
 
 def test_run_git_command_success():
     """Test successful execution of a git command."""
@@ -255,3 +264,51 @@ def test_perform_automated_rebase_failure(mock_subprocess: MagicMock):
     mock_subprocess.assert_called_with(
         ["git", "rebase", "--abort"], capture_output=True, check=False
     )
+
+@patch("chegi.git_utils.subprocess.run")
+def test_is_workspace_clean_true(mock_run: MagicMock):
+    """Tests if a clean workspace (empty status --porcelain) returns True."""
+    mock_run.return_value = MagicMock(stdout="", returncode=0)
+    assert is_workspace_clean() is True
+
+@patch("chegi.git_utils.subprocess.run")
+def test_is_workspace_clean_false(mock_run: MagicMock):
+    """Tests if a dirty workspace (has output in status) returns False."""
+    mock_run.return_value = MagicMock(stdout=" M some_file.py\n", returncode=0)
+    assert is_workspace_clean() is False
+
+@patch("chegi.git_utils.subprocess.run")
+def test_stash_changes_success(mock_run: MagicMock):
+    """Tests successful execution of stash_changes."""
+    mock_run.return_value = MagicMock(returncode=0)
+    stash_changes()  # Should not raise any exceptions
+    mock_run.assert_called_once()
+    assert "stash" in mock_run.call_args[0][0]
+
+@patch("chegi.git_utils.subprocess.run")
+def test_stash_changes_failure(mock_run: MagicMock):
+    """Tests if stash_changes raises RuntimeError on git failure."""
+    mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="error")
+    with pytest.raises(RuntimeError, match="Failed to stash changes"):
+        stash_changes()
+
+@patch("chegi.git_utils.subprocess.run")
+def test_pop_stash_conflict(mock_run: MagicMock):
+    """Tests if pop_stash catches conflicts and raises RuntimeError."""
+    mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="Merge conflict")
+    with pytest.raises(RuntimeError, match="Conflict or error popping stash"):
+        pop_stash()
+
+@patch("chegi.git_utils.subprocess.run")
+def test_pull_rebase_success(mock_run: MagicMock):
+    """Tests successful pull --rebase execution."""
+    mock_run.return_value = MagicMock(returncode=0)
+    pull_rebase()
+    mock_run.assert_called_once()
+
+@patch("chegi.git_utils.subprocess.run")
+def test_push_changes_failure(mock_run: MagicMock):
+    """Tests push failure handling."""
+    mock_run.side_effect = subprocess.CalledProcessError(1, "git", stderr="rejected")
+    with pytest.raises(RuntimeError, match="Failed to push changes"):
+        push_changes()
