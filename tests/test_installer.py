@@ -198,3 +198,101 @@ def test_mac_xcode_fallback_success(mock_run: MagicMock, mock_which: MagicMock):
     
     assert result is True
     mock_run.assert_called_once_with(["xcode-select", "--install"])
+
+
+@patch("chegi.installer.platform.system")
+@patch("chegi.installer.shutil.which")
+def test_get_os_package_manager(mock_which: MagicMock, mock_system: MagicMock) -> None:
+    """Test detection of the host OS package manager."""
+    # Simulate Windows environment with winget available
+    mock_system.return_value = "Windows"
+    mock_which.return_value = "C:\\path\\to\\winget.exe"
+    assert SystemInstaller.get_os_package_manager() == "winget"
+
+    # Simulate macOS environment with Homebrew available
+    mock_system.return_value = "Darwin"
+    mock_which.return_value = "/opt/homebrew/bin/brew"
+    assert SystemInstaller.get_os_package_manager() == "brew"
+
+    # Simulate Linux environment. We use side_effect to mimic shutil.which 
+    # finding 'apt' but returning None for other package managers like 'dnf'.
+    mock_system.return_value = "Linux"
+    mock_which.side_effect = lambda cmd: "/usr/bin/apt" if cmd == "apt" else None
+    assert SystemInstaller.get_os_package_manager() == "apt"
+
+    # Simulate Linux environment with no supported package manager (fallback scenario)
+    mock_system.return_value = "Linux"
+    mock_which.side_effect = lambda cmd: None
+    assert SystemInstaller.get_os_package_manager() == "default"
+
+
+@patch("chegi.installer.subprocess.run")
+def test_is_tool_installed_success(mock_run: MagicMock) -> None:
+    """Test tool installation check when the tool is successfully found."""
+    # Simulate successful command execution (return code 0)
+    # Include multi-line output to test the stdout parsing logic
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "Python 3.10.12\nAdditional unwanted output"
+    
+    is_installed, output = SystemInstaller.is_tool_installed("python3 --version")
+    
+    assert is_installed is True
+    # Ensure only the first line is extracted to maintain a clean UI table
+    assert output == "Python 3.10.12"
+
+
+@patch("chegi.installer.subprocess.run")
+def test_is_tool_installed_failure(mock_run: MagicMock) -> None:
+    """Test tool installation check when the tool is missing."""
+    # Simulate a "command not found" scenario (return code != 0)
+    mock_run.return_value.returncode = 127
+    
+    is_installed, output = SystemInstaller.is_tool_installed("unknown_tool --version")
+    
+    assert is_installed is False
+    assert output == "Not installed"
+
+
+@patch("chegi.installer.subprocess.run")
+def test_is_tool_installed_exception(mock_run: MagicMock) -> None:
+    """Test tool installation check when a system exception occurs."""
+    # Simulate an unexpected OS-level exception during execution
+    mock_run.side_effect = Exception("Permission denied")
+    
+    is_installed, output = SystemInstaller.is_tool_installed("restricted_cmd")
+    
+    assert is_installed is False
+    assert "Permission denied" in output
+
+
+@patch("chegi.installer.subprocess.run")
+def test_run_custom_command_success(mock_run: MagicMock) -> None:
+    """Test successful execution of a custom shell command."""
+    mock_run.return_value.returncode = 0
+    
+    result = SystemInstaller.run_custom_command("pip install pytest")
+    
+    assert result is True
+    mock_run.assert_called_once_with("pip install pytest", shell=True)
+
+
+@patch("chegi.installer.subprocess.run")
+def test_run_custom_command_failure(mock_run: MagicMock) -> None:
+    """Test execution of a custom shell command that fails."""
+    # Simulate a failed installation (e.g., package not found or network error)
+    mock_run.return_value.returncode = 1
+    
+    result = SystemInstaller.run_custom_command("pip install invalid_pkg")
+    
+    assert result is False
+
+
+@patch("chegi.installer.subprocess.run")
+def test_run_custom_command_keyboard_interrupt(mock_run: MagicMock) -> None:
+    """Test if run_custom_command correctly raises KeyboardInterrupt on Ctrl+C."""
+    # Return code 130 is the standard POSIX exit code for a process 
+    # terminated by SIGINT (Ctrl+C).
+    mock_run.return_value.returncode = 130
+    
+    with pytest.raises(KeyboardInterrupt):
+        SystemInstaller.run_custom_command("sleep 100")

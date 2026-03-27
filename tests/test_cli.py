@@ -587,3 +587,117 @@ def test_sync_pop_stash_conflict_warning(
     assert result.exit_code == 0
     assert "Conflict or error occurred while restoring stashed changes" in result.stdout
     assert "Synchronization completed successfully" in result.stdout
+
+# ==========================================
+# Setup Command Tests
+# ==========================================
+
+DUMMY_ENV_DATA = {
+    "levels": {"1": ["git"]},
+    "levels_info": {"1": "Core"},
+    "tools": {
+        "git": {
+            "check_cmd": "git --version",
+            "install": {
+                "apt": "sudo apt install git",
+                "default": "brew install git"
+            }
+        }
+    }
+}
+
+@patch("chegi.cli.EnvManager")
+def test_setup_unsupported_environment(mock_env_manager: MagicMock):
+    """Tests setup command with an environment not in the database."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_available_envs.return_value = ["python", "node"]
+
+    result = runner.invoke(app, ["setup", "ruby"])
+
+    assert result.exit_code == 1
+    assert "is not supported" in result.stdout
+
+
+@patch("chegi.cli.EnvManager")
+def test_setup_failed_to_load_env_data(mock_env_manager: MagicMock):
+    """Tests setup command when environment data fails to load."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_available_envs.return_value = ["python"]
+    mock_instance.get_env.return_value = None
+
+    result = runner.invoke(app, ["setup", "python"])
+
+    assert result.exit_code == 1
+    assert "Failed to load configuration data" in result.stdout
+
+
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_all_tools_already_installed(mock_env_manager: MagicMock, mock_installer: MagicMock):
+    """Tests setup when all tools are already installed on the system."""
+    mock_env_manager.return_value.get_available_envs.return_value = ["python"]
+    mock_env_manager.return_value.get_env.return_value = DUMMY_ENV_DATA
+    
+    mock_installer.get_os_package_manager.return_value = "apt"
+    mock_installer.is_tool_installed.return_value = (True, "git version 2.34.1")
+
+    result = runner.invoke(app, ["setup", "python"])
+
+    assert result.exit_code == 0
+    assert "already installed" in result.stdout
+
+
+@patch("chegi.cli.questionary")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_interactive_abort(mock_env_manager: MagicMock, mock_installer: MagicMock, mock_questionary: MagicMock):
+    """Tests setup when the user aborts the interactive tool selection."""
+    mock_env_manager.return_value.get_available_envs.return_value = ["python"]
+    mock_env_manager.return_value.get_env.return_value = DUMMY_ENV_DATA
+    
+    mock_installer.get_os_package_manager.return_value = "apt"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    
+    mock_questionary.checkbox.return_value.ask.return_value = []
+
+    result = runner.invoke(app, ["setup", "python"])
+
+    assert result.exit_code == 0
+    assert "Setup aborted by user" in result.stdout
+
+
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_auto_yes_installation_success(mock_env_manager: MagicMock, mock_installer: MagicMock):
+    """Tests successful installation using the --yes flag."""
+    mock_env_manager.return_value.get_available_envs.return_value = ["python"]
+    mock_env_manager.return_value.get_env.return_value = DUMMY_ENV_DATA
+    
+    mock_installer.get_os_package_manager.return_value = "apt"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    mock_installer.run_custom_command.return_value = True
+
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+
+    assert result.exit_code == 0
+    assert "installed successfully" in result.stdout
+    assert "Environment setup completed successfully" in result.stdout
+    mock_installer.run_custom_command.assert_called_with("sudo apt install git")
+
+
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_installation_keyboard_interrupt(mock_env_manager: MagicMock, mock_installer: MagicMock):
+    """Tests if Ctrl+C during installation is handled cleanly."""
+    mock_env_manager.return_value.get_available_envs.return_value = ["python"]
+    mock_env_manager.return_value.get_env.return_value = DUMMY_ENV_DATA
+    
+    mock_installer.get_os_package_manager.return_value = "apt"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    
+    mock_installer.run_custom_command.side_effect = KeyboardInterrupt()
+
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+
+    assert result.exit_code == 1
+    assert "Installation interrupted by user" in result.stdout

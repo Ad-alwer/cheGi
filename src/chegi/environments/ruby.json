@@ -1,0 +1,36 @@
+{
+  "name": "ruby",
+  "levels_info": {
+    "1": "Essential",
+    "2": "Recommended",
+    "3": "Future/Frameworks",
+    "4": "Pro/Advanced"
+  },
+  "levels": {
+    "1": ["ruby", "bundler", "irb", "rake"],
+    "2": ["pry", "rubocop", "rspec", "minitest", "dotenv"],
+    "3": ["rails", "sinatra", "sidekiq", "puma", "hanami"],
+    "4": ["rbenv", "capistrano", "brakeman", "sorbet", "simplecov"]
+  },
+  "tools": {
+    "ruby": { "check_cmd": "ruby -v", "install": { "apt": "sudo apt install ruby-full", "brew": "brew install ruby", "winget": "winget install RubyInstallerTeam.Ruby" } },
+    "bundler": { "check_cmd": "bundler -v", "install": { "default": "gem install bundler" } },
+    "irb": { "check_cmd": "irb -v", "install": { "default": "gem install irb" } },
+    "rake": { "check_cmd": "rake -V", "install": { "default": "gem install rake" } },
+    "pry": { "check_cmd": "pry -v", "install": { "default": "gem install pry" } },
+    "rubocop": { "check_cmd": "rubocop -v", "install": { "default": "gem install rubocop" } },
+    "rspec": { "check_cmd": "rspec -v", "install": { "default": "gem install rspec" } },
+    "minitest": { "check_cmd": "ruby -e \"require 'minitest'\"", "install": { "default": "gem install minitest" } },
+    "dotenv": { "check_cmd": "dotenv -v", "install": { "default": "gem install dotenv" } },
+    "rails": { "check_cmd": "rails -v", "install": { "default": "gem install rails" } },
+    "sinatra": { "check_cmd": "ruby -e \"require 'sinatra'\"", "install": { "default": "gem install sinatra" } },
+    "sidekiq": { "check_cmd": "sidekiq -V", "install": { "default": "gem install sidekiq" } },
+    "puma": { "check_cmd": "puma -V", "install": { "default": "gem install puma" } },
+    "hanami": { "check_cmd": "hanami version", "install": { "default": "gem install hanami" } },
+    "rbenv": { "check_cmd": "rbenv -v", "install": { "apt": "sudo apt install rbenv", "brew": "brew install rbenv" } },
+    "capistrano": { "check_cmd": "cap --version", "install": { "default": "gem install capistrano" } },
+    "brakeman": { "check_cmd": "brakeman -v", "install": { "default": "gem install brakeman" } },
+    "sorbet": { "check_cmd": "srb --version", "install": { "default": "gem install sorbet" } },
+    "simplecov": { "check_cmd": "ruby -e \"require 'simplecov'\"", "install": { "default": "gem install simplecov" } }
+  }
+}
