@@ -1,0 +1,126 @@
+{
+  "name": "rust",
+  "levels_info": {
+    "1": "Essential",
+    "2": "Recommended",
+    "3": "Cargo Extensions",
+    "4": "Pro/Advanced"
+  },
+  "levels": {
+    "1": ["rustup", "rustc", "cargo", "rustfmt", "clippy"],
+    "2": ["rust-analyzer", "cargo-watch", "cargo-edit", "cargo-update", "cargo-tree"],
+    "3": ["cargo-audit", "cargo-outdated", "cargo-expand", "cargo-generate", "cargo-binstall", "cargo-deny"],
+    "4": ["flamegraph", "cross", "bindgen", "wasm-pack", "sccache", "mdbook"]
+  },
+  "tools": {
+    "rustup": {
+      "check_cmd": "rustup --version",
+      "install": { "default": "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y", "brew": "brew install rustup" }
+    },
+    "rustc": {
+      "requires": ["rustup"],
+      "check_cmd": "rustc --version",
+      "install": { "default": "rustup component add rustc" }
+    },
+    "cargo": {
+      "requires": ["rustup"],
+      "check_cmd": "cargo --version",
+      "install": { "default": "rustup component add cargo" }
+    },
+    "rustfmt": {
+      "requires": ["rustup"],
+      "check_cmd": "cargo fmt --version",
+      "install": { "default": "rustup component add rustfmt" }
+    },
+    "clippy": {
+      "requires": ["rustup"],
+      "check_cmd": "cargo clippy --version",
+      "install": { "default": "rustup component add clippy" }
+    },
+    "rust-analyzer": {
+      "requires": ["rustup"],
+      "check_cmd": "rust-analyzer --version",
+      "install": { "default": "rustup component add rust-analyzer", "apt": "sudo apt install -y rust-analyzer" }
+    },
+    "cargo-watch": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo watch --version",
+      "install": { "default": "cargo install cargo-watch" }
+    },
+    "cargo-edit": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo add --version",
+      "install": { "default": "cargo install cargo-edit" }
+    },
+    "cargo-update": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo install-update -V",
+      "install": { "default": "cargo install cargo-update" }
+    },
+    "cargo-tree": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo tree --version",
+      "install": { "default": "cargo install cargo-tree" }
+    },
+    "cargo-audit": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo audit --version",
+      "install": { "default": "cargo install cargo-audit" }
+    },
+    "cargo-outdated": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo outdated --version",
+      "install": { "default": "cargo install cargo-outdated" }
+    },
+    "cargo-expand": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo expand --version",
+      "install": { "default": "cargo install cargo-expand" }
+    },
+    "cargo-generate": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo generate --version",
+      "install": { "default": "cargo install cargo-generate" }
+    },
+    "cargo-binstall": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo binstall -V",
+      "install": { "default": "curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash" }
+    },
+    "cargo-deny": {
+      "requires": ["cargo"],
+      "check_cmd": "cargo deny --version",
+      "install": { "default": "cargo install --locked cargo-deny" }
+    },
+    "flamegraph": {
+      "requires": ["cargo"],
+      "check_cmd": "flamegraph --version",
+      "install": { "default": "cargo install flamegraph" }
+    },
+    "cross": {
+      "requires": ["cargo"],
+      "check_cmd": "cross --version",
+      "install": { "default": "cargo install cross" }
+    },
+    "bindgen": {
+      "requires": ["cargo"],
+      "check_cmd": "bindgen --version",
+      "install": { "default": "cargo install bindgen-cli" }
+    },
+    "wasm-pack": {
+      "requires": ["cargo"],
+      "check_cmd": "wasm-pack --version",
+      "install": { "default": "cargo install wasm-pack" }
+    },
+    "sccache": {
+      "requires": ["cargo"],
+      "check_cmd": "sccache --version",
+      "install": { "default": "cargo install sccache" }
+    },
+    "mdbook": {
+      "requires": ["cargo"],
+      "check_cmd": "mdbook --version",
+      "install": { "default": "cargo install mdbook" }
+    }
+  }
+}
