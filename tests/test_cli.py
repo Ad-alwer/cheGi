@@ -592,12 +592,14 @@ def test_sync_pop_stash_conflict_warning(
 # Setup Command Tests
 # ==========================================
 
+# Simple dummy data for basic tests
 DUMMY_ENV_DATA = {
     "levels": {"1": ["git"]},
     "levels_info": {"1": "Core"},
     "tools": {
         "git": {
             "check_cmd": "git --version",
+            "requires": [],
             "install": {
                 "apt": "sudo apt install git",
                 "default": "brew install git"
@@ -605,6 +607,32 @@ DUMMY_ENV_DATA = {
         }
     }
 }
+
+# Complex dummy data for testing dependency resolution (Topological Sort)
+# Dependency Chain: tool_c -> requires -> tool_a -> requires -> tool_b
+# They are listed out of order intentionally in the 'levels' array.
+DUMMY_ENV_DATA_DEPS = {
+    "levels": {"1": ["tool_c", "tool_a", "tool_b"]},
+    "levels_info": {"1": "Core"},
+    "tools": {
+        "tool_c": {
+            "check_cmd": "cmd_c",
+            "requires": ["tool_a"],
+            "install": {"default": "install c"}
+        },
+        "tool_a": {
+            "check_cmd": "cmd_a",
+            "requires": ["tool_b"],
+            "install": {"default": "install a"}
+        },
+        "tool_b": {
+            "check_cmd": "cmd_b",
+            "requires": [],
+            "install": {"default": "install b"}
+        }
+    }
+}
+
 
 @patch("chegi.cli.EnvManager")
 def test_setup_unsupported_environment(mock_env_manager: MagicMock):
@@ -701,3 +729,60 @@ def test_setup_installation_keyboard_interrupt(mock_env_manager: MagicMock, mock
 
     assert result.exit_code == 1
     assert "Installation interrupted by user" in result.stdout
+
+
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_dependency_resolution_order(mock_env_manager: MagicMock, mock_installer: MagicMock):
+    """Tests if topological sort correctly reorders installation queue based on dependencies.
+    
+    Even though tools are defined in order c -> a -> b, they should be installed
+    in order b -> a -> c because c requires a, and a requires b.
+    """
+    mock_env_manager.return_value.get_available_envs.return_value = ["python"]
+    mock_env_manager.return_value.get_env.return_value = DUMMY_ENV_DATA_DEPS
+    
+    mock_installer.get_os_package_manager.return_value = "default"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    mock_installer.run_custom_command.return_value = True
+
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+
+    assert result.exit_code == 0
+    
+    # Extract the order of calls to run_custom_command
+    calls = mock_installer.run_custom_command.call_args_list
+    installed_cmds = [call[0][0] for call in calls]
+    
+    # Verify the topological sort order
+    assert installed_cmds == ["install b", "install a", "install c"]
+
+
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_dependency_missing_skip(mock_env_manager: MagicMock, mock_installer: MagicMock):
+    """Tests if tools are skipped correctly when their prerequisites fail to install."""
+    mock_env_manager.return_value.get_available_envs.return_value = ["python"]
+    mock_env_manager.return_value.get_env.return_value = DUMMY_ENV_DATA_DEPS
+    
+    mock_installer.get_os_package_manager.return_value = "default"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    
+    # Simulate a failure when installing 'tool_b' (the base dependency)
+    def mock_run_cmd(cmd):
+        if cmd == "install b":
+            return False
+        return True
+        
+    mock_installer.run_custom_command.side_effect = mock_run_cmd
+
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+
+    # Output should reflect that tool_b failed, and therefore tool_a and tool_c were skipped
+    assert "Failed to install tool_b" in result.stdout
+    assert "Skipping tool_a: Missing prerequisites (tool_b)" in result.stdout
+    assert "Skipping tool_c: Missing prerequisites (tool_a)" in result.stdout
+    
+    # Only tool_b should have been attempted
+    assert mock_installer.run_custom_command.call_count == 1
+    mock_installer.run_custom_command.assert_called_once_with("install b")

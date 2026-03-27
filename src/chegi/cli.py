@@ -666,7 +666,9 @@ def setup_environment(
 
     This command analyzes the system, checks for installed tools based on Chegi's
     environment database, displays a status report, and provides a guided
-    interactive installation for missing dependencies.
+    interactive installation for missing dependencies. It respects dependency
+    requirements and sorts the installation queue so that prerequisites are 
+    installed first.
 
     Args:
         environment (str): The name of the environment to configure (e.g., 'python').
@@ -682,7 +684,6 @@ def setup_environment(
     
     available_envs = env_manager.get_available_envs()
 
-    # Validate if the requested environment exists in our JSON database
     if environment.lower() not in available_envs:
         ui.print_error(f"Environment '{environment}' is not supported.")
         ui.print_info(f"Available environments: {', '.join(available_envs)}")
@@ -698,25 +699,24 @@ def setup_environment(
     pkg_manager = SystemInstaller.get_os_package_manager()
     ui.console.print(f"Detected Package Manager: [bold cyan]{pkg_manager}[/bold cyan]\n")
     
-    # Initialize the Rich Table for displaying tool statuses
     table = Table(
         title=f"{environment.capitalize()} Environment Status", 
         show_header=True, 
         header_style="bold magenta"
     )
     table.add_column("Tool", style="cyan", no_wrap=True)
+    table.add_column("Requires", style="dim")
     table.add_column("Level", style="blue")
     table.add_column("Status", justify="center")
     table.add_column("Version/Info", style="dim")
 
-    # Extract sections from the loaded JSON data
     levels = env_data.get("levels", {})
     levels_info = env_data.get("levels_info", {})
     tools_data = env_data.get("tools", {})
 
     tools_to_install = []
+    installed_tools = set()
 
-    # Show a spinner while executing check commands for all tools
     with ui.console.status("[bold green]Checking installed tools...[/bold green]", spinner="dots"):
         for level_id, tool_names in levels.items():
             level_name = levels_info.get(level_id, f"Level {level_id}")
@@ -724,54 +724,82 @@ def setup_environment(
             for tool_name in tool_names:
                 tool_info = tools_data.get(tool_name)
                 
-                # Skip if tool definition is missing in the 'tools' section
                 if not tool_info:
                     continue
                     
                 check_cmd = tool_info.get("check_cmd", "")
+                requires_list = tool_info.get("requires", [])
+                requires_str = ", ".join(requires_list) if requires_list else "-"
+                
                 if not check_cmd:
                     continue
                 
                 is_installed, info = SystemInstaller.is_tool_installed(check_cmd)
                 
                 if is_installed:
+                    installed_tools.add(tool_name)
                     status_str = "[bold green]✔ Installed[/bold green]"
                 else:
                     status_str = "[bold red]✖ Missing[/bold red]"
                     
                     install_cmds = tool_info.get("install", {})
-                    # Prioritize the OS-specific package manager (e.g., 'apt', 'brew').
-                    # Fallback to 'default' (e.g., 'pip', 'npm') if no OS-specific command exists.
                     cmd_to_run = install_cmds.get(pkg_manager) or install_cmds.get("default")
                     
                     if cmd_to_run:
                         tools_to_install.append({
                             "name": tool_name,
                             "level": level_name,
-                            "cmd": cmd_to_run
+                            "cmd": cmd_to_run,
+                            "requires": requires_list
                         })
                     else:
-                        # If no install command is found for the OS, mark as manual
                         status_str = "[bold yellow]⚠ Manual[/bold yellow]"
                         
-                table.add_row(tool_name, level_name, status_str, info)
+                table.add_row(tool_name, requires_str, level_name, status_str, info)
 
     ui.console.print(table)
     ui.console.print("\n")
 
-    # Exit early if everything is already installed
     if not tools_to_install:
         ui.print_success(f"All critical tools for {environment.capitalize()} are already installed! 🎉")
         raise typer.Exit()
 
+    # Topological sort to ensure dependencies are installed before the tools that require them.
+    sorted_tools_to_install = []
+    remaining_tools = tools_to_install.copy()
+    
+    while remaining_tools:
+        progress = False
+        for tool in remaining_tools:
+            # Check if the current tool requires any other tool that is still in the pending queue
+            pending_deps = [
+                dep for dep in tool.get("requires", []) 
+                if any(t["name"] == dep for t in remaining_tools)
+            ]
+            
+            # If no pending dependencies are in the queue, it's safe to install this tool next
+            if not pending_deps:
+                sorted_tools_to_install.append(tool)
+                remaining_tools.remove(tool)
+                progress = True
+                break
+                
+        if not progress:
+            # Break the loop to prevent infinite cycling in case of circular dependencies
+            sorted_tools_to_install.extend(remaining_tools)
+            break
+            
+    tools_to_install = sorted_tools_to_install
+
     ui.print_info(f"Found {len(tools_to_install)} missing tools that can be installed automatically.")
     
-    # Handle interactive tool selection if --yes flag is not provided
     if not auto_yes:
-        # Create choices for the interactive checkbox menu. 
-        # By passing the entire dictionary as `value`, we keep the command associated with the name.
         choices = [
-            questionary.Choice(title=f"{t['name']} ({t['level']})", value=t, checked=True)
+            questionary.Choice(
+                title=f"{t['name']} ({t['level']})" + (f" [Requires: {', '.join(t['requires'])}]" if t['requires'] else ""), 
+                value=t, 
+                checked=True
+            )
             for t in tools_to_install
         ]
         
@@ -780,7 +808,6 @@ def setup_environment(
             choices=choices
         ).ask()
 
-        # Handle user cancellation (Ctrl+C during prompt) or empty selection
         if not selected_tools:
             ui.print_info("Setup aborted by user or no tools selected. No changes were made.")
             raise typer.Exit()
@@ -788,22 +815,29 @@ def setup_environment(
         tools_to_install = selected_tools
 
     success_count = 0
+    skipped_count = 0
     
-    # Wrap the installation loop in a try-except block to gracefully handle 
-    # KeyboardInterrupt (Ctrl+C) without showing a messy Python traceback.
     try:
         for tool in tools_to_install:
+            # Re-verify dependencies right before installation in case a previous step failed
+            missing_deps = [dep for dep in tool.get("requires", []) if dep not in installed_tools]
+            
+            if missing_deps:
+                ui.print_warning(f"⏭️  Skipping {tool['name']}: Missing prerequisites ({', '.join(missing_deps)})")
+                skipped_count += 1
+                continue
+
             ui.console.print(f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]")
             success = SystemInstaller.run_custom_command(tool["cmd"])
             
             if success:
                 ui.print_success(f"✅ {tool['name']} installed successfully.")
+                installed_tools.add(tool["name"])
                 success_count += 1
             else:
                 ui.print_error(f"❌ Failed to install {tool['name']}. You may need to run with sudo or install it manually.")
                 
     except KeyboardInterrupt:
-        # Catch local interruption and exit cleanly
         ui.console.print("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
         raise typer.Exit(code=1)
 
@@ -811,7 +845,7 @@ def setup_environment(
     if success_count == len(tools_to_install):
         ui.print_success("✨ Environment setup completed successfully! ✨")
     else:
-        ui.print_info(f"Setup finished. Installed {success_count} of {len(tools_to_install)} tools.")
+        ui.print_info(f"Setup finished. Installed: {success_count}, Skipped: {skipped_count}, Failed/Canceled: {len(tools_to_install) - success_count - skipped_count}.")
 
 
 def main() -> None:
