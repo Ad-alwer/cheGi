@@ -195,3 +195,45 @@ def test_commit_gitignore(mock_run, mock_load):
     # Check second call: git commit
     args_commit, _ = mock_run.call_args_list[1]
     assert args_commit[0] == ["git", "commit", ".gitignore", "-m", commit_msg]
+
+
+@patch("chegi.env_manager.EnvManager.load_environments")
+def test_get_required_package_managers_success(mock_load):
+    """Tests extracting a unique set of required package managers from multiple environments."""
+    manager = EnvManager()
+    manager.db = {
+        "python": {"tools": {"pip": {}, "poetry": {}}},
+        "node": {"tools": {"npm": {}, "yarn": {}}}
+    }
+    
+    pms = manager.get_required_package_managers(["python", "node"])
+    
+    assert isinstance(pms, set)
+    assert pms == {"pip", "poetry", "npm", "yarn"}
+
+
+@patch("chegi.env_manager.EnvManager.load_environments")
+def test_get_required_package_managers_edge_cases(mock_load):
+    """Tests package manager extraction with empty lists, invalid envs, or missing tools."""
+    manager = EnvManager()
+    manager.db = {
+        "ruby": {"name": "Ruby"} 
+    }
+    
+    assert manager.get_required_package_managers([]) == set()
+    assert manager.get_required_package_managers(["unknown_env"]) == set()
+    assert manager.get_required_package_managers(["ruby"]) == set()
+
+
+@patch("chegi.env_manager.EnvManager.load_environments")
+def test_get_required_package_managers_duplicates(mock_load):
+    """Tests that duplicate tools across requested environments are returned as a unique set."""
+    manager = EnvManager()
+    manager.db = {
+        "env1": {"tools": {"shared_tool": {}, "tool_a": {}}},
+        "env2": {"tools": {"shared_tool": {}, "tool_b": {}}}
+    }
+    
+    pms = manager.get_required_package_managers(["env1", "env2", "env1"])
+    
+    assert pms == {"shared_tool", "tool_a", "tool_b"}

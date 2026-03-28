@@ -2,7 +2,7 @@ import json
 import subprocess
 import importlib.resources as pkg_resources
 from pathlib import Path
-from typing import Dict, Optional, Any, List
+from typing import Dict, Optional, Any, List, Set
 
 GLOBAL_GITIGNORE_TEMPLATE = """
 # macOS
@@ -111,6 +111,28 @@ class EnvManager:
             List[str]: A list of lowercase environment names (e.g., ['python', 'ruby']).
         """
         return list(self.db.keys())
+
+    def get_required_package_managers(self, env_names: List[str]) -> Set[str]:
+        """Extracts a unique set of required package managers for given environments.
+
+        Iterates through the requested environments and collects the names of 
+        all tools/package managers defined within their configuration.
+
+        Args:
+            env_names (List[str]): A list of environment names (e.g., ['python', 'javascript']).
+
+        Returns:
+            Set[str]: A set containing the names of required tools (e.g., {'pip', 'npm'}).
+        """
+        required_pms: Set[str] = set()
+        
+        for env_name in env_names:
+            env_data = self.get_env(env_name)
+            if env_data and "tools" in env_data:
+                for tool_name in env_data["tools"].keys():
+                    required_pms.add(tool_name.lower())
+                    
+        return required_pms
 
     def get_env(self, lang_name: str) -> Optional[Dict[str, Any]]:
         """Alias for get_language to maintain compatibility with the CLI module.

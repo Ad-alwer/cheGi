@@ -640,6 +640,36 @@ def setup_environment(
             
         tools_to_install = selected_tools
 
+    # --- Pre-flight Check for Mirrors ---
+    SUPPORTED_MIRROR_PMS = {"pip", "npm"}
+    session_mirrors = {}
+    
+    # Identify which supported package managers are actually going to be run
+    active_pms_in_tools = {tool["cmd"].split()[0].lower() for tool in tools_to_install}
+    required_pms = env_manager.get_required_package_managers([environment.lower()])
+    
+    # Filter: Must be required by JSON, supported by our mirror system, AND actually selected to be installed
+    pms_to_ask = required_pms.intersection(SUPPORTED_MIRROR_PMS).intersection(active_pms_in_tools)
+
+    if pms_to_ask and not auto_yes:
+        ui.console.print("\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]")
+        ui.console.print("[dim]Useful if you are behind a restricted network and need custom download URLs.[/dim]")
+        
+        for pm in pms_to_ask:
+            use_mirror = typer.confirm(
+                f"Do you want to use a mirror/custom registry for '{pm}'?", 
+                default=False
+            )
+            if use_mirror:
+                mirror_url = questionary.text(
+                    f"Enter the mirror URL for {pm} (e.g. https://registry.npmmirror.com/):"
+                ).ask()
+                
+                if mirror_url and mirror_url.strip():
+                    session_mirrors[pm] = mirror_url.strip()
+                    ui.console.print(f"[green]✔ Saved mirror for {pm}[/green]")
+
+    # --- Installation Loop ---
     success_count = 0
     skipped_count = 0
     
@@ -653,7 +683,16 @@ def setup_environment(
                 continue
 
             ui.console.print(f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]")
-            success = SystemInstaller.run_custom_command(tool["cmd"])
+            
+            # Detect the package manager from the command string
+            pm_name = tool["cmd"].split()[0].lower()
+            mirror_url = session_mirrors.get(pm_name)
+            
+            success = SystemInstaller.run_custom_command(
+                tool["cmd"],
+                pm_name=pm_name if mirror_url else None,
+                mirror_url=mirror_url
+            )
             
             if success:
                 ui.print_success(f"✅ {tool['name']} installed successfully.")

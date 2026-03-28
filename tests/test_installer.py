@@ -296,3 +296,68 @@ def test_run_custom_command_keyboard_interrupt(mock_run: MagicMock) -> None:
     
     with pytest.raises(KeyboardInterrupt):
         SystemInstaller.run_custom_command("sleep 100")
+
+
+def test_build_command_with_mirror_missing_args() -> None:
+    """Tests command builder behavior when PM name or mirror URL is omitted."""
+    base_cmd = "pip install requests"
+    
+    assert SystemInstaller._build_command_with_mirror(base_cmd, None, "http://mirror") == base_cmd
+    assert SystemInstaller._build_command_with_mirror(base_cmd, "pip", None) == base_cmd
+
+
+def test_build_command_with_mirror_pip_success() -> None:
+    """Tests injecting the index-url flag correctly into a pip install command."""
+    base_cmd = "pip install requests --upgrade"
+    mirror_url = "https://mirror.local/pypi"
+    expected = "pip install --index-url https://mirror.local/pypi requests --upgrade"
+    
+    result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", mirror_url)
+    assert result == expected
+
+
+def test_build_command_with_mirror_pip_no_install() -> None:
+    """Tests that pip commands without the 'install' keyword remain unmodified."""
+    base_cmd = "pip download requests"
+    mirror_url = "https://mirror.local/pypi"
+    
+    result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", mirror_url)
+    assert result == base_cmd
+
+
+def test_build_command_with_mirror_npm_success() -> None:
+    """Tests appending the registry flag correctly to an npm command."""
+    base_cmd = "npm install express"
+    mirror_url = "https://mirror.local/npm"
+    expected = "npm install express --registry https://mirror.local/npm"
+    
+    result = SystemInstaller._build_command_with_mirror(base_cmd, "npm", mirror_url)
+    assert result == expected
+
+
+def test_build_command_with_mirror_unsupported_pm() -> None:
+    """Tests that commands for unsupported package managers remain unmodified."""
+    base_cmd = "apt install curl"
+    mirror_url = "https://mirror.local/apt"
+    
+    result = SystemInstaller._build_command_with_mirror(base_cmd, "apt", mirror_url)
+    assert result == base_cmd
+
+
+@patch("chegi.installer.subprocess.run")
+def test_run_custom_command_with_mirror_integration(mock_run: MagicMock) -> None:
+    """Tests if run_custom_command properly passes mirror arguments to the builder and executes the modified command."""
+    mock_run.return_value.returncode = 0
+    
+    result = SystemInstaller.run_custom_command(
+        cmd="pip install django",
+        pm_name="pip",
+        mirror_url="http://custom.mirror"
+    )
+    
+    assert result is True
+    # Verify that the executed command is the modified version
+    mock_run.assert_called_once_with(
+        "pip install --index-url http://custom.mirror django", 
+        shell=True
+    )

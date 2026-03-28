@@ -292,7 +292,7 @@ def test_gitignore_not_a_git_repo(mock_checkbox: MagicMock, mock_env_manager: Ma
     assert result.exit_code == 0
     assert "Skipped commit: Not a git repository" in result.stdout
     mock_instance.commit_gitignore.assert_not_called()
-    
+
 # ==========================================
 # Reword Command Tests
 # ==========================================
@@ -726,7 +726,11 @@ def test_setup_auto_yes_installation_success(mock_env_manager: MagicMock, mock_i
     assert result.exit_code == 0
     assert "installed successfully" in result.stdout
     assert "Environment setup completed successfully" in result.stdout
-    mock_installer.run_custom_command.assert_called_with("sudo apt install git")
+    mock_installer.run_custom_command.assert_called_with(
+        "sudo apt install git", 
+        pm_name=None, 
+        mirror_url=None
+    )
 
 
 @patch("chegi.cli.SystemInstaller")
@@ -784,8 +788,7 @@ def test_setup_dependency_missing_skip(mock_env_manager: MagicMock, mock_install
     mock_installer.get_os_package_manager.return_value = "default"
     mock_installer.is_tool_installed.return_value = (False, "Not installed")
     
-    # Simulate a failure when installing 'tool_b' (the base dependency)
-    def mock_run_cmd(cmd):
+    def mock_run_cmd(cmd, **kwargs):
         if cmd == "install b":
             return False
         return True
@@ -794,11 +797,141 @@ def test_setup_dependency_missing_skip(mock_env_manager: MagicMock, mock_install
 
     result = runner.invoke(app, ["setup", "python", "--yes"])
 
-    # Output should reflect that tool_b failed, and therefore tool_a and tool_c were skipped
     assert "Failed to install tool_b" in result.stdout
     assert "Skipping tool_a: Missing prerequisites (tool_b)" in result.stdout
     assert "Skipping tool_c: Missing prerequisites (tool_a)" in result.stdout
     
-    # Only tool_b should have been attempted
     assert mock_installer.run_custom_command.call_count == 1
-    mock_installer.run_custom_command.assert_called_once_with("install b")
+    mock_installer.run_custom_command.assert_called_once_with(
+        "install b", 
+        pm_name=None, 
+        mirror_url=None
+    )
+
+# Dummy data specifically simulating an environment with a supported package manager (pip)
+DUMMY_ENV_DATA_MIRROR = {
+    "levels": {"1": ["requests"]},
+    "levels_info": {"1": "Libraries"},
+    "tools": {
+        "requests": {
+            "check_cmd": "pip show requests",
+            "requires": [],
+            "install": {"default": "pip install requests"}
+        }
+    }
+}
+
+
+@patch("chegi.cli.questionary")
+@patch("chegi.cli.typer.confirm")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_interactive_mirror_accepted(
+    mock_env_manager: MagicMock, 
+    mock_installer: MagicMock, 
+    mock_confirm: MagicMock, 
+    mock_questionary: MagicMock
+):
+    """Tests if a provided mirror URL is correctly passed to the installer."""
+    # Setup environment mocks
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_available_envs.return_value = ["python"]
+    mock_instance.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_instance.get_required_package_managers.return_value = {"pip"}
+    
+    # Setup installer mocks
+    mock_installer.get_os_package_manager.return_value = "default"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    mock_installer.run_custom_command.return_value = True
+    
+    # Setup UI mocks
+    # 1. User selects the tool to install
+    mock_questionary.checkbox.return_value.ask.return_value = [
+        {"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}
+    ]
+    # 2. User confirms they want to use a mirror
+    mock_confirm.return_value = True
+    # 3. User provides the mirror URL
+    mock_questionary.text.return_value.ask.return_value = "https://custom.pypi.local/simple"
+
+    result = runner.invoke(app, ["setup", "python"])
+
+    assert result.exit_code == 0
+    # Verify that the custom command was executed with the correct mirror arguments
+    mock_installer.run_custom_command.assert_called_once_with(
+        "pip install requests",
+        pm_name="pip",
+        mirror_url="https://custom.pypi.local/simple"
+    )
+
+
+@patch("chegi.cli.questionary")
+@patch("chegi.cli.typer.confirm")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_interactive_mirror_declined(
+    mock_env_manager: MagicMock, 
+    mock_installer: MagicMock, 
+    mock_confirm: MagicMock, 
+    mock_questionary: MagicMock
+):
+    """Tests if the installer falls back to defaults when the mirror prompt is declined."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_available_envs.return_value = ["python"]
+    mock_instance.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_instance.get_required_package_managers.return_value = {"pip"}
+    
+    mock_installer.get_os_package_manager.return_value = "default"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    mock_installer.run_custom_command.return_value = True
+    
+    # User selects the tool
+    mock_questionary.checkbox.return_value.ask.return_value = [
+        {"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}
+    ]
+    # User DECLINES the mirror prompt
+    mock_confirm.return_value = False
+
+    result = runner.invoke(app, ["setup", "python"])
+
+    assert result.exit_code == 0
+    # Text input for mirror URL should never be called
+    mock_questionary.text.assert_not_called()
+    # Command should run with None for mirror parameters
+    mock_installer.run_custom_command.assert_called_once_with(
+        "pip install requests",
+        pm_name=None,
+        mirror_url=None
+    )
+
+
+@patch("chegi.cli.typer.confirm")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_auto_yes_skips_mirror_prompt(
+    mock_env_manager: MagicMock, 
+    mock_installer: MagicMock, 
+    mock_confirm: MagicMock
+):
+    """Tests if the --yes flag completely bypasses mirror prompts."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_available_envs.return_value = ["python"]
+    mock_instance.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_instance.get_required_package_managers.return_value = {"pip"}
+    
+    mock_installer.get_os_package_manager.return_value = "default"
+    mock_installer.is_tool_installed.return_value = (False, "Not installed")
+    mock_installer.run_custom_command.return_value = True
+
+    # Run with --yes flag
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+
+    assert result.exit_code == 0
+    # Mirror confirmation prompt should never be triggered
+    mock_confirm.assert_not_called()
+    # Installer should run without mirror arguments
+    mock_installer.run_custom_command.assert_called_once_with(
+        "pip install requests",
+        pm_name=None,
+        mirror_url=None
+    )
