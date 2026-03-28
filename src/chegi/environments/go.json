@@ -1,126 +1,252 @@
 {
-  "name": "go",
-  "levels_info": {
-    "1": "Essential",
-    "2": "Recommended Tools",
-    "3": "Generators & Linters",
-    "4": "Pro/Advanced Frameworks"
-  },
-  "levels": {
-    "1": ["go", "gofmt", "goimports", "gopls", "golangci-lint"],
-    "2": ["dlv", "air", "goreleaser", "gotests", "gomodifytags", "impl"],
-    "3": ["mockgen", "swag", "protoc-gen-go", "grpc-go", "wire", "go-swagger"],
-    "4": ["migrate", "cobra-cli", "ko", "govulncheck", "pprof"]
-  },
-  "tools": {
-    "go": {
-      "check_cmd": "go version",
-      "install": { "apt": "sudo apt install -y golang-go", "brew": "brew install go", "winget": "winget install GoLang.Go" }
+    "name": "go",
+    "levels_info": {
+        "1": "Essential",
+        "2": "Recommended Tools",
+        "3": "Generators & Linters",
+        "4": "Pro/Advanced Frameworks"
     },
-    "gofmt": {
-      "requires": ["go"],
-      "check_cmd": "gofmt -h",
-      "install": { "default": "go install golang.org/x/tools/cmd/goimports@latest" }
+    "levels": {
+        "1": [
+            "go",
+            "gofmt",
+            "goimports",
+            "gopls",
+            "golangci-lint"
+        ],
+        "2": [
+            "dlv",
+            "air",
+            "goreleaser",
+            "gotests",
+            "gomodifytags",
+            "impl"
+        ],
+        "3": [
+            "mockgen",
+            "swag",
+            "protoc-gen-go",
+            "grpc-go",
+            "wire",
+            "go-swagger"
+        ],
+        "4": [
+            "migrate",
+            "cobra-cli",
+            "ko",
+            "govulncheck",
+            "pprof"
+        ]
     },
-    "goimports": {
-      "requires": ["go"],
-      "check_cmd": "goimports -h",
-      "install": { "default": "go install golang.org/x/tools/cmd/goimports@latest" }
+    "tools": {
+        "go": {
+            "check_cmd": "go version",
+            "install": {
+                "apt": "sudo apt install -y golang-go",
+                "brew": "brew install go",
+                "winget": "winget install GoLang.Go"
+            }
+        },
+        "gofmt": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "gofmt -h",
+            "install": {
+                "default": "go install golang.org/x/tools/cmd/goimports@latest"
+            }
+        },
+        "goimports": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "goimports -h",
+            "install": {
+                "default": "go install golang.org/x/tools/cmd/goimports@latest"
+            }
+        },
+        "gopls": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "gopls version",
+            "install": {
+                "default": "go install golang.org/x/tools/gopls@latest"
+            }
+        },
+        "golangci-lint": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "golangci-lint --version",
+            "install": {
+                "default": "go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest",
+                "brew": "brew install golangci-lint"
+            }
+        },
+        "dlv": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "dlv version",
+            "install": {
+                "default": "go install github.com/go-delve/delve/cmd/dlv@latest"
+            }
+        },
+        "air": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "air -v",
+            "install": {
+                "default": "go install github.com/cosmtrek/air@latest"
+            }
+        },
+        "goreleaser": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "goreleaser -v",
+            "install": {
+                "default": "go install github.com/goreleaser/goreleaser@latest",
+                "brew": "brew install goreleaser"
+            }
+        },
+        "gotests": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "gotests -h",
+            "install": {
+                "default": "go install github.com/cweill/gotests/gotests@latest"
+            }
+        },
+        "gomodifytags": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "gomodifytags -h",
+            "install": {
+                "default": "go install github.com/fatih/gomodifytags@latest"
+            }
+        },
+        "impl": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "impl -h",
+            "install": {
+                "default": "go install github.com/josharian/impl@latest"
+            }
+        },
+        "mockgen": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "mockgen -version",
+            "install": {
+                "default": "go install github.com/golang/mock/mockgen@latest"
+            }
+        },
+        "swag": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "swag -v",
+            "install": {
+                "default": "go install github.com/swaggo/swag/cmd/swag@latest"
+            }
+        },
+        "protoc-gen-go": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "protoc-gen-go --version",
+            "install": {
+                "default": "go install google.golang.org/protobuf/cmd/protoc-gen-go@latest"
+            }
+        },
+        "grpc-go": {
+            "requires": [
+                "go",
+                "protoc-gen-go"
+            ],
+            "check_cmd": "protoc-gen-go-grpc --version",
+            "install": {
+                "default": "go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest"
+            }
+        },
+        "wire": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "wire help",
+            "install": {
+                "default": "go install github.com/google/wire/cmd/wire@latest"
+            }
+        },
+        "go-swagger": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "swagger version",
+            "install": {
+                "default": "go install github.com/go-swagger/go-swagger/cmd/swagger@latest"
+            }
+        },
+        "migrate": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "migrate -version",
+            "install": {
+                "default": "go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest"
+            }
+        },
+        "cobra-cli": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "cobra-cli -h",
+            "install": {
+                "default": "go install github.com/spf13/cobra-cli@latest"
+            }
+        },
+        "ko": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "ko version",
+            "install": {
+                "default": "go install github.com/google/ko@latest"
+            }
+        },
+        "govulncheck": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "govulncheck -h",
+            "install": {
+                "default": "go install golang.org/x/vuln/cmd/govulncheck@latest"
+            }
+        },
+        "pprof": {
+            "requires": [
+                "go"
+            ],
+            "check_cmd": "pprof -h",
+            "install": {
+                "default": "go install github.com/google/pprof@latest"
+            }
+        }
     },
-    "gopls": {
-      "requires": ["go"],
-      "check_cmd": "gopls version",
-      "install": { "default": "go install golang.org/x/tools/gopls@latest" }
-    },
-    "golangci-lint": {
-      "requires": ["go"],
-      "check_cmd": "golangci-lint --version",
-      "install": { "default": "go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest", "brew": "brew install golangci-lint" }
-    },
-    "dlv": {
-      "requires": ["go"],
-      "check_cmd": "dlv version",
-      "install": { "default": "go install github.com/go-delve/delve/cmd/dlv@latest" }
-    },
-    "air": {
-      "requires": ["go"],
-      "check_cmd": "air -v",
-      "install": { "default": "go install github.com/cosmtrek/air@latest" }
-    },
-    "goreleaser": {
-      "requires": ["go"],
-      "check_cmd": "goreleaser -v",
-      "install": { "default": "go install github.com/goreleaser/goreleaser@latest", "brew": "brew install goreleaser" }
-    },
-    "gotests": {
-      "requires": ["go"],
-      "check_cmd": "gotests -h",
-      "install": { "default": "go install github.com/cweill/gotests/gotests@latest" }
-    },
-    "gomodifytags": {
-      "requires": ["go"],
-      "check_cmd": "gomodifytags -h",
-      "install": { "default": "go install github.com/fatih/gomodifytags@latest" }
-    },
-    "impl": {
-      "requires": ["go"],
-      "check_cmd": "impl -h",
-      "install": { "default": "go install github.com/josharian/impl@latest" }
-    },
-    "mockgen": {
-      "requires": ["go"],
-      "check_cmd": "mockgen -version",
-      "install": { "default": "go install github.com/golang/mock/mockgen@latest" }
-    },
-    "swag": {
-      "requires": ["go"],
-      "check_cmd": "swag -v",
-      "install": { "default": "go install github.com/swaggo/swag/cmd/swag@latest" }
-    },
-    "protoc-gen-go": {
-      "requires": ["go"],
-      "check_cmd": "protoc-gen-go --version",
-      "install": { "default": "go install google.golang.org/protobuf/cmd/protoc-gen-go@latest" }
-    },
-    "grpc-go": {
-      "requires": ["go", "protoc-gen-go"],
-      "check_cmd": "protoc-gen-go-grpc --version",
-      "install": { "default": "go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest" }
-    },
-    "wire": {
-      "requires": ["go"],
-      "check_cmd": "wire help",
-      "install": { "default": "go install github.com/google/wire/cmd/wire@latest" }
-    },
-    "go-swagger": {
-      "requires": ["go"],
-      "check_cmd": "swagger version",
-      "install": { "default": "go install github.com/go-swagger/go-swagger/cmd/swagger@latest" }
-    },
-    "migrate": {
-      "requires": ["go"],
-      "check_cmd": "migrate -version",
-      "install": { "default": "go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest" }
-    },
-    "cobra-cli": {
-      "requires": ["go"],
-      "check_cmd": "cobra-cli -h",
-      "install": { "default": "go install github.com/spf13/cobra-cli@latest" }
-    },
-    "ko": {
-      "requires": ["go"],
-      "check_cmd": "ko version",
-      "install": { "default": "go install github.com/google/ko@latest" }
-    },
-    "govulncheck": {
-      "requires": ["go"],
-      "check_cmd": "govulncheck -h",
-      "install": { "default": "go install golang.org/x/vuln/cmd/govulncheck@latest" }
-    },
-    "pprof": {
-      "requires": ["go"],
-      "check_cmd": "pprof -h",
-      "install": { "default": "go install github.com/google/pprof@latest" }
-    }
-  }
+    "gitignore": [
+        "*.exe",
+        "*.exe~",
+        "*.dll",
+        "*.so",
+        "*.dylib",
+        "bin/",
+        "pkg/"
+    ]
 }

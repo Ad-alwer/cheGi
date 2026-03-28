@@ -1,117 +1,217 @@
 {
-  "name": "ruby",
-  "levels_info": {
-    "1": "Essential",
-    "2": "Recommended",
-    "3": "Future/Frameworks",
-    "4": "Pro/Advanced"
-  },
-  "levels": {
-    "1": ["ruby", "bundler", "irb", "rake"],
-    "2": ["pry", "rubocop", "rspec", "minitest", "dotenv"],
-    "3": ["rails", "sinatra", "sidekiq", "puma", "hanami"],
-    "4": ["rbenv", "capistrano", "brakeman", "sorbet", "simplecov"]
-  },
-  "tools": {
-    "ruby": {
-      "check_cmd": "ruby -v",
-      "install": {
-        "apt": "sudo apt install -y ruby-full",
-        "brew": "brew install ruby",
-        "winget": "winget install RubyInstallerTeam.Ruby"
-      }
+    "name": "ruby",
+    "levels_info": {
+        "1": "Essential",
+        "2": "Recommended",
+        "3": "Future/Frameworks",
+        "4": "Pro/Advanced"
     },
-    "bundler": {
-      "requires": ["ruby"],
-      "check_cmd": "bundler -v",
-      "install": { "default": "gem install bundler" }
+    "levels": {
+        "1": [
+            "ruby",
+            "bundler",
+            "irb",
+            "rake"
+        ],
+        "2": [
+            "pry",
+            "rubocop",
+            "rspec",
+            "minitest",
+            "dotenv"
+        ],
+        "3": [
+            "rails",
+            "sinatra",
+            "sidekiq",
+            "puma",
+            "hanami"
+        ],
+        "4": [
+            "rbenv",
+            "capistrano",
+            "brakeman",
+            "sorbet",
+            "simplecov"
+        ]
     },
-    "irb": {
-      "requires": ["ruby"],
-      "check_cmd": "irb -v",
-      "install": { "default": "gem install irb" }
+    "tools": {
+        "ruby": {
+            "check_cmd": "ruby -v",
+            "install": {
+                "apt": "sudo apt install -y ruby-full",
+                "brew": "brew install ruby",
+                "winget": "winget install RubyInstallerTeam.Ruby"
+            }
+        },
+        "bundler": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "bundler -v",
+            "install": {
+                "default": "gem install bundler"
+            }
+        },
+        "irb": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "irb -v",
+            "install": {
+                "default": "gem install irb"
+            }
+        },
+        "rake": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "rake -V",
+            "install": {
+                "default": "gem install rake"
+            }
+        },
+        "pry": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "pry -v",
+            "install": {
+                "default": "gem install pry"
+            }
+        },
+        "rubocop": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "rubocop -v",
+            "install": {
+                "default": "gem install rubocop"
+            }
+        },
+        "rspec": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "rspec -v",
+            "install": {
+                "default": "gem install rspec"
+            }
+        },
+        "minitest": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "ruby -e \"require 'minitest'\"",
+            "install": {
+                "default": "gem install minitest"
+            }
+        },
+        "dotenv": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "dotenv -v",
+            "install": {
+                "default": "gem install dotenv"
+            }
+        },
+        "rails": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "rails -v",
+            "install": {
+                "default": "gem install rails"
+            }
+        },
+        "sinatra": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "ruby -e \"require 'sinatra'\"",
+            "install": {
+                "default": "gem install sinatra"
+            }
+        },
+        "sidekiq": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "sidekiq -V",
+            "install": {
+                "default": "gem install sidekiq"
+            }
+        },
+        "puma": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "puma -V",
+            "install": {
+                "default": "gem install puma"
+            }
+        },
+        "hanami": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "hanami version",
+            "install": {
+                "default": "gem install hanami"
+            }
+        },
+        "rbenv": {
+            "check_cmd": "rbenv -v",
+            "install": {
+                "apt": "sudo apt install -y rbenv",
+                "brew": "brew install rbenv"
+            }
+        },
+        "capistrano": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "cap --version",
+            "install": {
+                "default": "gem install capistrano"
+            }
+        },
+        "brakeman": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "brakeman -v",
+            "install": {
+                "default": "gem install brakeman"
+            }
+        },
+        "sorbet": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "srb --version",
+            "install": {
+                "default": "gem install sorbet"
+            }
+        },
+        "simplecov": {
+            "requires": [
+                "ruby"
+            ],
+            "check_cmd": "ruby -e \"require 'simplecov'\"",
+            "install": {
+                "default": "gem install simplecov"
+            }
+        }
     },
-    "rake": {
-      "requires": ["ruby"],
-      "check_cmd": "rake -V",
-      "install": { "default": "gem install rake" }
-    },
-    "pry": {
-      "requires": ["ruby"],
-      "check_cmd": "pry -v",
-      "install": { "default": "gem install pry" }
-    },
-    "rubocop": {
-      "requires": ["ruby"],
-      "check_cmd": "rubocop -v",
-      "install": { "default": "gem install rubocop" }
-    },
-    "rspec": {
-      "requires": ["ruby"],
-      "check_cmd": "rspec -v",
-      "install": { "default": "gem install rspec" }
-    },
-    "minitest": {
-      "requires": ["ruby"],
-      "check_cmd": "ruby -e \"require 'minitest'\"",
-      "install": { "default": "gem install minitest" }
-    },
-    "dotenv": {
-      "requires": ["ruby"],
-      "check_cmd": "dotenv -v",
-      "install": { "default": "gem install dotenv" }
-    },
-    "rails": {
-      "requires": ["ruby"],
-      "check_cmd": "rails -v",
-      "install": { "default": "gem install rails" }
-    },
-    "sinatra": {
-      "requires": ["ruby"],
-      "check_cmd": "ruby -e \"require 'sinatra'\"",
-      "install": { "default": "gem install sinatra" }
-    },
-    "sidekiq": {
-      "requires": ["ruby"],
-      "check_cmd": "sidekiq -V",
-      "install": { "default": "gem install sidekiq" }
-    },
-    "puma": {
-      "requires": ["ruby"],
-      "check_cmd": "puma -V",
-      "install": { "default": "gem install puma" }
-    },
-    "hanami": {
-      "requires": ["ruby"],
-      "check_cmd": "hanami version",
-      "install": { "default": "gem install hanami" }
-    },
-    "rbenv": {
-      "check_cmd": "rbenv -v",
-      "install": {
-        "apt": "sudo apt install -y rbenv",
-        "brew": "brew install rbenv"
-      }
-    },
-    "capistrano": {
-      "requires": ["ruby"],
-      "check_cmd": "cap --version",
-      "install": { "default": "gem install capistrano" }
-    },
-    "brakeman": {
-      "requires": ["ruby"],
-      "check_cmd": "brakeman -v",
-      "install": { "default": "gem install brakeman" }
-    },
-    "sorbet": {
-      "requires": ["ruby"],
-      "check_cmd": "srb --version",
-      "install": { "default": "gem install sorbet" }
-    },
-    "simplecov": {
-      "requires": ["ruby"],
-      "check_cmd": "ruby -e \"require 'simplecov'\"",
-      "install": { "default": "gem install simplecov" }
-    }
-  }
+    "gitignore": [
+        "*.gem",
+        ".bundle/",
+        "vendor/bundle/",
+        "log/",
+        "tmp/",
+        "db/*.sqlite3",
+        "coverage/"
+    ]
 }

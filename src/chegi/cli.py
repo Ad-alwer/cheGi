@@ -7,19 +7,18 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.prompt import Confirm
 from rich.table import Table
 
-
 from chegi.config import ChegiConfig
 from chegi.scanner import find_git_repos
-from chegi.git_utils import GitAnalyzer, check_git_environment,perform_automated_rebase,is_workspace_clean, stash_changes,pop_stash,pull_rebase,push_changes
+from chegi.git_utils import GitAnalyzer, check_git_environment, perform_automated_rebase, is_workspace_clean, stash_changes, pop_stash, pull_rebase, push_changes
 from chegi.ui import TerminalUI
 from chegi.installer import SystemInstaller
 from chegi.security import SecurityGuard
-from chegi.gitignore_templates import TEMPLATES
 from chegi.env_manager import EnvManager
 
 app = typer.Typer(help="cheGi - Fast & Concurrent Git Repository Manager")
 config_app = typer.Typer(help="Manage cheGi configuration")
 app.add_typer(config_app, name="config")
+
 
 
 @app.callback()
@@ -73,20 +72,7 @@ def scan(
     dirty: Annotated[bool, typer.Option("--dirty", help="Only show repositories with uncommitted changes")] = False,
     staged: Annotated[bool, typer.Option("--staged", help="Only show repositories with staged files")] = False,
 ) -> None:
-    """Scans a directory recursively for Git repositories and reports their status.
-
-    Args:
-        path (str): The root directory where the scanning process begins.
-        max_depth (Optional[int]): Overrides the configuration's maximum folder depth.
-        workers (int): Number of concurrent threads for analyzing repositories.
-        security (bool): If True, performs a security scan on staged files for each repository.
-        dirty (bool): If True, filters the output to only show repositories with uncommitted changes.
-        staged (bool): If True, filters the output to only show repositories with staged files.
-
-    Raises:
-        typer.Exit: If the specified path is not a valid directory, if no 
-            repositories are found, or if no repositories match the applied filters.
-    """
+    """Scans a directory recursively for Git repositories and reports their status."""
     ui = TerminalUI()
     base_path = Path(path).resolve()
     
@@ -109,9 +95,7 @@ def scan(
         raise typer.Exit()
 
     analyzer = GitAnalyzer(max_workers=workers)
-
     scanner_func = SecurityGuard.scan_repo if security else None
-    
     statuses = []
     
     with Progress(
@@ -145,16 +129,7 @@ def scan(
 def guard(
     fix: Annotated[bool, typer.Option("--fix", "-f", help="Automatically unstage sensitive files without prompting")] = False
 ) -> None:
-    """Checks staged files for sensitive data to prevent accidental commits.
-
-    This command runs a standalone security check. It fetches staged files
-    and checks them against predefined sensitive patterns (like .env or private keys).
-    If sensitive files are found, it displays a warning, offers to unstage them,
-    and exits with a non-zero status code.
-
-    Raises:
-        typer.Exit: Exits with code 1 if sensitive files are detected.
-    """
+    """Checks staged files for sensitive data to prevent accidental commits."""
     ui = TerminalUI()
     ui.console.print("[dim]🔒 Running Security Guard...[/dim]")
     
@@ -197,125 +172,67 @@ def guard(
 
 @app.command("gitignore")
 def gitignore(
-    path: str = typer.Option(".", "--path", "-p", help="Directory to save .gitignore"),
-    auto_commit: bool = typer.Option(None, "--commit", "-c", help="Automatically commit the file")
+    path: str = typer.Option(".", "--path", "-p", help="Directory to save the .gitignore file."),
+    auto_commit: bool = typer.Option(None, "--commit", "-c", help="Automatically commit the generated file.")
 ) -> None:
-    """Creates a .gitignore file interactively by combining multiple templates.
+    """Creates a .gitignore file interactively by combining environment templates.
 
-    Prompts the user to select one or multiple technologies using an interactive 
-    checkbox menu. It combines the selected templates, removes duplicate rules 
-    (while preserving comments), appends global OS/IDE rules, and generates 
-    a .gitignore file. Optionally commits it automatically to the repository.
-
-    Args:
-        path (str): Directory where the .gitignore file will be saved. Defaults to ".".
-        auto_commit (bool, optional): If True, automatically commits the file without prompting.
-
-    Raises:
-        typer.Exit: If the user cancels the operation, declines to overwrite 
-            an existing file, or if file writing fails.
+    Prompts the user to select one or more environments, generates a deduplicated 
+    .gitignore file, and optionally commits it to the local git repository.
     """
     ui = TerminalUI()
+    env_manager = EnvManager()
+    
     ui.console.print("\n[bold blue] 🐆 Chegi .gitignore Generator[/bold blue]\n")
     
-    # 1. Interactive multi-selection logic using questionary checkbox
-    options = list(TEMPLATES.keys())
-    languages = [opt for opt in options if opt != "Global (OS/IDE)"]
+    envs_with_gitignore = env_manager.get_envs_with_gitignore()
+    if not envs_with_gitignore:
+        ui.print_error("No gitignore templates found in the environments database.")
+        raise typer.Exit(1)
     
-    selected_langs = questionary.checkbox(
+    choices = [env.capitalize() for env in sorted(envs_with_gitignore)]
+    selected_langs_caps = questionary.checkbox(
         "Select technologies for the .gitignore file (Space to select, Enter to confirm):",
-        choices=languages
+        choices=choices
     ).ask()
     
-    # Handle user cancellation or empty selection
-    if not selected_langs:
+    if not selected_langs_caps:
         ui.console.print("[bold red]Operation cancelled or no technologies selected.[/bold red]")
         raise typer.Exit(1)
     
-    # 2. Combine templates and deduplicate rules
-    combined_content = []
-    seen_rules = set()
+    selected_langs = [lang.lower() for lang in selected_langs_caps]
     
-    # Add header
-    combined_content.append(f"# .gitignore generated by Chegi for: {', '.join(selected_langs)}\n")
-
-    # Add selected languages templates
-    for lang in selected_langs:
-        combined_content.append(f"\n# =========================\n# {lang}\n# =========================")
-        template_lines = TEMPLATES[lang].splitlines()
-        
-        for line in template_lines:
-            stripped_line = line.strip()
-            # Keep empty lines and comments intact
-            if not stripped_line or stripped_line.startswith('#'):
-                combined_content.append(line)
-            else:
-                # Deduplicate actual gitignore rules (e.g., node_modules/)
-                if stripped_line not in seen_rules:
-                    seen_rules.add(stripped_line)
-                    combined_content.append(line)
-
-    # Append Global OS/IDE Rules
-    combined_content.append("\n# =========================\n# Global (OS/IDE)\n# =========================")
-    global_lines = TEMPLATES["Global (OS/IDE)"].splitlines()
-    
-    for line in global_lines:
-        stripped_line = line.strip()
-        if not stripped_line or stripped_line.startswith('#'):
-            combined_content.append(line)
-        else:
-            if stripped_line not in seen_rules:
-                seen_rules.add(stripped_line)
-                combined_content.append(line)
-
-    final_content = "\n".join(combined_content).strip() + "\n"
-
-    # 3. Path & Writing
-    target_path = Path(path).expanduser().resolve() / ".gitignore"
-    
-    if target_path.exists():
-       if not Confirm.ask(f"⚠️  [yellow].gitignore already exists in {target_path}. Overwrite?[/yellow]", default=False):
+    if env_manager.has_existing_gitignore(path):
+       if not Confirm.ask(f"⚠️  [yellow].gitignore already exists in '{path}'. Overwrite?[/yellow]", default=False):
             ui.console.print("[bold red]Aborted.[/bold red]")
             raise typer.Exit()
 
     try:
-        target_path.write_text(final_content)
-        ui.console.print(f"\n[bold green]✅ Created:[/bold green] {target_path}")
+        created_path = env_manager.generate_gitignore(selected_langs, path)
+        ui.console.print(f"\n[bold green]✅ Created:[/bold green] {created_path}")
     except Exception as e:
-        ui.print_error(f"❌ Error writing file: {e}")
+        ui.print_error(f"Error generating file: {e}")
         raise typer.Exit(1)
 
-    # 4. Scoped Commit Logic
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"], 
-            check=True, capture_output=True, cwd=path
+    if env_manager.is_git_repo(path):
+        should_commit = auto_commit if auto_commit is not None else typer.confirm(
+            "🚀 Do you want to commit this new .gitignore file?", 
+            default=True
         )
-        is_git_repo = True
-    except subprocess.CalledProcessError:
-        is_git_repo = False
-
-    if is_git_repo:
-        should_commit = auto_commit
-        if should_commit is None:
-            should_commit = typer.confirm("🚀 Do you want to commit this new .gitignore file?", default=True)
 
         if should_commit:
             try:
                 ui.console.print("[dim]Adding and committing .gitignore...[/dim]")
-                subprocess.run(["git", "add", ".gitignore"], check=True, cwd=path)
-                
-                commit_msg = "chore(gitignore): add .gitignore via chegi 🐆"
-                # Include '.gitignore' in the commit command to prevent committing other staged files
-                subprocess.run(["git", "commit", ".gitignore", "-m", commit_msg], check=True, cwd=path)
-                
-                ui.console.print(f"[bold green]✨ Committed with message:[/bold green] {commit_msg}")
-            except subprocess.CalledProcessError as e:
+                commit_msg = env_manager.commit_gitignore(path)
+                ui.console.print(f"[bold green]✨ Committed with message:[/bold green] [cyan]{commit_msg}[/cyan]")
+
+            except Exception as e:
                 ui.print_error(f"Failed to execute git commit: {e}")
         else:
             ui.console.print("[dim]Skipping commit.[/dim]")
     else:
         ui.console.print("[bold yellow]⚠️  Skipped commit: Not a git repository.[/bold yellow]")
+
 
 @app.command("reword")
 def reword(
@@ -330,30 +247,13 @@ def reword(
         None, "--end", "-e", help="End index for commit list (e.g., 25)", min=1
     )
 ) -> None:
-    """Changes a commit message interactively or directly.
-
-    If no flags are provided, it modifies the last commit (HEAD).
-    Use --last/-l to select from recent commits, or --start/-s and --end/-e 
-    to paginate through older commits in the repository history.
-
-    Args:
-        message (Optional[str]): The new commit message. Prompts if not provided.
-        last (Optional[int]): Number of recent commits to display for selection.
-        start (Optional[int]): The starting index to skip before listing commits.
-        end (Optional[int]): The ending index for listing commits.
-
-    Raises:
-        typer.Exit: If the directory is not a Git repository, if no commits are found,
-            or if the git operations fail.
-    """
+    """Changes a commit message interactively or directly."""
     ui = TerminalUI()
 
-    # --- Validation for --last ---
     if last is not None and last > 20:
         ui.print_error("❌ Maximum limit for --last is 20.")
         ui.print_error("💡 Please use --start/-s and --end/-e flags to navigate older commits.")
         raise typer.Exit(1)
-    # -----------------------------
 
     try:
         subprocess.run(["git", "rev-parse", "--is-inside-work-tree"], check=True, capture_output=True)
@@ -364,11 +264,9 @@ def reword(
     target_hash = "HEAD"
     is_head = True
 
-    # Determine if we need to show the interactive commit selection menu
     show_menu = last is not None or start is not None or end is not None
 
     if show_menu:
-        # Pagination Logic: Calculate how many commits to skip and how many to fetch
         if start is not None and end is not None:
             if start >= end:
                 ui.print_error("❌ Error: --start must be less than --end.")
@@ -376,21 +274,16 @@ def reword(
             skip = start
             limit = end - start
         elif start is not None:
-            # Only start provided: fetch the next 10 commits starting from 'start'
             skip = start
             limit = 10
         elif end is not None:
-            # Only end provided: fetch up to 10 commits preceding the 'end' index
-            # The formula is: $$skip = max(0, end - 10)$$
             skip = max(0, end - 10)
             limit = end - skip
         else:
-            # Default to --last if start/end are not provided
             skip = 0
             limit = last if last else 10
 
         try:
-            # Use --skip and --max-count to fetch the exact window of commits
             result = subprocess.run(
                 ["git", "log", f"--max-count={limit}", f"--skip={skip}", "--format=%h %s"],
                 check=True, capture_output=True, text=True
@@ -407,12 +300,10 @@ def reword(
             ).ask()
             
             if not choice:
-                # User cancelled the selection menu (e.g., pressed Ctrl+C)
                 raise typer.Exit(0)
                 
             target_hash = choice.split(" ")[0]
             
-            # Check if the selected hash is actually the current HEAD
             head_hash = subprocess.run(
                 ["git", "rev-parse", "--short", "HEAD"], 
                 capture_output=True, text=True
@@ -424,7 +315,6 @@ def reword(
             ui.print_error("❌ Failed to fetch git history.")
             raise typer.Exit(1)
 
-    # Fetch the old message of the target commit to use as default input
     try:
         old_msg_result = subprocess.run(
             ["git", "log", "--format=%B", "-n", "1", target_hash],
@@ -445,12 +335,10 @@ def reword(
             ui.print_error("❌ Commit message cannot be empty.")
             raise typer.Exit(1)
 
-    # Graceful exit if the user leaves the message unchanged
     if message == old_message:
         ui.print_success("✅ Message is unchanged. Exiting without modifying history.")
         return
 
-    # Apply the change
     if is_head:
         try:
             subprocess.run(["git", "commit", "--amend", "-m", message], check=True)
@@ -469,26 +357,15 @@ def reword(
 
 @app.command()
 def sync():
-    """Synchronizes the local repository with the remote safely.
-
-    Performs a `git pull --rebase` to fetch and apply upstream changes,
-    followed by a `git push` to publish local commits. If the workspace
-    contains uncommitted changes, it prompts the user with a double
-    confirmation to safely stash and restore them.
-
-    Raises:
-        typer.Exit: If the user aborts the operation or if a Git command fails.
-    """
+    """Synchronizes the local repository with the remote safely."""
     ui = TerminalUI()
     ui.print_info("Starting synchronization process...")
 
     needs_stash = False
 
-    # 1. Workspace Validation & Double Confirmation
     if not is_workspace_clean():
         ui.print_warning("You have uncommitted changes in your workspace.")
         
-        # First confirmation: Ask if user wants to auto-stash (Default: No)
         confirm_stash = typer.confirm(
             "Do you want to automatically stash changes, sync, and restore them?",
             default=False
@@ -497,7 +374,6 @@ def sync():
             ui.print_error("Sync aborted. Please commit or stash your changes manually.")
             raise typer.Exit(1)
         
-        # Second confirmation: Emphasize the risk of merge conflicts (Default: No)
         ui.print_warning("Restoring changes (stash pop) after sync might result in merge conflicts.")
         confirm_again = typer.confirm(
             "Are you absolutely sure you want to proceed?",
@@ -509,7 +385,6 @@ def sync():
         
         needs_stash = True
 
-    # 2. Stash uncommitted changes securely
     if needs_stash:
         ui.print_info("Stashing uncommitted changes...")
         try:
@@ -518,7 +393,6 @@ def sync():
             ui.print_error(str(e))
             raise typer.Exit(1)
 
-    # 3. Pull latest changes using rebase to maintain a linear history
     ui.print_info("Pulling latest changes from remote (rebase)...")
     try:
         pull_rebase()
@@ -530,7 +404,6 @@ def sync():
             ui.print_info("ℹ️ Your uncommitted changes are safely stored in git stash.")
         raise typer.Exit(1)
 
-    # 4. Push local commits to the remote repository
     ui.print_info("Pushing local commits to remote...")
     try:
         push_changes()
@@ -541,13 +414,11 @@ def sync():
             ui.print_info("ℹ️ Your uncommitted changes are safely stored in git stash.")
         raise typer.Exit(1)
 
-    # 5. Restore previously stashed changes
     if needs_stash:
         ui.print_info("Restoring stashed changes...")
         try:
             pop_stash()
         except RuntimeError as e:
-            # Do not exit with 1 here; the sync was successful, only stash pop had conflicts
             ui.print_warning("⚠️ Conflict or error occurred while restoring stashed changes.")
             ui.print_error(str(e))
             ui.print_warning("💡 Please resolve the conflicts manually in your code editor.")
@@ -559,11 +430,7 @@ def sync():
 def config_list(
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
 ) -> None:
-    """Lists the current configuration settings.
-
-    Args:
-        path (str): The base directory where the '.chegi.json' configuration file resides.
-    """
+    """Lists the current configuration settings."""
     config = ChegiConfig(base_path=path)
     config.load()
     ui = TerminalUI()
@@ -580,16 +447,7 @@ def config_set(
     value: int = typer.Argument(..., help="New integer value"),
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
 ) -> None:
-    """Updates a specific configuration setting.
-
-    Args:
-        key (str): The name of the configuration setting to update.
-        value (int): The new integer value to assign to the setting.
-        path (str): The base directory where the configuration file resides.
-
-    Raises:
-        typer.Exit: If the provided key is invalid or the update process fails.
-    """
+    """Updates a specific configuration setting."""
     config = ChegiConfig(base_path=path)
     config.load()
     ui = TerminalUI()
@@ -608,12 +466,7 @@ def config_exclude_add(
     folder: str = typer.Argument(..., help="Folder name to ignore"),
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
 ) -> None:
-    """Adds a directory name to the scanning exclusion list.
-
-    Args:
-        folder (str): The name of the directory to add to the blacklist.
-        path (str): The base directory where the configuration file resides.
-    """
+    """Adds a directory name to the scanning exclusion list."""
     config = ChegiConfig(base_path=path)
     config.load()
     config.add_exclude(folder)
@@ -628,15 +481,7 @@ def config_exclude_remove(
     folder: str = typer.Argument(..., help="Folder name to stop ignoring"),
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
 ) -> None:
-    """Removes a directory name from the scanning exclusion list.
-
-    Args:
-        folder (str): The name of the directory to remove from the blacklist.
-        path (str): The base directory where the configuration file resides.
-
-    Raises:
-        typer.Exit: If the specified folder is not found in the exclude list.
-    """
+    """Removes a directory name from the scanning exclusion list."""
     config = ChegiConfig(base_path=path)
     config.load()
     ui = TerminalUI()
@@ -648,6 +493,7 @@ def config_exclude_remove(
     except ValueError as e:
         ui.print_error(str(e))
         raise typer.Exit(code=1)
+
 
 @app.command(name="setup")
 def setup_environment(
@@ -662,23 +508,7 @@ def setup_environment(
         help="Automatically answer yes to all installation prompts."
     )
 ) -> None:
-    """Sets up the development environment for a specific language.
-
-    This command analyzes the system, checks for installed tools based on Chegi's
-    environment database, displays a status report, and provides a guided
-    interactive installation for missing dependencies. It respects dependency
-    requirements and sorts the installation queue so that prerequisites are 
-    installed first.
-
-    Args:
-        environment (str): The name of the environment to configure (e.g., 'python').
-        auto_yes (bool): If True, skips the interactive selection prompt and installs 
-            all missing tools automatically.
-
-    Raises:
-        typer.Exit: If the requested environment is unsupported, if the JSON data 
-            fails to load, or if the user aborts the operation.
-    """
+    """Sets up the development environment for a specific language."""
     ui = TerminalUI()
     env_manager = EnvManager()
     
@@ -764,20 +594,17 @@ def setup_environment(
         ui.print_success(f"All critical tools for {environment.capitalize()} are already installed! 🎉")
         raise typer.Exit()
 
-    # Topological sort to ensure dependencies are installed before the tools that require them.
     sorted_tools_to_install = []
     remaining_tools = tools_to_install.copy()
     
     while remaining_tools:
         progress = False
         for tool in remaining_tools:
-            # Check if the current tool requires any other tool that is still in the pending queue
             pending_deps = [
                 dep for dep in tool.get("requires", []) 
                 if any(t["name"] == dep for t in remaining_tools)
             ]
             
-            # If no pending dependencies are in the queue, it's safe to install this tool next
             if not pending_deps:
                 sorted_tools_to_install.append(tool)
                 remaining_tools.remove(tool)
@@ -785,7 +612,6 @@ def setup_environment(
                 break
                 
         if not progress:
-            # Break the loop to prevent infinite cycling in case of circular dependencies
             sorted_tools_to_install.extend(remaining_tools)
             break
             
@@ -819,7 +645,6 @@ def setup_environment(
     
     try:
         for tool in tools_to_install:
-            # Re-verify dependencies right before installation in case a previous step failed
             missing_deps = [dep for dep in tool.get("requires", []) if dep not in installed_tools]
             
             if missing_deps:

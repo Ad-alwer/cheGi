@@ -174,109 +174,125 @@ def test_config_exclude_add_remove(tmp_path: Path):
 # Gitignore Command Tests
 # ==========================================
 
+@patch("chegi.cli.EnvManager")
 @patch("chegi.cli.questionary.checkbox")
-@patch("chegi.cli.subprocess.run")
-def test_gitignore_success_without_commit(mock_subprocess: MagicMock, mock_checkbox: MagicMock, tmp_path: Path):
-    """Tests successful .gitignore creation but user declines commit.
+def test_gitignore_success_without_commit(mock_checkbox: MagicMock, mock_env_manager: MagicMock):
+    """Tests successful .gitignore creation but user declines commit."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = ["python", "node"]
+    mock_instance.has_existing_gitignore.return_value = False
+    mock_instance.is_git_repo.return_value = True
 
-    Args:
-        mock_subprocess (MagicMock): Mock for subprocess.run.
-        mock_checkbox (MagicMock): Mock for questionary.checkbox.
-        tmp_path (Path): Pytest fixture for temporary directory path.
-    """
-    mock_subprocess.return_value = MagicMock(returncode=0)
     mock_checkbox.return_value.ask.return_value = ["Python"]
     
-    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="n\n")
+    result = runner.invoke(app, ["gitignore"], input="n\n")
     
     assert result.exit_code == 0
     assert "Created:" in result.stdout
-    assert "Skipping commit." in result.stdout
-    assert (tmp_path / ".gitignore").exists()
+    assert "Skipping commit" in result.stdout
+    mock_instance.generate_gitignore.assert_called_once_with(["python"], ".")
+    mock_instance.commit_gitignore.assert_not_called()
 
 
+@patch("chegi.cli.EnvManager")
 @patch("chegi.cli.questionary.checkbox")
-@patch("chegi.cli.subprocess.run")
-def test_gitignore_success_with_commit(mock_subprocess: MagicMock, mock_checkbox: MagicMock, tmp_path: Path):
-    """Tests .gitignore creation with user accepting the automatic commit.
+def test_gitignore_success_with_commit(mock_checkbox: MagicMock, mock_env_manager: MagicMock):
+    """Tests .gitignore creation with user accepting the automatic commit."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = ["python"]
+    mock_instance.has_existing_gitignore.return_value = False
+    mock_instance.is_git_repo.return_value = True
+    mock_instance.commit_gitignore.return_value = "chore(gitignore): auto add..."
 
-    Args:
-        mock_subprocess (MagicMock): Mock for subprocess.run.
-        mock_checkbox (MagicMock): Mock for questionary.checkbox.
-        tmp_path (Path): Pytest fixture for temporary directory path.
-    """
-    mock_subprocess.return_value = MagicMock(returncode=0)
     mock_checkbox.return_value.ask.return_value = ["Python"]
     
-    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="y\n")
+    result = runner.invoke(app, ["gitignore"], input="y\n")
     
     assert result.exit_code == 0
     assert "Committed with message:" in result.stdout
-    assert mock_subprocess.call_count >= 3 
+    mock_instance.commit_gitignore.assert_called_once_with(".")
 
 
+@patch("chegi.cli.EnvManager")
 @patch("chegi.cli.questionary.checkbox")
-def test_gitignore_overwrite_abort(mock_checkbox: MagicMock, tmp_path: Path):
-    """Tests that the command asks before overwriting and aborts if declined.
+@patch("chegi.cli.Confirm.ask")
+def test_gitignore_overwrite_abort(mock_confirm: MagicMock, mock_checkbox: MagicMock, mock_env_manager: MagicMock):
+    """Tests that the command asks before overwriting and aborts if declined."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = ["python"]
+    mock_instance.has_existing_gitignore.return_value = True
 
-    Args:
-        mock_checkbox (MagicMock): Mock for questionary.checkbox.
-        tmp_path (Path): Pytest fixture for temporary directory path.
-    """
-    dummy_file = tmp_path / ".gitignore"
-    dummy_file.write_text("# Old config")
-    
     mock_checkbox.return_value.ask.return_value = ["Python"]
+    mock_confirm.return_value = False
     
-    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="n\n")
+    result = runner.invoke(app, ["gitignore"])
     
     assert result.exit_code == 0
-    assert "already exists" in result.stdout
     assert "Aborted" in result.stdout
-    assert dummy_file.read_text() == "# Old config"
+    mock_instance.generate_gitignore.assert_not_called()
 
 
+@patch("chegi.cli.EnvManager")
 @patch("chegi.cli.questionary.checkbox")
-@patch("chegi.cli.subprocess.run")
-def test_gitignore_multiple_languages(mock_subprocess: MagicMock, mock_checkbox: MagicMock, tmp_path: Path):
-    """Tests if multiple selected templates and global rules are correctly combined.
+def test_gitignore_multiple_languages(mock_checkbox: MagicMock, mock_env_manager: MagicMock):
+    """Tests if multiple selected templates are correctly passed to EnvManager."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = ["python", "node", "ruby"]
+    mock_instance.has_existing_gitignore.return_value = False
 
-    Args:
-        mock_subprocess (MagicMock): Mock for subprocess.run.
-        mock_checkbox (MagicMock): Mock for questionary.checkbox.
-        tmp_path (Path): Pytest fixture for temporary directory path.
-    """
-    mock_subprocess.return_value = MagicMock(returncode=0)
     mock_checkbox.return_value.ask.return_value = ["Python", "Node"]
     
-    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)], input="n\n")
+    result = runner.invoke(app, ["gitignore"], input="n\n")
     
     assert result.exit_code == 0
-    
-    gitignore_file = tmp_path / ".gitignore"
-    assert gitignore_file.exists()
-    
-    content = gitignore_file.read_text()
-    assert "# Python" in content
-    assert "# Node" in content
-    assert "# Global (OS/IDE)" in content
+    mock_instance.generate_gitignore.assert_called_once_with(["python", "node"], ".")
 
 
+@patch("chegi.cli.EnvManager")
 @patch("chegi.cli.questionary.checkbox")
-def test_gitignore_no_selection_abort(mock_checkbox: MagicMock, tmp_path: Path):
-    """Tests the command behavior when the user cancels or selects no languages.
-
-    Args:
-        mock_checkbox (MagicMock): Mock for questionary.checkbox.
-        tmp_path (Path): Pytest fixture for temporary directory path.
-    """
+def test_gitignore_no_selection_abort(mock_checkbox: MagicMock, mock_env_manager: MagicMock):
+    """Tests the command behavior when the user cancels or selects no languages."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = ["python"]
+    
     mock_checkbox.return_value.ask.return_value = []
     
-    result = runner.invoke(app, ["gitignore", "--path", str(tmp_path)])
+    result = runner.invoke(app, ["gitignore"])
     
     assert result.exit_code == 1
-    assert "Operation cancelled or no technologies selected." in result.stdout
+    assert "cancelled or no technologies selected" in result.stdout
+    mock_instance.generate_gitignore.assert_not_called()
 
+
+@patch("chegi.cli.EnvManager")
+def test_gitignore_no_templates_found(mock_env_manager: MagicMock):
+    """Tests exit with error if no gitignore templates are found in the database."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = []
+    
+    result = runner.invoke(app, ["gitignore"])
+    
+    assert result.exit_code == 1
+    assert "No gitignore templates found" in result.stdout
+
+
+@patch("chegi.cli.EnvManager")
+@patch("chegi.cli.questionary.checkbox")
+def test_gitignore_not_a_git_repo(mock_checkbox: MagicMock, mock_env_manager: MagicMock):
+    """Tests that the commit prompt is skipped if the target is not a git repository."""
+    mock_instance = mock_env_manager.return_value
+    mock_instance.get_envs_with_gitignore.return_value = ["python"]
+    mock_instance.has_existing_gitignore.return_value = False
+    mock_instance.is_git_repo.return_value = False
+
+    mock_checkbox.return_value.ask.return_value = ["Python"]
+    
+    result = runner.invoke(app, ["gitignore"])
+    
+    assert result.exit_code == 0
+    assert "Skipped commit: Not a git repository" in result.stdout
+    mock_instance.commit_gitignore.assert_not_called()
+    
 # ==========================================
 # Reword Command Tests
 # ==========================================

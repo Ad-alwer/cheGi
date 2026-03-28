@@ -1,105 +1,211 @@
 {
-  "name": "cpp",
-  "levels_info": {
-    "1": "Essential",
-    "2": "Recommended",
-    "3": "Build Systems & Package Managers",
-    "4": "Pro/Advanced Analysis"
-  },
-  "levels": {
-    "1": ["gcc", "g++", "make", "gdb", "build-essential"],
-    "2": ["clang", "clang-format", "clang-tidy", "lldb", "valgrind"],
-    "3": ["cmake", "ninja", "vcpkg", "conan", "ccache"],
-    "4": ["cppcheck", "doxygen", "gcovr", "kcachegrind", "bear", "meson"]
-  },
-  "tools": {
-    "gcc": {
-      "check_cmd": "gcc --version",
-      "install": { "apt": "sudo apt install -y gcc", "brew": "brew install gcc" }
+    "name": "cpp",
+    "levels_info": {
+        "1": "Essential",
+        "2": "Recommended",
+        "3": "Build Systems & Package Managers",
+        "4": "Pro/Advanced Analysis"
     },
-    "g++": {
-      "requires": ["gcc"],
-      "check_cmd": "g++ --version",
-      "install": { "apt": "sudo apt install -y g++" }
+    "levels": {
+        "1": [
+            "gcc",
+            "g++",
+            "make",
+            "gdb",
+            "build-essential"
+        ],
+        "2": [
+            "clang",
+            "clang-format",
+            "clang-tidy",
+            "lldb",
+            "valgrind"
+        ],
+        "3": [
+            "cmake",
+            "ninja",
+            "vcpkg",
+            "conan",
+            "ccache"
+        ],
+        "4": [
+            "cppcheck",
+            "doxygen",
+            "gcovr",
+            "kcachegrind",
+            "bear",
+            "meson"
+        ]
     },
-    "make": {
-      "check_cmd": "make --version",
-      "install": { "apt": "sudo apt install -y make", "brew": "brew install make" }
+    "tools": {
+        "gcc": {
+            "check_cmd": "gcc --version",
+            "install": {
+                "apt": "sudo apt install -y gcc",
+                "brew": "brew install gcc"
+            }
+        },
+        "g++": {
+            "requires": [
+                "gcc"
+            ],
+            "check_cmd": "g++ --version",
+            "install": {
+                "apt": "sudo apt install -y g++"
+            }
+        },
+        "make": {
+            "check_cmd": "make --version",
+            "install": {
+                "apt": "sudo apt install -y make",
+                "brew": "brew install make"
+            }
+        },
+        "gdb": {
+            "check_cmd": "gdb --version",
+            "install": {
+                "apt": "sudo apt install -y gdb",
+                "brew": "brew install gdb"
+            }
+        },
+        "build-essential": {
+            "requires": [
+                "gcc",
+                "g++",
+                "make"
+            ],
+            "check_cmd": "dpkg -l | grep build-essential",
+            "install": {
+                "apt": "sudo apt install -y build-essential"
+            }
+        },
+        "clang": {
+            "check_cmd": "clang --version",
+            "install": {
+                "apt": "sudo apt install -y clang",
+                "brew": "brew install llvm"
+            }
+        },
+        "clang-format": {
+            "check_cmd": "clang-format --version",
+            "install": {
+                "apt": "sudo apt install -y clang-format"
+            }
+        },
+        "clang-tidy": {
+            "check_cmd": "clang-tidy --version",
+            "install": {
+                "apt": "sudo apt install -y clang-tidy"
+            }
+        },
+        "lldb": {
+            "check_cmd": "lldb --version",
+            "install": {
+                "apt": "sudo apt install -y lldb"
+            }
+        },
+        "valgrind": {
+            "check_cmd": "valgrind --version",
+            "install": {
+                "apt": "sudo apt install -y valgrind",
+                "brew": "brew install valgrind"
+            }
+        },
+        "cmake": {
+            "requires": [
+                "make",
+                "g++"
+            ],
+            "check_cmd": "cmake --version",
+            "install": {
+                "apt": "sudo apt install -y cmake",
+                "brew": "brew install cmake",
+                "winget": "winget install Kitware.CMake"
+            }
+        },
+        "ninja": {
+            "check_cmd": "ninja --version",
+            "install": {
+                "apt": "sudo apt install -y ninja-build",
+                "brew": "brew install ninja"
+            }
+        },
+        "vcpkg": {
+            "check_cmd": "vcpkg version",
+            "install": {
+                "default": "git clone https://github.com/microsoft/vcpkg.git ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh"
+            }
+        },
+        "conan": {
+            "check_cmd": "conan --version",
+            "install": {
+                "apt": "sudo apt install -y python3-pip && pip install conan",
+                "default": "pip install conan"
+            }
+        },
+        "ccache": {
+            "check_cmd": "ccache --version",
+            "install": {
+                "apt": "sudo apt install -y ccache",
+                "brew": "brew install ccache"
+            }
+        },
+        "cppcheck": {
+            "check_cmd": "cppcheck --version",
+            "install": {
+                "apt": "sudo apt install -y cppcheck",
+                "brew": "brew install cppcheck"
+            }
+        },
+        "doxygen": {
+            "check_cmd": "doxygen --version",
+            "install": {
+                "apt": "sudo apt install -y doxygen",
+                "brew": "brew install doxygen"
+            }
+        },
+        "gcovr": {
+            "check_cmd": "gcovr --version",
+            "install": {
+                "apt": "sudo apt install -y gcovr"
+            }
+        },
+        "kcachegrind": {
+            "check_cmd": "kcachegrind --version",
+            "install": {
+                "apt": "sudo apt install -y kcachegrind"
+            }
+        },
+        "bear": {
+            "check_cmd": "bear --version",
+            "install": {
+                "apt": "sudo apt install -y bear"
+            }
+        },
+        "meson": {
+            "requires": [
+                "ninja"
+            ],
+            "check_cmd": "meson --version",
+            "install": {
+                "apt": "sudo apt install -y meson",
+                "brew": "brew install meson"
+            }
+        }
     },
-    "gdb": {
-      "check_cmd": "gdb --version",
-      "install": { "apt": "sudo apt install -y gdb", "brew": "brew install gdb" }
-    },
-    "build-essential": {
-      "requires": ["gcc", "g++", "make"],
-      "check_cmd": "dpkg -l | grep build-essential",
-      "install": { "apt": "sudo apt install -y build-essential" }
-    },
-    "clang": {
-      "check_cmd": "clang --version",
-      "install": { "apt": "sudo apt install -y clang", "brew": "brew install llvm" }
-    },
-    "clang-format": {
-      "check_cmd": "clang-format --version",
-      "install": { "apt": "sudo apt install -y clang-format" }
-    },
-    "clang-tidy": {
-      "check_cmd": "clang-tidy --version",
-      "install": { "apt": "sudo apt install -y clang-tidy" }
-    },
-    "lldb": {
-      "check_cmd": "lldb --version",
-      "install": { "apt": "sudo apt install -y lldb" }
-    },
-    "valgrind": {
-      "check_cmd": "valgrind --version",
-      "install": { "apt": "sudo apt install -y valgrind", "brew": "brew install valgrind" }
-    },
-    "cmake": {
-      "requires": ["make", "g++"],
-      "check_cmd": "cmake --version",
-      "install": { "apt": "sudo apt install -y cmake", "brew": "brew install cmake", "winget": "winget install Kitware.CMake" }
-    },
-    "ninja": {
-      "check_cmd": "ninja --version",
-      "install": { "apt": "sudo apt install -y ninja-build", "brew": "brew install ninja" }
-    },
-    "vcpkg": {
-      "check_cmd": "vcpkg version",
-      "install": { "default": "git clone https://github.com/microsoft/vcpkg.git ~/vcpkg && ~/vcpkg/bootstrap-vcpkg.sh" }
-    },
-    "conan": {
-      "check_cmd": "conan --version",
-      "install": { "apt": "sudo apt install -y python3-pip && pip install conan", "default": "pip install conan" }
-    },
-    "ccache": {
-      "check_cmd": "ccache --version",
-      "install": { "apt": "sudo apt install -y ccache", "brew": "brew install ccache" }
-    },
-    "cppcheck": {
-      "check_cmd": "cppcheck --version",
-      "install": { "apt": "sudo apt install -y cppcheck", "brew": "brew install cppcheck" }
-    },
-    "doxygen": {
-      "check_cmd": "doxygen --version",
-      "install": { "apt": "sudo apt install -y doxygen", "brew": "brew install doxygen" }
-    },
-    "gcovr": {
-      "check_cmd": "gcovr --version",
-      "install": { "apt": "sudo apt install -y gcovr" }
-    },
-    "kcachegrind": {
-      "check_cmd": "kcachegrind --version",
-      "install": { "apt": "sudo apt install -y kcachegrind" }
-    },
-    "bear": {
-      "check_cmd": "bear --version",
-      "install": { "apt": "sudo apt install -y bear" }
-    },
-    "meson": {
-      "requires": ["ninja"],
-      "check_cmd": "meson --version",
-      "install": { "apt": "sudo apt install -y meson", "brew": "brew install meson" }
-    }
-  }
+    "gitignore": [
+        "*.o",
+        "*.obj",
+        "*.exe",
+        "*.out",
+        "*.app",
+        "*.a",
+        "*.lib",
+        "*.so",
+        "*.dylib",
+        "build/",
+        "bin/",
+        ".vscode/",
+        ".idea/"
+    ]
 }

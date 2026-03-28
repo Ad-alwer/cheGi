@@ -1,120 +1,242 @@
 {
-  "name": "python",
-  "levels_info": {
-    "1": "Essential",
-    "2": "Recommended",
-    "3": "Future/Frameworks",
-    "4": "Pro/Advanced"
-  },
-  "levels": {
-    "1": ["python", "pip", "virtualenv", "pipenv"],
-    "2": ["black", "flake8", "mypy", "pytest", "ipython"],
-    "3": ["django", "fastapi", "flask", "sqlalchemy", "celery"],
-    "4": ["poetry", "tox", "ruff", "gunicorn", "alembic"]
-  },
-  "tools": {
-    "python": {
-      "check_cmd": "python --version",
-      "install": {
-        "apt": "sudo apt install -y python3 python3-pip",
-        "brew": "brew install python",
-        "winget": "winget install Python.Python.3.11"
-      }
+    "name": "python",
+    "levels_info": {
+        "1": "Essential",
+        "2": "Recommended",
+        "3": "Future/Frameworks",
+        "4": "Pro/Advanced"
     },
-    "pip": {
-      "requires": ["python"],
-      "check_cmd": "pip --version",
-      "install": {
-        "apt": "sudo apt install -y python3-pip",
-        "default": "python -m ensurepip --upgrade"
-      }
+    "levels": {
+        "1": [
+            "python",
+            "pip",
+            "virtualenv",
+            "pipenv"
+        ],
+        "2": [
+            "black",
+            "flake8",
+            "mypy",
+            "pytest",
+            "ipython"
+        ],
+        "3": [
+            "django",
+            "fastapi",
+            "flask",
+            "sqlalchemy",
+            "celery"
+        ],
+        "4": [
+            "poetry",
+            "tox",
+            "ruff",
+            "gunicorn",
+            "alembic"
+        ]
     },
-    "virtualenv": {
-      "requires": ["python", "pip"],
-      "check_cmd": "virtualenv --version",
-      "install": { "default": "pip install virtualenv" }
+    "tools": {
+        "python": {
+            "check_cmd": "python --version",
+            "install": {
+                "apt": "sudo apt install -y python3 python3-pip",
+                "brew": "brew install python",
+                "winget": "winget install Python.Python.3.11"
+            }
+        },
+        "pip": {
+            "requires": [
+                "python"
+            ],
+            "check_cmd": "pip --version",
+            "install": {
+                "apt": "sudo apt install -y python3-pip",
+                "default": "python -m ensurepip --upgrade"
+            }
+        },
+        "virtualenv": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "virtualenv --version",
+            "install": {
+                "default": "pip install virtualenv"
+            }
+        },
+        "pipenv": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "pipenv --version",
+            "install": {
+                "default": "pip install pipenv"
+            }
+        },
+        "black": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "black --version",
+            "install": {
+                "default": "pip install black"
+            }
+        },
+        "flake8": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "flake8 --version",
+            "install": {
+                "default": "pip install flake8"
+            }
+        },
+        "mypy": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "mypy --version",
+            "install": {
+                "default": "pip install mypy"
+            }
+        },
+        "pytest": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "pytest --version",
+            "install": {
+                "default": "pip install pytest"
+            }
+        },
+        "ipython": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "ipython --version",
+            "install": {
+                "default": "pip install ipython"
+            }
+        },
+        "django": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "django-admin --version",
+            "install": {
+                "default": "pip install django"
+            }
+        },
+        "fastapi": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "python -c \"import fastapi\"",
+            "install": {
+                "default": "pip install fastapi uvicorn"
+            }
+        },
+        "flask": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "flask --version",
+            "install": {
+                "default": "pip install flask"
+            }
+        },
+        "sqlalchemy": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "python -c \"import sqlalchemy\"",
+            "install": {
+                "default": "pip install sqlalchemy"
+            }
+        },
+        "celery": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "celery --version",
+            "install": {
+                "default": "pip install celery"
+            }
+        },
+        "poetry": {
+            "requires": [
+                "python"
+            ],
+            "check_cmd": "poetry --version",
+            "install": {
+                "default": "curl -sSL https://install.python-poetry.org | python3 -"
+            }
+        },
+        "tox": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "tox --version",
+            "install": {
+                "default": "pip install tox"
+            }
+        },
+        "ruff": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "ruff --version",
+            "install": {
+                "default": "pip install ruff"
+            }
+        },
+        "gunicorn": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "gunicorn --version",
+            "install": {
+                "default": "pip install gunicorn"
+            }
+        },
+        "alembic": {
+            "requires": [
+                "python",
+                "pip"
+            ],
+            "check_cmd": "alembic --version",
+            "install": {
+                "default": "pip install alembic"
+            }
+        }
     },
-    "pipenv": {
-      "requires": ["python", "pip"],
-      "check_cmd": "pipenv --version",
-      "install": { "default": "pip install pipenv" }
-    },
-    "black": {
-      "requires": ["python", "pip"],
-      "check_cmd": "black --version",
-      "install": { "default": "pip install black" }
-    },
-    "flake8": {
-      "requires": ["python", "pip"],
-      "check_cmd": "flake8 --version",
-      "install": { "default": "pip install flake8" }
-    },
-    "mypy": {
-      "requires": ["python", "pip"],
-      "check_cmd": "mypy --version",
-      "install": { "default": "pip install mypy" }
-    },
-    "pytest": {
-      "requires": ["python", "pip"],
-      "check_cmd": "pytest --version",
-      "install": { "default": "pip install pytest" }
-    },
-    "ipython": {
-      "requires": ["python", "pip"],
-      "check_cmd": "ipython --version",
-      "install": { "default": "pip install ipython" }
-    },
-    "django": {
-      "requires": ["python", "pip"],
-      "check_cmd": "django-admin --version",
-      "install": { "default": "pip install django" }
-    },
-    "fastapi": {
-      "requires": ["python", "pip"],
-      "check_cmd": "python -c \"import fastapi\"",
-      "install": { "default": "pip install fastapi uvicorn" }
-    },
-    "flask": {
-      "requires": ["python", "pip"],
-      "check_cmd": "flask --version",
-      "install": { "default": "pip install flask" }
-    },
-    "sqlalchemy": {
-      "requires": ["python", "pip"],
-      "check_cmd": "python -c \"import sqlalchemy\"",
-      "install": { "default": "pip install sqlalchemy" }
-    },
-    "celery": {
-      "requires": ["python", "pip"],
-      "check_cmd": "celery --version",
-      "install": { "default": "pip install celery" }
-    },
-    "poetry": {
-      "requires": ["python"],
-      "check_cmd": "poetry --version",
-      "install": {
-        "default": "curl -sSL https://install.python-poetry.org | python3 -"
-      }
-    },
-    "tox": {
-      "requires": ["python", "pip"],
-      "check_cmd": "tox --version",
-      "install": { "default": "pip install tox" }
-    },
-    "ruff": {
-      "requires": ["python", "pip"],
-      "check_cmd": "ruff --version",
-      "install": { "default": "pip install ruff" }
-    },
-    "gunicorn": {
-      "requires": ["python", "pip"],
-      "check_cmd": "gunicorn --version",
-      "install": { "default": "pip install gunicorn" }
-    },
-    "alembic": {
-      "requires": ["python", "pip"],
-      "check_cmd": "alembic --version",
-      "install": { "default": "pip install alembic" }
-    }
-  }
+    "gitignore": [
+        "__pycache__/",
+        "*.py[cod]",
+        "*$py.class",
+        ".venv/",
+        "venv/",
+        "ENV/",
+        ".env",
+        ".pytest_cache/",
+        ".coverage",
+        "htmlcov/",
+        "dist/",
+        "build/",
+        "*.egg-info/"
+    ]
 }

@@ -1,121 +1,238 @@
 {
-  "name": "javascript",
-  "levels_info": {
-    "1": "Essential",
-    "2": "Recommended",
-    "3": "Frameworks & Bundlers",
-    "4": "Pro/Advanced"
-  },
-  "levels": {
-    "1": ["nodejs", "npm", "yarn", "pnpm", "nvm"],
-    "2": ["typescript", "ts-node", "eslint", "prettier", "nodemon"],
-    "3": ["react-scripts", "vue-cli", "angular-cli", "vite", "webpack", "esbuild"],
-    "4": ["jest", "cypress", "pm2", "nx", "nestjs-cli"]
-  },
-  "tools": {
-    "nodejs": {
-      "check_cmd": "node --version",
-      "install": { "apt": "sudo apt install -y nodejs", "brew": "brew install node", "winget": "winget install OpenJS.NodeJS" }
+    "name": "javascript",
+    "levels_info": {
+        "1": "Essential",
+        "2": "Recommended",
+        "3": "Frameworks & Bundlers",
+        "4": "Pro/Advanced"
     },
-    "npm": {
-      "requires": ["nodejs"],
-      "check_cmd": "npm --version",
-      "install": { "apt": "sudo apt install -y npm", "default": "npm install -g npm" }
+    "levels": {
+        "1": [
+            "nodejs",
+            "npm",
+            "yarn",
+            "pnpm",
+            "nvm"
+        ],
+        "2": [
+            "typescript",
+            "ts-node",
+            "eslint",
+            "prettier",
+            "nodemon"
+        ],
+        "3": [
+            "react-scripts",
+            "vue-cli",
+            "angular-cli",
+            "vite",
+            "webpack",
+            "esbuild"
+        ],
+        "4": [
+            "jest",
+            "cypress",
+            "pm2",
+            "nx",
+            "nestjs-cli"
+        ]
     },
-    "yarn": {
-      "requires": ["npm"],
-      "check_cmd": "yarn --version",
-      "install": { "default": "npm install -g yarn" }
+    "tools": {
+        "nodejs": {
+            "check_cmd": "node --version",
+            "install": {
+                "apt": "sudo apt install -y nodejs",
+                "brew": "brew install node",
+                "winget": "winget install OpenJS.NodeJS"
+            }
+        },
+        "npm": {
+            "requires": [
+                "nodejs"
+            ],
+            "check_cmd": "npm --version",
+            "install": {
+                "apt": "sudo apt install -y npm",
+                "default": "npm install -g npm"
+            }
+        },
+        "yarn": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "yarn --version",
+            "install": {
+                "default": "npm install -g yarn"
+            }
+        },
+        "pnpm": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "pnpm --version",
+            "install": {
+                "default": "npm install -g pnpm"
+            }
+        },
+        "nvm": {
+            "check_cmd": "bash -c 'source ~/.nvm/nvm.sh && nvm --version'",
+            "install": {
+                "default": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash"
+            }
+        },
+        "typescript": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "tsc --version",
+            "install": {
+                "default": "npm install -g typescript"
+            }
+        },
+        "ts-node": {
+            "requires": [
+                "npm",
+                "typescript"
+            ],
+            "check_cmd": "ts-node --version",
+            "install": {
+                "default": "npm install -g ts-node"
+            }
+        },
+        "eslint": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "eslint --version",
+            "install": {
+                "default": "npm install -g eslint"
+            }
+        },
+        "prettier": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "prettier --version",
+            "install": {
+                "default": "npm install -g prettier"
+            }
+        },
+        "nodemon": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "nodemon --version",
+            "install": {
+                "default": "npm install -g nodemon"
+            }
+        },
+        "react-scripts": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "react-scripts --version",
+            "install": {
+                "default": "npm install -g create-react-app"
+            }
+        },
+        "vue-cli": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "vue --version",
+            "install": {
+                "default": "npm install -g @vue/cli"
+            }
+        },
+        "angular-cli": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "ng version",
+            "install": {
+                "default": "npm install -g @angular/cli"
+            }
+        },
+        "vite": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "vite --version",
+            "install": {
+                "default": "npm install -g create-vite"
+            }
+        },
+        "webpack": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "webpack --version",
+            "install": {
+                "default": "npm install -g webpack webpack-cli"
+            }
+        },
+        "esbuild": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "esbuild --version",
+            "install": {
+                "default": "npm install -g esbuild"
+            }
+        },
+        "jest": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "jest --version",
+            "install": {
+                "default": "npm install -g jest"
+            }
+        },
+        "cypress": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "cypress --version",
+            "install": {
+                "default": "npm install -g cypress"
+            }
+        },
+        "pm2": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "pm2 --version",
+            "install": {
+                "default": "npm install -g pm2"
+            }
+        },
+        "nx": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "nx --version",
+            "install": {
+                "default": "npm install -g nx"
+            }
+        },
+        "nestjs-cli": {
+            "requires": [
+                "npm"
+            ],
+            "check_cmd": "nest --version",
+            "install": {
+                "default": "npm install -g @nestjs/cli"
+            }
+        }
     },
-    "pnpm": {
-      "requires": ["npm"],
-      "check_cmd": "pnpm --version",
-      "install": { "default": "npm install -g pnpm" }
-    },
-    "nvm": {
-      "check_cmd": "bash -c 'source ~/.nvm/nvm.sh && nvm --version'",
-      "install": { "default": "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash" }
-    },
-    "typescript": {
-      "requires": ["npm"],
-      "check_cmd": "tsc --version",
-      "install": { "default": "npm install -g typescript" }
-    },
-    "ts-node": {
-      "requires": ["npm", "typescript"],
-      "check_cmd": "ts-node --version",
-      "install": { "default": "npm install -g ts-node" }
-    },
-    "eslint": {
-      "requires": ["npm"],
-      "check_cmd": "eslint --version",
-      "install": { "default": "npm install -g eslint" }
-    },
-    "prettier": {
-      "requires": ["npm"],
-      "check_cmd": "prettier --version",
-      "install": { "default": "npm install -g prettier" }
-    },
-    "nodemon": {
-      "requires": ["npm"],
-      "check_cmd": "nodemon --version",
-      "install": { "default": "npm install -g nodemon" }
-    },
-    "react-scripts": {
-      "requires": ["npm"],
-      "check_cmd": "react-scripts --version",
-      "install": { "default": "npm install -g create-react-app" }
-    },
-    "vue-cli": {
-      "requires": ["npm"],
-      "check_cmd": "vue --version",
-      "install": { "default": "npm install -g @vue/cli" }
-    },
-    "angular-cli": {
-      "requires": ["npm"],
-      "check_cmd": "ng version",
-      "install": { "default": "npm install -g @angular/cli" }
-    },
-    "vite": {
-      "requires": ["npm"],
-      "check_cmd": "vite --version",
-      "install": { "default": "npm install -g create-vite" }
-    },
-    "webpack": {
-      "requires": ["npm"],
-      "check_cmd": "webpack --version",
-      "install": { "default": "npm install -g webpack webpack-cli" }
-    },
-    "esbuild": {
-      "requires": ["npm"],
-      "check_cmd": "esbuild --version",
-      "install": { "default": "npm install -g esbuild" }
-    },
-    "jest": {
-      "requires": ["npm"],
-      "check_cmd": "jest --version",
-      "install": { "default": "npm install -g jest" }
-    },
-    "cypress": {
-      "requires": ["npm"],
-      "check_cmd": "cypress --version",
-      "install": { "default": "npm install -g cypress" }
-    },
-    "pm2": {
-      "requires": ["npm"],
-      "check_cmd": "pm2 --version",
-      "install": { "default": "npm install -g pm2" }
-    },
-    "nx": {
-      "requires": ["npm"],
-      "check_cmd": "nx --version",
-      "install": { "default": "npm install -g nx" }
-    },
-    "nestjs-cli": {
-      "requires": ["npm"],
-      "check_cmd": "nest --version",
-      "install": { "default": "npm install -g @nestjs/cli" }
-    }
-  }
+    "gitignore": [
+        "node_modules/",
+        "npm-debug.log*",
+        "yarn-debug.log*",
+        "yarn-error.log*",
+        ".env",
+        "dist/",
+        "build/"
+    ]
 }
-

@@ -1,115 +1,224 @@
 {
-  "name": "csharp",
-  "levels_info": {
-    "1": "Essential",
-    "2": "Recommended",
-    "3": "Frameworks & ORMs",
-    "4": "Pro/Advanced"
-  },
-  "levels": {
-    "1": ["dotnet-sdk", "dotnet-runtime", "nuget", "mono", "msbuild"],
-    "2": ["dotnet-ef", "dotnet-format", "powershell", "csharp-ls", "omnisharp"],
-    "3": ["aspnetcore-runtime", "xunit-cli", "nunit-console", "docfx", "swashbuckle"],
-    "4": ["benchmarkdotnet", "dotcover", "dottrace", "cake", "paket", "stryker"]
-  },
-  "tools": {
-    "dotnet-sdk": {
-      "check_cmd": "dotnet --version",
-      "install": { "apt": "sudo apt install -y dotnet-sdk-8.0", "brew": "brew install --cask dotnet-sdk", "winget": "winget install Microsoft.DotNet.SDK.8" }
+    "name": "csharp",
+    "levels_info": {
+        "1": "Essential",
+        "2": "Recommended",
+        "3": "Frameworks & ORMs",
+        "4": "Pro/Advanced"
     },
-    "dotnet-runtime": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet --info | grep 'Microsoft.NETCore.App'",
-      "install": { "apt": "sudo apt install -y dotnet-runtime-8.0" }
+    "levels": {
+        "1": [
+            "dotnet-sdk",
+            "dotnet-runtime",
+            "nuget",
+            "mono",
+            "msbuild"
+        ],
+        "2": [
+            "dotnet-ef",
+            "dotnet-format",
+            "powershell",
+            "csharp-ls",
+            "omnisharp"
+        ],
+        "3": [
+            "aspnetcore-runtime",
+            "xunit-cli",
+            "nunit-console",
+            "docfx",
+            "swashbuckle"
+        ],
+        "4": [
+            "benchmarkdotnet",
+            "dotcover",
+            "dottrace",
+            "cake",
+            "paket",
+            "stryker"
+        ]
     },
-    "nuget": {
-      "check_cmd": "nuget help",
-      "install": { "apt": "sudo apt install -y nuget", "brew": "brew install nuget" }
+    "tools": {
+        "dotnet-sdk": {
+            "check_cmd": "dotnet --version",
+            "install": {
+                "apt": "sudo apt install -y dotnet-sdk-8.0",
+                "brew": "brew install --cask dotnet-sdk",
+                "winget": "winget install Microsoft.DotNet.SDK.8"
+            }
+        },
+        "dotnet-runtime": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet --info | grep 'Microsoft.NETCore.App'",
+            "install": {
+                "apt": "sudo apt install -y dotnet-runtime-8.0"
+            }
+        },
+        "nuget": {
+            "check_cmd": "nuget help",
+            "install": {
+                "apt": "sudo apt install -y nuget",
+                "brew": "brew install nuget"
+            }
+        },
+        "mono": {
+            "check_cmd": "mono --version",
+            "install": {
+                "apt": "sudo apt install -y mono-complete",
+                "brew": "brew install mono"
+            }
+        },
+        "msbuild": {
+            "check_cmd": "msbuild -version",
+            "install": {
+                "apt": "sudo apt install -y mono-msbuild"
+            }
+        },
+        "dotnet-ef": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet ef --version",
+            "install": {
+                "default": "dotnet tool install --global dotnet-ef"
+            }
+        },
+        "dotnet-format": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet format --version",
+            "install": {
+                "default": "dotnet tool install --global dotnet-format"
+            }
+        },
+        "powershell": {
+            "check_cmd": "pwsh --version",
+            "install": {
+                "apt": "sudo apt install -y powershell",
+                "brew": "brew install --cask powershell",
+                "winget": "winget install Microsoft.PowerShell"
+            }
+        },
+        "csharp-ls": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "csharp-ls --version",
+            "install": {
+                "default": "dotnet tool install --global csharp-ls"
+            }
+        },
+        "omnisharp": {
+            "check_cmd": "omnisharp --version",
+            "install": {
+                "apt": "sudo apt install -y omnisharp"
+            }
+        },
+        "aspnetcore-runtime": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet --info | grep 'Microsoft.AspNetCore.App'",
+            "install": {
+                "apt": "sudo apt install -y aspnetcore-runtime-8.0"
+            }
+        },
+        "xunit-cli": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet tool list -g | grep xunit",
+            "install": {
+                "default": "dotnet tool install --global xunit-cli"
+            }
+        },
+        "nunit-console": {
+            "check_cmd": "nunit3-console --version",
+            "install": {
+                "apt": "sudo apt install -y nunit-console"
+            }
+        },
+        "docfx": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "docfx --version",
+            "install": {
+                "default": "dotnet tool install --global docfx"
+            }
+        },
+        "swashbuckle": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "swagger --version",
+            "install": {
+                "default": "dotnet tool install --global Swashbuckle.AspNetCore.Cli"
+            }
+        },
+        "benchmarkdotnet": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet tool list -g | grep benchmark",
+            "install": {
+                "default": "dotnet tool install --global BenchmarkDotNet.Tool"
+            }
+        },
+        "dotcover": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet dotcover help",
+            "install": {
+                "default": "dotnet tool install --global JetBrains.dotCover.GlobalTool"
+            }
+        },
+        "dottrace": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet trace --help",
+            "install": {
+                "default": "dotnet tool install --global dotnet-trace"
+            }
+        },
+        "cake": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet cake --version",
+            "install": {
+                "default": "dotnet tool install --global Cake.Tool"
+            }
+        },
+        "paket": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "paket --version",
+            "install": {
+                "default": "dotnet tool install --global Paket"
+            }
+        },
+        "stryker": {
+            "requires": [
+                "dotnet-sdk"
+            ],
+            "check_cmd": "dotnet stryker --version",
+            "install": {
+                "default": "dotnet tool install --global dotnet-stryker"
+            }
+        }
     },
-    "mono": {
-      "check_cmd": "mono --version",
-      "install": { "apt": "sudo apt install -y mono-complete", "brew": "brew install mono" }
-    },
-    "msbuild": {
-      "check_cmd": "msbuild -version",
-      "install": { "apt": "sudo apt install -y mono-msbuild" }
-    },
-    "dotnet-ef": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet ef --version",
-      "install": { "default": "dotnet tool install --global dotnet-ef" }
-    },
-    "dotnet-format": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet format --version",
-      "install": { "default": "dotnet tool install --global dotnet-format" }
-    },
-    "powershell": {
-      "check_cmd": "pwsh --version",
-      "install": { "apt": "sudo apt install -y powershell", "brew": "brew install --cask powershell", "winget": "winget install Microsoft.PowerShell" }
-    },
-    "csharp-ls": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "csharp-ls --version",
-      "install": { "default": "dotnet tool install --global csharp-ls" }
-    },
-    "omnisharp": {
-      "check_cmd": "omnisharp --version",
-      "install": { "apt": "sudo apt install -y omnisharp" }
-    },
-    "aspnetcore-runtime": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet --info | grep 'Microsoft.AspNetCore.App'",
-      "install": { "apt": "sudo apt install -y aspnetcore-runtime-8.0" }
-    },
-    "xunit-cli": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet tool list -g | grep xunit",
-      "install": { "default": "dotnet tool install --global xunit-cli" }
-    },
-    "nunit-console": {
-      "check_cmd": "nunit3-console --version",
-      "install": { "apt": "sudo apt install -y nunit-console" }
-    },
-    "docfx": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "docfx --version",
-      "install": { "default": "dotnet tool install --global docfx" }
-    },
-    "swashbuckle": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "swagger --version",
-      "install": { "default": "dotnet tool install --global Swashbuckle.AspNetCore.Cli" }
-    },
-    "benchmarkdotnet": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet tool list -g | grep benchmark",
-      "install": { "default": "dotnet tool install --global BenchmarkDotNet.Tool" }
-    },
-    "dotcover": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet dotcover help",
-      "install": { "default": "dotnet tool install --global JetBrains.dotCover.GlobalTool" }
-    },
-    "dottrace": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet trace --help",
-      "install": { "default": "dotnet tool install --global dotnet-trace" }
-    },
-    "cake": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet cake --version",
-      "install": { "default": "dotnet tool install --global Cake.Tool" }
-    },
-    "paket": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "paket --version",
-      "install": { "default": "dotnet tool install --global Paket" }
-    },
-    "stryker": {
-      "requires": ["dotnet-sdk"],
-      "check_cmd": "dotnet stryker --version",
-      "install": { "default": "dotnet tool install --global dotnet-stryker" }
-    }
-  }
+    "gitignore": [
+        "bin/",
+        "obj/",
+        "*.user",
+        "*.suo",
+        "*.sln.docstates",
+        "packages/"
+    ]
 }
