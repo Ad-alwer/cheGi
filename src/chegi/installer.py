@@ -2,7 +2,7 @@ import platform
 import subprocess
 import shutil
 import typer
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Union
 
 
 class SystemInstaller:
@@ -73,7 +73,7 @@ class SystemInstaller:
 
     @classmethod
     def _build_command_with_mirror(
-        cls, base_cmd: str, pm_name: Optional[str], mirror_url: Optional[str]
+        cls, base_cmd: str, pm_name: Optional[str], mirror_url: Optional[Union[str, List[str]]]
     ) -> str:
         """Constructs the final command string with a mirror/registry flag if applicable.
 
@@ -84,12 +84,17 @@ class SystemInstaller:
         Args:
             base_cmd (str): The original command (e.g., "pip install some-package").
             pm_name (Optional[str]): The lowercased name of the package manager (e.g., "pip").
-            mirror_url (Optional[str]): The mirror URL to use.
+            mirror_url (Optional[Union[str, List[str]]]): The mirror URL (or list of URLs) to use.
 
         Returns:
             str: The modified command string or the original if no mirror is needed.
         """
         if not pm_name or not mirror_url:
+            return base_cmd
+
+        # Extract the primary URL if a list of mirrors is provided
+        primary_mirror = mirror_url[0] if isinstance(mirror_url, list) and mirror_url else mirror_url
+        if not isinstance(primary_mirror, str):
             return base_cmd
 
         parts = base_cmd.split()
@@ -99,7 +104,7 @@ class SystemInstaller:
             # Example: "pip install package" -> "pip install --index-url <url> package"
             try:
                 install_index = parts.index("install")
-                parts.insert(install_index + 1, mirror_url)
+                parts.insert(install_index + 1, primary_mirror)
                 parts.insert(install_index + 1, "--index-url")
                 return " ".join(parts)
             except ValueError:
@@ -109,7 +114,7 @@ class SystemInstaller:
         elif pm_name == "npm":
             # For npm, the --registry flag can be safely appended to the command.
             # Example: "npm install package" -> "npm install package --registry <url>"
-            return f"{base_cmd} --registry {mirror_url}"
+            return f"{base_cmd} --registry {primary_mirror}"
 
         # If the package manager is not supported for mirrors, return the original command.
         return base_cmd
@@ -119,14 +124,14 @@ class SystemInstaller:
         cls,
         cmd: str,
         pm_name: Optional[str] = None,
-        mirror_url: Optional[str] = None
+        mirror_url: Optional[Union[str, List[str]]] = None
     ) -> bool:
         """Executes a dynamic installation shell command, with optional mirror support.
 
         Args:
             cmd (str): The exact shell command to run (e.g., 'pip install django').
             pm_name (Optional[str]): The package manager being used (e.g., 'pip').
-            mirror_url (Optional[str]): The mirror URL, if provided by the user.
+            mirror_url (Optional[Union[str, List[str]]]): The mirror URL(s), if provided by the user.
 
         Returns:
             bool: True if the command executed with a zero return code, False otherwise.

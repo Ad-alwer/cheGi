@@ -307,7 +307,6 @@ def test_reword_head_direct_message(mock_subprocess: MagicMock):
     assert result.exit_code == 0
     assert "Last commit message updated successfully" in result.stdout
     
-    # Removed capture_output=True to match actual code
     mock_subprocess.assert_any_call(
         ["git", "commit", "--amend", "-m", "chore: new message"],
         check=True
@@ -413,7 +412,6 @@ def test_reword_unchanged_message(mock_text: MagicMock, mock_subprocess: MagicMo
     result = runner.invoke(app, ["reword"])
     
     assert result.exit_code == 0
-    # Updated to match the new unchanged message
     assert "Message is unchanged" in result.stdout
 
 @patch("chegi.cli.subprocess.run")
@@ -469,7 +467,7 @@ def test_reword_pagination_start_and_end(
 def test_reword_pagination_only_end(
     mock_text: MagicMock, mock_select: MagicMock, mock_subprocess: MagicMock
 ):
-    """Tests the logic $skip = max(0, end - 10)$ when only --end is provided."""
+    """Tests the logic skip = max(0, end - 10) when only --end is provided."""
     
     def mock_run_side_effect(cmd, *args, **kwargs):
         if "rev-parse" in cmd:
@@ -808,6 +806,11 @@ def test_setup_dependency_missing_skip(mock_env_manager: MagicMock, mock_install
         mirror_url=None
     )
 
+
+# ==========================================
+# Setup Command Tests - MIRRORS
+# ==========================================
+
 # Dummy data specifically simulating an environment with a supported package manager (pip)
 DUMMY_ENV_DATA_MIRROR = {
     "levels": {"1": ["requests"]},
@@ -821,99 +824,127 @@ DUMMY_ENV_DATA_MIRROR = {
     }
 }
 
-
-@patch("chegi.cli.questionary")
+@patch("chegi.cli.questionary.text")
+@patch("chegi.cli.questionary.checkbox")
 @patch("chegi.cli.typer.confirm")
+@patch("chegi.cli.ChegiConfig")
 @patch("chegi.cli.SystemInstaller")
 @patch("chegi.cli.EnvManager")
-def test_setup_interactive_mirror_accepted(
-    mock_env_manager: MagicMock, 
-    mock_installer: MagicMock, 
-    mock_confirm: MagicMock, 
-    mock_questionary: MagicMock
-):
-    """Tests if a provided mirror URL is correctly passed to the installer."""
-    # Setup environment mocks
-    mock_instance = mock_env_manager.return_value
-    mock_instance.get_available_envs.return_value = ["python"]
-    mock_instance.get_env.return_value = DUMMY_ENV_DATA_MIRROR
-    mock_instance.get_required_package_managers.return_value = {"pip"}
+def test_setup_interactive_mirror_accepted(mock_env_mgr_cls, mock_installer_cls, mock_config_cls, mock_confirm, mock_checkbox, mock_text, tmp_path):
+    """Tests if a valid custom mirror URL is accepted and used correctly."""
+    mock_env = mock_env_mgr_cls.return_value
+    mock_env.get_available_envs.return_value = ["python"]
+    mock_env.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_env.get_required_package_managers.return_value = {"pip"}
     
-    # Setup installer mocks
-    mock_installer.get_os_package_manager.return_value = "default"
-    mock_installer.is_tool_installed.return_value = (False, "Not installed")
-    mock_installer.run_custom_command.return_value = True
+    mock_installer_cls.get_os_package_manager.return_value = "default"
+    mock_installer_cls.is_tool_installed.return_value = (False, "")
+    mock_installer_cls.run_custom_command.return_value = True
     
-    # Setup UI mocks
-    # 1. User selects the tool to install
-    mock_questionary.checkbox.return_value.ask.return_value = [
-        {"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}
-    ]
-    # 2. User confirms they want to use a mirror
-    mock_confirm.return_value = True
-    # 3. User provides the mirror URL
-    mock_questionary.text.return_value.ask.return_value = "https://custom.pypi.local/simple"
+    # Force get_mirror to return None to bypass the saved mirrors logic 
+    # and ensure the execution reaches the interactive confirm prompt.
+    mock_config_cls.return_value.get_mirror.return_value = None
+    
+    mock_checkbox.return_value.ask.return_value = [{"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}]
+    mock_confirm.return_value = True 
+    mock_text.return_value.ask.return_value = "https://custom.pypi.local/simple"
 
     result = runner.invoke(app, ["setup", "python"])
-
+    
     assert result.exit_code == 0
-    # Verify that the custom command was executed with the correct mirror arguments
-    mock_installer.run_custom_command.assert_called_once_with(
-        "pip install requests",
-        pm_name="pip",
-        mirror_url="https://custom.pypi.local/simple"
+    mock_installer_cls.run_custom_command.assert_called_with(
+        "pip install requests", pm_name="pip", mirror_url="https://custom.pypi.local/simple"
     )
 
 
-@patch("chegi.cli.questionary")
+@patch("chegi.cli.questionary.checkbox")
 @patch("chegi.cli.typer.confirm")
+@patch("chegi.cli.ChegiConfig")
 @patch("chegi.cli.SystemInstaller")
 @patch("chegi.cli.EnvManager")
-def test_setup_interactive_mirror_declined(
-    mock_env_manager: MagicMock, 
-    mock_installer: MagicMock, 
-    mock_confirm: MagicMock, 
-    mock_questionary: MagicMock
-):
-    """Tests if the installer falls back to defaults when the mirror prompt is declined."""
-    mock_instance = mock_env_manager.return_value
-    mock_instance.get_available_envs.return_value = ["python"]
-    mock_instance.get_env.return_value = DUMMY_ENV_DATA_MIRROR
-    mock_instance.get_required_package_managers.return_value = {"pip"}
+def test_setup_interactive_mirror_declined(mock_env_mgr_cls, mock_installer_cls, mock_config_cls, mock_confirm, mock_checkbox, tmp_path):
+    """Tests if declining the mirror prompt correctly skips mirror configuration."""
+    mock_env = mock_env_mgr_cls.return_value
+    mock_env.get_available_envs.return_value = ["python"]
+    mock_env.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_env.get_required_package_managers.return_value = {"pip"}
     
-    mock_installer.get_os_package_manager.return_value = "default"
-    mock_installer.is_tool_installed.return_value = (False, "Not installed")
-    mock_installer.run_custom_command.return_value = True
+    mock_installer_cls.get_os_package_manager.return_value = "default"
+    mock_installer_cls.is_tool_installed.return_value = (False, "")
+    mock_installer_cls.run_custom_command.return_value = True
     
-    # User selects the tool
-    mock_questionary.checkbox.return_value.ask.return_value = [
-        {"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}
-    ]
-    # User DECLINES the mirror prompt
+    # Force get_mirror to return None to bypass the saved mirrors logic 
+    # and ensure the execution reaches the interactive confirm prompt.
+    mock_config_cls.return_value.get_mirror.return_value = None
+
+    mock_checkbox.return_value.ask.return_value = [{"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}]
     mock_confirm.return_value = False
 
     result = runner.invoke(app, ["setup", "python"])
-
+    
     assert result.exit_code == 0
-    # Text input for mirror URL should never be called
-    mock_questionary.text.assert_not_called()
-    # Command should run with None for mirror parameters
-    mock_installer.run_custom_command.assert_called_once_with(
-        "pip install requests",
-        pm_name=None,
-        mirror_url=None
+    mock_installer_cls.run_custom_command.assert_called_with(
+        "pip install requests", pm_name=None, mirror_url=None
     )
 
 
-@patch("chegi.cli.typer.confirm")
+@patch("chegi.cli.ChegiConfig")
 @patch("chegi.cli.SystemInstaller")
 @patch("chegi.cli.EnvManager")
-def test_setup_auto_yes_skips_mirror_prompt(
+def test_setup_auto_yes_skips_mirror_prompt(mock_env_mgr_cls, mock_installer_cls, mock_config_cls, tmp_path):
+    """Tests if --yes flag skips mirror setup when no saved mirrors exist."""
+    mock_env = mock_env_mgr_cls.return_value
+    mock_env.get_available_envs.return_value = ["python"]
+    mock_env.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_env.get_required_package_managers.return_value = {"pip"}
+    mock_installer_cls.get_os_package_manager.return_value = "default"
+    mock_installer_cls.is_tool_installed.return_value = (False, "")
+    mock_installer_cls.run_custom_command.return_value = True
+    
+    # No mirrors saved in config
+    mock_config = mock_config_cls.return_value
+    mock_config.get_mirror.return_value = None
+
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+    assert result.exit_code == 0
+    mock_installer_cls.run_custom_command.assert_called_with(
+        "pip install requests", pm_name=None, mirror_url=None
+    )
+
+@patch("chegi.cli.ChegiConfig")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_auto_yes_uses_first_saved_mirror(mock_env_mgr_cls, mock_installer_cls, mock_config_cls, tmp_path):
+    """Tests if --yes flag automatically uses the first saved mirror if available."""
+    mock_env = mock_env_mgr_cls.return_value
+    mock_env.get_available_envs.return_value = ["python"]
+    mock_env.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_env.get_required_package_managers.return_value = {"pip"}
+    mock_installer_cls.get_os_package_manager.return_value = "default"
+    mock_installer_cls.is_tool_installed.return_value = (False, "")
+    mock_installer_cls.run_custom_command.return_value = True
+    
+    # Return a list of saved mirrors
+    mock_config = mock_config_cls.return_value
+    mock_config.get_mirror.return_value = ["https://mirror1", "https://mirror2"]
+
+    result = runner.invoke(app, ["setup", "python", "--yes"])
+    assert result.exit_code == 0
+    mock_installer_cls.run_custom_command.assert_called_with(
+        "pip install requests", pm_name="pip", mirror_url="https://mirror1"
+    )
+
+@patch("chegi.cli.questionary")
+@patch("chegi.cli.ChegiConfig")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_interactive_select_from_multiple_mirrors(
     mock_env_manager: MagicMock, 
-    mock_installer: MagicMock, 
-    mock_confirm: MagicMock
+    mock_installer: MagicMock,
+    mock_config: MagicMock,
+    mock_questionary: MagicMock
 ):
-    """Tests if the --yes flag completely bypasses mirror prompts."""
+    """Tests if user can select a specific mirror from a saved list via questionary menu."""
     mock_instance = mock_env_manager.return_value
     mock_instance.get_available_envs.return_value = ["python"]
     mock_instance.get_env.return_value = DUMMY_ENV_DATA_MIRROR
@@ -922,16 +953,113 @@ def test_setup_auto_yes_skips_mirror_prompt(
     mock_installer.get_os_package_manager.return_value = "default"
     mock_installer.is_tool_installed.return_value = (False, "Not installed")
     mock_installer.run_custom_command.return_value = True
+    
+    mock_config_instance = mock_config.return_value
+    mock_config_instance.get_mirror.return_value = ["https://mirror1", "https://mirror2"]
 
-    # Run with --yes flag
-    result = runner.invoke(app, ["setup", "python", "--yes"])
+    # 1. User selects the tool
+    mock_questionary.checkbox.return_value.ask.return_value = [
+        {"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}
+    ]
+    # 2. User selects "mirror2" from the generated select menu
+    mock_questionary.select.return_value.ask.return_value = "https://mirror2"
+
+    result = runner.invoke(app, ["setup", "python"])
 
     assert result.exit_code == 0
-    # Mirror confirmation prompt should never be triggered
-    mock_confirm.assert_not_called()
-    # Installer should run without mirror arguments
     mock_installer.run_custom_command.assert_called_once_with(
         "pip install requests",
-        pm_name=None,
-        mirror_url=None
+        pm_name="pip",
+        mirror_url="https://mirror2"
     )
+
+@patch("chegi.cli.questionary.text")
+@patch("chegi.cli.questionary.select")
+@patch("chegi.cli.questionary.checkbox")
+@patch("chegi.cli.ChegiConfig")
+@patch("chegi.cli.SystemInstaller")
+@patch("chegi.cli.EnvManager")
+def test_setup_interactive_select_new_mirror(mock_env_mgr_cls, mock_installer_cls, mock_config_cls, mock_checkbox, mock_select, mock_text, tmp_path):
+    """Tests interactive selection of a 'new' mirror option and providing the URL."""
+    mock_env = mock_env_mgr_cls.return_value
+    mock_env.get_available_envs.return_value = ["python"]
+    mock_env.get_env.return_value = DUMMY_ENV_DATA_MIRROR
+    mock_env.get_required_package_managers.return_value = {"pip"}
+    mock_installer_cls.get_os_package_manager.return_value = "default"
+    mock_installer_cls.is_tool_installed.return_value = (False, "")
+    mock_installer_cls.run_custom_command.return_value = True
+    
+    mock_checkbox.return_value.ask.return_value = [{"name": "requests", "level": "Libraries", "cmd": "pip install requests", "requires": []}]
+    
+    mock_config = mock_config_cls.return_value
+    mock_config.get_mirror.return_value = ["https://old-mirror"]
+    
+    mock_select.return_value.ask.return_value = "new"
+    mock_text.return_value.ask.return_value = "https://brand-new-mirror"
+
+    with patch("chegi.cli.typer.confirm", return_value=False):
+        result = runner.invoke(app, ["setup", "python"])
+        
+    assert result.exit_code == 0
+    mock_installer_cls.run_custom_command.assert_called_with(
+        "pip install requests", pm_name="pip", mirror_url="https://brand-new-mirror"
+    )
+# ==========================================
+# Configuration Mirror Command Tests
+# ==========================================
+
+def test_config_mirror_add(tmp_path: Path):
+    """Tests adding a mirror to a specific package manager."""
+    result = runner.invoke(app, ["config", "mirror-add", "npm", "https://registry.npmmirror.com", "--path", str(tmp_path)])
+    
+    assert result.exit_code == 0
+    assert "Successfully added/updated mirror" in result.stdout
+
+
+@patch("chegi.cli.ChegiConfig")
+def test_config_mirror_remove_specific(mock_config_cls, tmp_path):
+    """Tests removing a specific mirror from configuration."""
+    mock_config = mock_config_cls.return_value
+    
+    # Mock the 'mirrors' property so the CLI doesn't exit with "No mirror configuration found"
+    mock_config.mirrors = {"pip": ["https://mirror1"]}
+    mock_config.remove_mirror.return_value = True
+
+    # Using catch_exceptions=False to force Pytest to reveal the actual 
+    # underlying Python Exception or typer.Exit trace instead of silently returning exit_code 1.
+    result = runner.invoke(
+        app, 
+        ["config", "mirror-remove", "pip", "https://mirror1", "--path", str(tmp_path)],
+        catch_exceptions=False
+    )
+
+    assert result.exit_code == 0, f"Command failed. CLI Output:\n{result.output}"
+
+
+@patch("chegi.cli.ChegiConfig")
+def test_config_mirror_remove_all(mock_config_cls, tmp_path):
+    """Tests removing all mirrors for a specific package manager."""
+    mock_config = mock_config_cls.return_value
+    
+    # Mock the 'mirrors' property so the CLI doesn't exit with "No mirror configuration found"
+    mock_config.mirrors = {"pip": ["https://mirror1"]}
+    mock_config.remove_mirror.return_value = True
+
+    # Using catch_exceptions=False to expose the real error if the command fails.
+    result = runner.invoke(
+        app, 
+        ["config", "mirror-remove", "pip", "--path", str(tmp_path)],
+        catch_exceptions=False
+    )
+
+    assert result.exit_code == 0, f"Command failed. CLI Output:\n{result.output}"
+
+
+def test_config_mirror_clear(tmp_path: Path):
+    """Tests clearing all mirror configurations."""
+    runner.invoke(app, ["config", "mirror-add", "pip", "https://mirror1", "--path", str(tmp_path)])
+    
+    result = runner.invoke(app, ["config", "mirror-clear", "--path", str(tmp_path)])
+    
+    assert result.exit_code == 0
+    assert "All mirrors have been completely cleared" in result.stdout

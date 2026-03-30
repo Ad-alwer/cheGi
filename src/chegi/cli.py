@@ -1,5 +1,6 @@
 import typer
 import subprocess
+import json
 import questionary
 from pathlib import Path
 from typing import Optional, Annotated
@@ -7,7 +8,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.prompt import Confirm
 from rich.table import Table
 
-from chegi.config import ChegiConfig
+
+from chegi.config import ChegiConfig, SUPPORTED_PMS
 from chegi.scanner import find_git_repos
 from chegi.git_utils import GitAnalyzer, check_git_environment, perform_automated_rebase, is_workspace_clean, stash_changes, pop_stash, pull_rebase, push_changes
 from chegi.ui import TerminalUI
@@ -430,7 +432,11 @@ def sync():
 def config_list(
     path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
 ) -> None:
-    """Lists the current configuration settings."""
+    """Lists the current configuration settings, including saved mirrors.
+
+    Args:
+        path: Base directory for the configuration file.
+    """
     config = ChegiConfig(base_path=path)
     config.load()
     ui = TerminalUI()
@@ -439,6 +445,22 @@ def config_list(
     ui.console.print(f"  Max Depth: {config.max_depth}")
     ui.console.print(f"  MCTS: {getattr(config, 'mcts', 10)}")
     ui.console.print(f"  Exclude Dirs: {', '.join(config.exclude_dirs)}")
+    
+    if hasattr(config, 'mirrors') and config.mirrors:
+        ui.console.print("  [bold]Saved Mirrors:[/bold]")
+        for pm, urls in config.mirrors.items():
+            if not urls:
+                continue
+            
+            # Format nicely depending on the number of URLs
+            if len(urls) == 1:
+                ui.console.print(f"    - {pm}: [cyan]{urls[0]}[/cyan]")
+            else:
+                ui.console.print(f"    - {pm}:")
+                for url in urls:
+                    ui.console.print(f"      • [cyan]{url}[/cyan]")
+    else:
+        ui.console.print("  [bold]Saved Mirrors:[/bold] None")
 
 
 @config_app.command("set")
@@ -495,6 +517,145 @@ def config_exclude_remove(
         raise typer.Exit(code=1)
 
 
+@config_app.command("mirror-add")
+def config_mirror_add(
+    pm_name: str = typer.Argument(..., help="Package manager name (e.g., pip, npm)"),
+    url: str = typer.Argument(..., help="The mirror URL to use"),
+    path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
+) -> None:
+    """Adds or updates a single mirror URL for a package manager.
+
+    Args:
+        pm_name: The target package manager (e.g., 'pip', 'npm').
+        url: The custom registry or mirror URL.
+        path: Path to look for or create the configuration file.
+    """
+    config = ChegiConfig(base_path=path)
+    config.load()
+    ui = TerminalUI()
+    
+    try:
+        config.set_mirror(pm_name, url)
+        config.save()
+        ui.console.print(f"[green]✔ Successfully added/updated mirror for '{pm_name.lower()}' -> '{url}'.[/green]")
+    except ValueError as e:
+        ui.print_error(str(e))
+        raise typer.Exit(code=1)
+
+
+@config_app.command(name="mirror-remove")
+def config_mirror_remove(
+    pm_name: str = typer.Argument(
+        ..., 
+        help="The package manager name (e.g., pip, npm)."
+    ),
+    url: Optional[str] = typer.Argument(
+        None, 
+        help="The specific mirror URL to remove. If omitted, all mirrors for this PM are removed."
+    ),
+    path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
+) -> None:
+    """Removes a mirror configuration. 
+    
+    If a URL is provided, only that URL is removed. 
+    If omitted, all saved mirrors for the package manager are deleted.
+    """
+    ui = TerminalUI()
+    config = ChegiConfig(base_path=path)
+    config.load()
+    
+    pm_name = pm_name.lower()
+
+    if not hasattr(config, "mirrors") or pm_name not in config.mirrors:
+        ui.print_error(f"No mirror configuration found for '{pm_name}'.")
+        raise typer.Exit(code=1)
+
+    success = config.remove_mirror(pm_name, url)
+
+    if success:
+        config.save()
+        if url:
+            ui.print_success(f"Removed mirror URL '{url}' for '{pm_name}'.")
+        else:
+            ui.print_success(f"Removed all mirror configurations for '{pm_name}'.")
+    else:
+        if url:
+            ui.print_error(f"URL '{url}' not found in saved mirrors for '{pm_name}'.")
+        else:
+            ui.print_error(f"Failed to remove mirror configuration for '{pm_name}'.")
+        raise typer.Exit(code=1)
+
+
+@config_app.command("mirror-set-all")
+def config_mirror_set_all(
+    json_data: str = typer.Argument(..., help="JSON string representing the full mirror dictionary (e.g., '{\"npm\": \"url\", \"pip\": \"url\"}')"),
+    path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
+) -> None:
+    """Overwrites the entire mirrors configuration with the provided JSON data.
+    
+    You can pass an empty JSON object '{}' to clear all, or a dictionary 
+    with multiple key-value pairs to set everything at once.
+
+    Args:
+        json_data: A JSON formatted string containing package managers and URLs.
+        path: Path to look for the configuration file.
+    """
+    config = ChegiConfig(base_path=path)
+    config.load()
+    ui = TerminalUI()
+    
+    try:
+        new_mirrors = json.loads(json_data)
+        
+        if not isinstance(new_mirrors, dict):
+            raise ValueError("Data must be a valid JSON dictionary format (e.g., {...}).")
+            
+        for k, v in new_mirrors.items():
+            if not isinstance(k, str) or not isinstance(v, (str, list)):
+                raise ValueError(f"All keys must be strings and values must be strings or lists. Invalid pair: '{k}': {v}")
+                
+    except json.JSONDecodeError:
+        ui.print_error("Invalid JSON format! Please wrap the string properly (e.g. '{\"pip\": \"url\"}').")
+        raise typer.Exit(code=1)
+    except ValueError as e:
+        ui.print_error(f"Validation Error: {e}")
+        raise typer.Exit(code=1)
+        
+    if not hasattr(config, "mirrors") or config.mirrors is None:
+        config.mirrors = {}
+    
+    config.mirrors.clear()
+    try:
+        config.update_setting("mirrors", new_mirrors)
+        config.save()
+    except ValueError as e:
+        ui.print_error(f"Validation Error: {e}")
+        raise typer.Exit(code=1)
+        
+    ui.console.print(f"[green]✔ Mirrors configuration has been completely overwritten with {len(new_mirrors)} items.[/green]")
+
+
+@config_app.command("mirror-clear")
+def config_mirror_clear(
+    path: str = typer.Option(".", "--path", "-p", help="Base directory for config")
+) -> None:
+    """Completely removes all stored mirror configurations permanently.
+
+    Args:
+        path: Path to look for the configuration file.
+    """
+    config = ChegiConfig(base_path=path)
+    config.load()
+    ui = TerminalUI()
+    
+    if hasattr(config, "mirrors") and config.mirrors:
+        config.mirrors = {}
+        config.save()
+        ui.console.print("[green]✔ All mirrors have been completely cleared.[/green]")
+    else:
+        ui.console.print("[yellow]⚠ No mirrors were configured to clear.[/yellow]")
+
+
 @app.command(name="setup")
 def setup_environment(
     environment: str = typer.Argument(
@@ -508,7 +669,20 @@ def setup_environment(
         help="Automatically answer yes to all installation prompts."
     )
 ) -> None:
-    """Sets up the development environment for a specific language."""
+    """Sets up the development environment for a specific language or toolset.
+
+    Analyzes the current system environment against a predefined JSON database
+    to determine missing tools, handles dependency resolution, prompts the user
+    for mirror configurations (supporting multiple URLs), and executes the
+    installation sequence.
+
+    Args:
+        environment (str): The name of the environment to set up (e.g., 'python').
+        auto_yes (bool): If True, bypasses interactive prompts and uses defaults.
+
+    Raises:
+        typer.Exit: Exits with code 1 on errors, missing configs, or user cancellation.
+    """
     ui = TerminalUI()
     env_manager = EnvManager()
     
@@ -594,6 +768,7 @@ def setup_environment(
         ui.print_success(f"All critical tools for {environment.capitalize()} are already installed! 🎉")
         raise typer.Exit()
 
+    # Sort tools based on dependency requirements to ensure correct installation order
     sorted_tools_to_install = []
     remaining_tools = tools_to_install.copy()
     
@@ -612,6 +787,7 @@ def setup_environment(
                 break
                 
         if not progress:
+            # Fallback for circular dependencies or unresolved graphs
             sorted_tools_to_install.extend(remaining_tools)
             break
             
@@ -641,33 +817,110 @@ def setup_environment(
         tools_to_install = selected_tools
 
     # --- Pre-flight Check for Mirrors ---
-    SUPPORTED_MIRROR_PMS = {"pip", "npm"}
     session_mirrors = {}
+    
+    # Load configuration to access permanent mirrors
+    config = ChegiConfig()
+    config.load()
     
     # Identify which supported package managers are actually going to be run
     active_pms_in_tools = {tool["cmd"].split()[0].lower() for tool in tools_to_install}
     required_pms = env_manager.get_required_package_managers([environment.lower()])
     
     # Filter: Must be required by JSON, supported by our mirror system, AND actually selected to be installed
-    pms_to_ask = required_pms.intersection(SUPPORTED_MIRROR_PMS).intersection(active_pms_in_tools)
+    pms_to_ask = required_pms.intersection(SUPPORTED_PMS).intersection(active_pms_in_tools)
 
-    if pms_to_ask and not auto_yes:
+    if pms_to_ask:
         ui.console.print("\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]")
         ui.console.print("[dim]Useful if you are behind a restricted network and need custom download URLs.[/dim]")
         
-        for pm in pms_to_ask:
-            use_mirror = typer.confirm(
-                f"Do you want to use a mirror/custom registry for '{pm}'?", 
-                default=False
-            )
-            if use_mirror:
-                mirror_url = questionary.text(
-                    f"Enter the mirror URL for {pm} (e.g. https://registry.npmmirror.com/):"
-                ).ask()
+        for pm in list(pms_to_ask):
+            saved_mirrors = config.get_mirror(pm) if hasattr(config, 'get_mirror') else None
+            
+            if saved_mirrors:
+                # Normalize saved mirrors to a list to handle both legacy strings and new lists safely
+                mirror_list = saved_mirrors if isinstance(saved_mirrors, list) else [saved_mirrors]
                 
-                if mirror_url and mirror_url.strip():
-                    session_mirrors[pm] = mirror_url.strip()
-                    ui.console.print(f"[green]✔ Saved mirror for {pm}[/green]")
+                if auto_yes:
+                    # Auto-use the primary (first) configured mirror if --yes flag is provided
+                    primary_mirror = mirror_list[0]
+                    session_mirrors[pm] = primary_mirror
+                    ui.console.print(f"[dim]Auto-using primary configured mirror for {pm}: {primary_mirror}[/dim]")
+                else:
+                    # Dynamically build choices from the list of saved mirrors
+                    choices = [
+                        questionary.Choice(f"✅ Use: {url}", value=url)
+                        for url in mirror_list
+                    ]
+                    choices.extend([
+                        questionary.Choice("✏️  Use a different mirror (One-time or Update)", value="new"),
+                        questionary.Choice("❌ Do NOT use a mirror (Use default registry)", value="none")
+                    ])
+
+                    choice = questionary.select(
+                        f"Found configured mirror(s) for '{pm}'. Please select one:",
+                        choices=choices
+                    ).ask()
+
+                    if choice is None:
+                        ui.console.print("\n[bold red]❌ Cancelled by user.[/bold red]")
+                        raise typer.Exit(code=1)
+                        
+                    elif choice == "none":
+                        ui.console.print(f"[yellow]ℹ Skipping mirror for {pm} in this session.[/yellow]")
+                        
+                    elif choice == "new":
+                        new_url = questionary.text(
+                            f"Enter the new mirror URL for {pm}:",
+                            default=mirror_list[0]
+                        ).ask()
+                        
+                        if new_url is None:
+                            ui.console.print("\n[bold red]❌ Cancelled by user.[/bold red]")
+                            raise typer.Exit(code=1)
+                        
+                        if new_url and new_url.strip():
+                            new_url = new_url.strip()
+                            session_mirrors[pm] = new_url
+                            
+                            # Ask if they want to append the new URL to permanent config
+                            if new_url not in mirror_list:
+                                if typer.confirm(f"Add this new URL to the permanent config for {pm}?", default=False):
+                                    config.set_mirror(pm, new_url)
+                                    config.save()
+                                    ui.console.print(f"[green]✔ Added mirror permanently for {pm}[/green]")
+                                else:
+                                    ui.console.print(f"[yellow]ℹ Using new mirror for this session only[/yellow]")
+                    else:
+                        # User selected one of the existing configured mirrors
+                        session_mirrors[pm] = choice
+
+            else:
+                # Normal logic for when NO mirror is saved
+                if not auto_yes:
+                    use_mirror = typer.confirm(
+                        f"Do you want to use a mirror/custom registry for '{pm}'?", 
+                        default=False
+                    )
+                    if use_mirror:
+                        mirror_url = questionary.text(
+                            f"Enter the mirror URL for {pm} (e.g. https://registry.npmmirror.com/):"
+                        ).ask()
+                        
+                        if mirror_url is None:
+                            ui.console.print("\n[bold red]❌ Cancelled by user.[/bold red]")
+                            raise typer.Exit(code=1)
+                        
+                        if mirror_url and mirror_url.strip():
+                            session_mirrors[pm] = mirror_url.strip()
+                            
+                            save_permanent = typer.confirm("Save this mirror permanently in config?", default=True)
+                            if save_permanent:
+                                config.set_mirror(pm, session_mirrors[pm])
+                                config.save()
+                                ui.console.print(f"[green]✔ Saved mirror permanently for {pm}[/green]")
+                            else:
+                                ui.console.print(f"[green]✔ Using mirror for {pm} in this session only[/green]")
 
     # --- Installation Loop ---
     success_count = 0

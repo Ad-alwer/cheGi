@@ -361,3 +361,40 @@ def test_run_custom_command_with_mirror_integration(mock_run: MagicMock) -> None
         "pip install --index-url http://custom.mirror django", 
         shell=True
     )
+    
+def test_build_command_with_mirror_list_success() -> None:
+    """Tests that the command builder extracts the primary mirror when given a list."""
+    base_cmd = "pip install requests"
+    mirror_urls = ["https://mirror1.local", "https://mirror2.local"]
+    expected = "pip install --index-url https://mirror1.local requests"
+    
+    result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", mirror_urls)
+    assert result == expected
+
+
+def test_build_command_with_mirror_empty_list() -> None:
+    """Tests command builder behavior when an empty list is provided."""
+    base_cmd = "npm install express"
+    mirror_urls: list = []
+    
+    # Should safely fallback to the base command if the list is empty
+    result = SystemInstaller._build_command_with_mirror(base_cmd, "npm", mirror_urls)
+    assert result == base_cmd
+
+
+@patch("chegi.installer.subprocess.run")
+def test_run_custom_command_with_mirror_list_integration(mock_run: MagicMock) -> None:
+    """Tests if run_custom_command handles a list of mirror URLs correctly."""
+    mock_run.return_value.returncode = 0
+    
+    result = SystemInstaller.run_custom_command(
+        cmd="pip install django",
+        pm_name="pip",
+        mirror_url=["http://primary.mirror", "http://secondary.mirror"]
+    )
+    
+    assert result is True
+    mock_run.assert_called_once_with(
+        "pip install --index-url http://primary.mirror django", 
+        shell=True
+    )
