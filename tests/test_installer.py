@@ -1,5 +1,7 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
+
 from chegi.installer import SystemInstaller
 
 
@@ -29,7 +31,7 @@ def test_install_unsupported_os(mock_system: MagicMock):
     """
     mock_system.return_value = "FreeBSD"
     result = SystemInstaller.install_package("git")
-    
+
     assert result is False
     mock_system.assert_called_once()
 
@@ -48,9 +50,9 @@ def test_install_routing_linux(mock_linux_installer: MagicMock, mock_system: Mag
     """
     mock_system.return_value = "Linux"
     mock_linux_installer.return_value = True
-    
+
     result = SystemInstaller.install_package("git")
-    
+
     assert result is True
     mock_linux_installer.assert_called_once_with("git")
 
@@ -70,9 +72,9 @@ def test_windows_winget_success(mock_run: MagicMock, mock_which: MagicMock):
     mock_which.return_value = "C:\\path\\to\\winget.exe"
     # Mock the return code of the subprocess
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller._install_package_windows("git")
-    
+
     assert result is True
     mock_run.assert_called_once()
     # Check if the winget specific ID was used
@@ -91,7 +93,7 @@ def test_windows_winget_missing(mock_which: MagicMock):
         None
     """
     mock_which.return_value = None
-    
+
     result = SystemInstaller._install_package_windows("git")
     assert result is False
 
@@ -111,9 +113,9 @@ def test_linux_apt_success(mock_run: MagicMock, mock_which: MagicMock):
     # Simulate that 'apt' exists, but others do not
     mock_which.side_effect = lambda cmd: "/usr/bin/apt" if cmd == "apt" else None
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller._install_package_linux("git")
-    
+
     assert result is True
     mock_run.assert_called_once()
     assert "apt install" in mock_run.call_args[0][0]
@@ -134,9 +136,9 @@ def test_linux_dnf_success(mock_run: MagicMock, mock_which: MagicMock):
     # Simulate that only 'dnf' exists
     mock_which.side_effect = lambda cmd: "/usr/bin/dnf" if cmd == "dnf" else None
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller._install_package_linux("git")
-    
+
     assert result is True
     assert "dnf install" in mock_run.call_args[0][0]
 
@@ -153,7 +155,7 @@ def test_linux_unsupported_distro(mock_which: MagicMock):
     """
     # Simulate no supported package managers exist
     mock_which.return_value = None
-    
+
     result = SystemInstaller._install_package_linux("git")
     assert result is False
 
@@ -172,9 +174,9 @@ def test_mac_brew_success(mock_run: MagicMock, mock_which: MagicMock):
     """
     mock_which.return_value = "/usr/local/bin/brew"
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller._install_package_mac("git")
-    
+
     assert result is True
     mock_run.assert_called_once_with(["brew", "install", "git"])
 
@@ -193,9 +195,9 @@ def test_mac_xcode_fallback_success(mock_run: MagicMock, mock_which: MagicMock):
     """
     mock_which.return_value = None  # Brew not found
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller._install_package_mac("git")
-    
+
     assert result is True
     mock_run.assert_called_once_with(["xcode-select", "--install"])
 
@@ -214,7 +216,7 @@ def test_get_os_package_manager(mock_which: MagicMock, mock_system: MagicMock) -
     mock_which.return_value = "/opt/homebrew/bin/brew"
     assert SystemInstaller.get_os_package_manager() == "brew"
 
-    # Simulate Linux environment. We use side_effect to mimic shutil.which 
+    # Simulate Linux environment. We use side_effect to mimic shutil.which
     # finding 'apt' but returning None for other package managers like 'dnf'.
     mock_system.return_value = "Linux"
     mock_which.side_effect = lambda cmd: "/usr/bin/apt" if cmd == "apt" else None
@@ -233,9 +235,9 @@ def test_is_tool_installed_success(mock_run: MagicMock) -> None:
     # Include multi-line output to test the stdout parsing logic
     mock_run.return_value.returncode = 0
     mock_run.return_value.stdout = "Python 3.10.12\nAdditional unwanted output"
-    
+
     is_installed, output = SystemInstaller.is_tool_installed("python3 --version")
-    
+
     assert is_installed is True
     # Ensure only the first line is extracted to maintain a clean UI table
     assert output == "Python 3.10.12"
@@ -246,9 +248,9 @@ def test_is_tool_installed_failure(mock_run: MagicMock) -> None:
     """Test tool installation check when the tool is missing."""
     # Simulate a "command not found" scenario (return code != 0)
     mock_run.return_value.returncode = 127
-    
+
     is_installed, output = SystemInstaller.is_tool_installed("unknown_tool --version")
-    
+
     assert is_installed is False
     assert output == "Not installed"
 
@@ -258,9 +260,9 @@ def test_is_tool_installed_exception(mock_run: MagicMock) -> None:
     """Test tool installation check when a system exception occurs."""
     # Simulate an unexpected OS-level exception during execution
     mock_run.side_effect = Exception("Permission denied")
-    
+
     is_installed, output = SystemInstaller.is_tool_installed("restricted_cmd")
-    
+
     assert is_installed is False
     assert "Permission denied" in output
 
@@ -269,9 +271,9 @@ def test_is_tool_installed_exception(mock_run: MagicMock) -> None:
 def test_run_custom_command_success(mock_run: MagicMock) -> None:
     """Test successful execution of a custom shell command."""
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller.run_custom_command("pip install pytest")
-    
+
     assert result is True
     mock_run.assert_called_once_with("pip install pytest", shell=True)
 
@@ -281,19 +283,19 @@ def test_run_custom_command_failure(mock_run: MagicMock) -> None:
     """Test execution of a custom shell command that fails."""
     # Simulate a failed installation (e.g., package not found or network error)
     mock_run.return_value.returncode = 1
-    
+
     result = SystemInstaller.run_custom_command("pip install invalid_pkg")
-    
+
     assert result is False
 
 
 @patch("chegi.installer.subprocess.run")
 def test_run_custom_command_keyboard_interrupt(mock_run: MagicMock) -> None:
     """Test if run_custom_command correctly raises KeyboardInterrupt on Ctrl+C."""
-    # Return code 130 is the standard POSIX exit code for a process 
+    # Return code 130 is the standard POSIX exit code for a process
     # terminated by SIGINT (Ctrl+C).
     mock_run.return_value.returncode = 130
-    
+
     with pytest.raises(KeyboardInterrupt):
         SystemInstaller.run_custom_command("sleep 100")
 
@@ -301,8 +303,11 @@ def test_run_custom_command_keyboard_interrupt(mock_run: MagicMock) -> None:
 def test_build_command_with_mirror_missing_args() -> None:
     """Tests command builder behavior when PM name or mirror URL is omitted."""
     base_cmd = "pip install requests"
-    
-    assert SystemInstaller._build_command_with_mirror(base_cmd, None, "http://mirror") == base_cmd
+
+    assert (
+        SystemInstaller._build_command_with_mirror(base_cmd, None, "http://mirror")
+        == base_cmd
+    )
     assert SystemInstaller._build_command_with_mirror(base_cmd, "pip", None) == base_cmd
 
 
@@ -311,7 +316,7 @@ def test_build_command_with_mirror_pip_success() -> None:
     base_cmd = "pip install requests --upgrade"
     mirror_url = "https://mirror.local/pypi"
     expected = "pip install --index-url https://mirror.local/pypi requests --upgrade"
-    
+
     result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", mirror_url)
     assert result == expected
 
@@ -320,7 +325,7 @@ def test_build_command_with_mirror_pip_no_install() -> None:
     """Tests that pip commands without the 'install' keyword remain unmodified."""
     base_cmd = "pip download requests"
     mirror_url = "https://mirror.local/pypi"
-    
+
     result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", mirror_url)
     assert result == base_cmd
 
@@ -330,7 +335,7 @@ def test_build_command_with_mirror_npm_success() -> None:
     base_cmd = "npm install express"
     mirror_url = "https://mirror.local/npm"
     expected = "npm install express --registry https://mirror.local/npm"
-    
+
     result = SystemInstaller._build_command_with_mirror(base_cmd, "npm", mirror_url)
     assert result == expected
 
@@ -339,7 +344,7 @@ def test_build_command_with_mirror_unsupported_pm() -> None:
     """Tests that commands for unsupported package managers remain unmodified."""
     base_cmd = "apt install curl"
     mirror_url = "https://mirror.local/apt"
-    
+
     result = SystemInstaller._build_command_with_mirror(base_cmd, "apt", mirror_url)
     assert result == base_cmd
 
@@ -348,26 +353,24 @@ def test_build_command_with_mirror_unsupported_pm() -> None:
 def test_run_custom_command_with_mirror_integration(mock_run: MagicMock) -> None:
     """Tests if run_custom_command properly passes mirror arguments to the builder and executes the modified command."""
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller.run_custom_command(
-        cmd="pip install django",
-        pm_name="pip",
-        mirror_url="http://custom.mirror"
+        cmd="pip install django", pm_name="pip", mirror_url="http://custom.mirror"
     )
-    
+
     assert result is True
     # Verify that the executed command is the modified version
     mock_run.assert_called_once_with(
-        "pip install --index-url http://custom.mirror django", 
-        shell=True
+        "pip install --index-url http://custom.mirror django", shell=True
     )
-    
+
+
 def test_build_command_with_mirror_list_success() -> None:
     """Tests that the command builder extracts the primary mirror when given a list."""
     base_cmd = "pip install requests"
     mirror_urls = ["https://mirror1.local", "https://mirror2.local"]
     expected = "pip install --index-url https://mirror1.local requests"
-    
+
     result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", mirror_urls)
     assert result == expected
 
@@ -376,7 +379,7 @@ def test_build_command_with_mirror_empty_list() -> None:
     """Tests command builder behavior when an empty list is provided."""
     base_cmd = "npm install express"
     mirror_urls: list = []
-    
+
     # Should safely fallback to the base command if the list is empty
     result = SystemInstaller._build_command_with_mirror(base_cmd, "npm", mirror_urls)
     assert result == base_cmd
@@ -386,29 +389,28 @@ def test_build_command_with_mirror_empty_list() -> None:
 def test_run_custom_command_with_mirror_list_integration(mock_run: MagicMock) -> None:
     """Tests if run_custom_command handles a list of mirror URLs correctly."""
     mock_run.return_value.returncode = 0
-    
+
     result = SystemInstaller.run_custom_command(
         cmd="pip install django",
         pm_name="pip",
-        mirror_url=["http://primary.mirror", "http://secondary.mirror"]
+        mirror_url=["http://primary.mirror", "http://secondary.mirror"],
     )
-    
+
     assert result is True
     mock_run.assert_called_once_with(
-        "pip install --index-url http://primary.mirror django", 
-        shell=True
+        "pip install --index-url http://primary.mirror django", shell=True
     )
+
 
 def test_get_install_command_with_install_key() -> None:
     """Tests command resolution using the simple 'install' dictionary key."""
     tool_info = {
-        "install": {
-            "apt": "sudo apt install jq",
-            "default": "brew install jq"
-        }
+        "install": {"apt": "sudo apt install jq", "default": "brew install jq"}
     }
-    
-    assert SystemInstaller.get_install_command(tool_info, "apt") == "sudo apt install jq"
+
+    assert (
+        SystemInstaller.get_install_command(tool_info, "apt") == "sudo apt install jq"
+    )
     assert SystemInstaller.get_install_command(tool_info, "dnf") == "brew install jq"
 
 
@@ -417,59 +419,63 @@ def test_get_install_command_with_platforms_key(mock_system: MagicMock) -> None:
     """Tests command resolution using the detailed OS-specific 'platforms' key."""
     tool_info = {
         "platforms": {
-            "mac": {
-                "brew": "brew install yq",
-                "default": "curl -s yq"
-            },
-            "linux": "sudo snap install yq"  # Direct string fallback instead of dict
+            "mac": {"brew": "brew install yq", "default": "curl -s yq"},
+            "linux": "sudo snap install yq",  # Direct string fallback instead of dict
         }
     }
-    
+
     # macOS simulation
     mock_system.return_value = "Darwin"
     assert SystemInstaller.get_install_command(tool_info, "brew") == "brew install yq"
     assert SystemInstaller.get_install_command(tool_info, "unknown_pm") == "curl -s yq"
-    
+
     # Linux simulation
     mock_system.return_value = "Linux"
-    assert SystemInstaller.get_install_command(tool_info, "apt") == "sudo snap install yq"
+    assert (
+        SystemInstaller.get_install_command(tool_info, "apt") == "sudo snap install yq"
+    )
 
 
 def test_get_install_command_with_fallback_keys() -> None:
     """Tests command resolution using older fallback keys (install_cmd, install_command)."""
     tool_info_str = {"install_cmd": "pip install ruff"}
-    assert SystemInstaller.get_install_command(tool_info_str, "pip") == "pip install ruff"
-    
+    assert (
+        SystemInstaller.get_install_command(tool_info_str, "pip") == "pip install ruff"
+    )
+
     tool_info_dict = {
-        "install_command": {
-            "npm": "npm install -g pnpm",
-            "default": "corepack enable"
-        }
+        "install_command": {"npm": "npm install -g pnpm", "default": "corepack enable"}
     }
-    assert SystemInstaller.get_install_command(tool_info_dict, "npm") == "npm install -g pnpm"
-    assert SystemInstaller.get_install_command(tool_info_dict, "yarn") == "corepack enable"
+    assert (
+        SystemInstaller.get_install_command(tool_info_dict, "npm")
+        == "npm install -g pnpm"
+    )
+    assert (
+        SystemInstaller.get_install_command(tool_info_dict, "yarn") == "corepack enable"
+    )
 
 
 def test_get_install_command_not_found() -> None:
     """Tests that the method returns None when no valid installation keys exist."""
-    tool_info = {
-        "name": "just_a_tool",
-        "version": "1.0.0"
-    }
+    tool_info = {"name": "just_a_tool", "version": "1.0.0"}
     assert SystemInstaller.get_install_command(tool_info, "apt") is None
 
 
 @patch("chegi.installer.shutil.which")
 @patch("chegi.installer.subprocess.run")
-def test_is_tool_installed_gui_success(mock_run: MagicMock, mock_which: MagicMock) -> None:
+def test_is_tool_installed_gui_success(
+    mock_run: MagicMock, mock_which: MagicMock
+) -> None:
     """Tests GUI tool check to ensure it bypasses subprocess execution."""
     mock_which.return_value = "/usr/bin/postman"
-    
-    is_installed, output = SystemInstaller.is_tool_installed("postman --version", is_gui=True)
-    
+
+    is_installed, output = SystemInstaller.is_tool_installed(
+        "postman --version", is_gui=True
+    )
+
     assert is_installed is True
     assert output == "Installed (GUI Tool)"
-    
+
     # Subprocess should not run to prevent opening the actual app window
     mock_run.assert_not_called()
     mock_which.assert_called_once_with("postman")
@@ -477,12 +483,14 @@ def test_is_tool_installed_gui_success(mock_run: MagicMock, mock_which: MagicMoc
 
 @patch("chegi.installer.shutil.which")
 @patch("chegi.installer.subprocess.run")
-def test_is_tool_installed_gui_failure(mock_run: MagicMock, mock_which: MagicMock) -> None:
+def test_is_tool_installed_gui_failure(
+    mock_run: MagicMock, mock_which: MagicMock
+) -> None:
     """Tests GUI tool check when the tool is missing from the system."""
     mock_which.return_value = None
-    
+
     is_installed, output = SystemInstaller.is_tool_installed("insomnia", is_gui=True)
-    
+
     assert is_installed is False
     assert output == "Not installed"
     mock_run.assert_not_called()

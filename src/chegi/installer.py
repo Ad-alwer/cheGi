@@ -1,8 +1,9 @@
 import platform
-import subprocess
 import shutil
+import subprocess
+from typing import List, Optional, Tuple, Union
+
 import typer
-from typing import Tuple, Optional, List, Union
 
 
 class SystemInstaller:
@@ -46,35 +47,39 @@ class SystemInstaller:
     @classmethod
     def get_install_command(cls, tool_info: dict, pkg_manager: str) -> Optional[str]:
         """Gets the appropriate installation command based on the OS and package manager."""
-        
+
         # 1. Check if it uses the simple 'install' key mapping
         if "install" in tool_info:
-            return tool_info["install"].get(pkg_manager) or tool_info["install"].get("default")
-            
+            return tool_info["install"].get(pkg_manager) or tool_info["install"].get(
+                "default"
+            )
+
         # 2. Check if it uses the detailed 'platforms' key mapping
         elif "platforms" in tool_info:
             os_name = platform.system().lower()
-            if os_name == "darwin": 
+            if os_name == "darwin":
                 os_name = "mac"
-            
+
             platform_cmds = tool_info["platforms"].get(os_name, {})
-            
+
             if isinstance(platform_cmds, dict):
                 return platform_cmds.get(pkg_manager) or platform_cmds.get("default")
             elif isinstance(platform_cmds, str):
                 return platform_cmds
-                
+
         # 3. Fallback for newer potential keys
         install_data = tool_info.get("install_cmd") or tool_info.get("install_command")
         if isinstance(install_data, str):
             return install_data
         elif isinstance(install_data, dict):
             return install_data.get(pkg_manager) or install_data.get("default")
-            
+
         return None
 
     @classmethod
-    def is_tool_installed(cls, check_cmd: str, is_gui: bool = False) -> Tuple[bool, str]:
+    def is_tool_installed(
+        cls, check_cmd: str, is_gui: bool = False
+    ) -> Tuple[bool, str]:
         """Runs a check command to determine if a dynamic tool is installed.
 
         Args:
@@ -92,7 +97,9 @@ class SystemInstaller:
         # If the tool is a graphical app, running its command will open the app and freeze the terminal.
         # Instead, we just check if its executable exists in the system PATH.
         if is_gui:
-            executable_name = check_cmd.split()[0] # e.g., gets "postman" from "postman --version"
+            executable_name = check_cmd.split()[
+                0
+            ]  # e.g., gets "postman" from "postman --version"
             if shutil.which(executable_name):
                 return True, "Installed (GUI Tool)"
             return False, "Not installed"
@@ -104,10 +111,10 @@ class SystemInstaller:
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             if result.returncode == 0:
-                output = result.stdout.strip().split('\n')[0]
+                output = result.stdout.strip().split("\n")[0]
                 return True, output if output else "Installed"
             return False, "Not installed"
         except Exception as e:
@@ -115,7 +122,10 @@ class SystemInstaller:
 
     @classmethod
     def _build_command_with_mirror(
-        cls, base_cmd: str, pm_name: Optional[str], mirror_url: Optional[Union[str, List[str]]]
+        cls,
+        base_cmd: str,
+        pm_name: Optional[str],
+        mirror_url: Optional[Union[str, List[str]]],
     ) -> str:
         """Constructs the final command string with a mirror/registry flag if applicable.
 
@@ -135,7 +145,9 @@ class SystemInstaller:
             return base_cmd
 
         # Extract the primary URL if a list of mirrors is provided
-        primary_mirror = mirror_url[0] if isinstance(mirror_url, list) and mirror_url else mirror_url
+        primary_mirror = (
+            mirror_url[0] if isinstance(mirror_url, list) and mirror_url else mirror_url
+        )
         if not isinstance(primary_mirror, str):
             return base_cmd
 
@@ -166,7 +178,7 @@ class SystemInstaller:
         cls,
         cmd: str,
         pm_name: Optional[str] = None,
-        mirror_url: Optional[Union[str, List[str]]] = None
+        mirror_url: Optional[Union[str, List[str]]] = None,
     ) -> bool:
         """Executes a dynamic installation shell command, with optional mirror support.
 
@@ -209,7 +221,9 @@ class SystemInstaller:
             bool: True if the installation was successful, False otherwise.
         """
         if package_name.lower() not in cls.SUPPORTED_PACKAGES:
-            typer.secho(f"Package '{package_name}' is not supported.", fg=typer.colors.RED)
+            typer.secho(
+                f"Package '{package_name}' is not supported.", fg=typer.colors.RED
+            )
             return False
 
         os_name = platform.system()
@@ -237,20 +251,24 @@ class SystemInstaller:
         Raises:
             KeyboardInterrupt: If the installation is interrupted by the user.
         """
-        winget_map = {
-            "git": "Git.Git"
-        }
+        winget_map = {"git": "Git.Git"}
         winget_id = winget_map.get(package_name.lower(), package_name)
 
         if shutil.which("winget"):
-            typer.secho(f"Using 'winget' to install {package_name}...", fg=typer.colors.CYAN)
+            typer.secho(
+                f"Using 'winget' to install {package_name}...", fg=typer.colors.CYAN
+            )
             try:
-                result = subprocess.run(["winget", "install", "--id", winget_id, "-e", "--source", "winget"])
+                result = subprocess.run(
+                    ["winget", "install", "--id", winget_id, "-e", "--source", "winget"]
+                )
                 return result.returncode == 0
             except KeyboardInterrupt:
                 raise
 
-        typer.secho("Error: 'winget' not found. Please install manually.", fg=typer.colors.RED)
+        typer.secho(
+            "Error: 'winget' not found. Please install manually.", fg=typer.colors.RED
+        )
         return False
 
     @classmethod
@@ -268,19 +286,25 @@ class SystemInstaller:
         """
         try:
             if shutil.which("apt"):
-                typer.secho(f"Using 'apt' to install {package_name}...", fg=typer.colors.CYAN)
+                typer.secho(
+                    f"Using 'apt' to install {package_name}...", fg=typer.colors.CYAN
+                )
                 cmd = f"sudo apt update && sudo apt install -y {package_name}"
                 result = subprocess.run(cmd, shell=True)
                 return result.returncode == 0
 
             elif shutil.which("dnf"):
-                typer.secho(f"Using 'dnf' to install {package_name}...", fg=typer.colors.CYAN)
+                typer.secho(
+                    f"Using 'dnf' to install {package_name}...", fg=typer.colors.CYAN
+                )
                 cmd = f"sudo dnf install -y {package_name}"
                 result = subprocess.run(cmd, shell=True)
                 return result.returncode == 0
 
             elif shutil.which("pacman"):
-                typer.secho(f"Using 'pacman' to install {package_name}...", fg=typer.colors.CYAN)
+                typer.secho(
+                    f"Using 'pacman' to install {package_name}...", fg=typer.colors.CYAN
+                )
                 cmd = f"sudo pacman -Sy --noconfirm {package_name}"
                 result = subprocess.run(cmd, shell=True)
                 return result.returncode == 0
@@ -305,16 +329,25 @@ class SystemInstaller:
         """
         try:
             if shutil.which("brew"):
-                typer.secho(f"Using 'Homebrew' to install {package_name}...", fg=typer.colors.CYAN)
+                typer.secho(
+                    f"Using 'Homebrew' to install {package_name}...",
+                    fg=typer.colors.CYAN,
+                )
                 result = subprocess.run(["brew", "install", package_name])
                 return result.returncode == 0
 
             if package_name.lower() == "git":
-                typer.secho("Homebrew not found. Attempting via xcode-select...", fg=typer.colors.CYAN)
+                typer.secho(
+                    "Homebrew not found. Attempting via xcode-select...",
+                    fg=typer.colors.CYAN,
+                )
                 result = subprocess.run(["xcode-select", "--install"])
                 return result.returncode == 0
 
-            typer.secho(f"Error: 'brew' not found. Cannot install {package_name}.", fg=typer.colors.RED)
+            typer.secho(
+                f"Error: 'brew' not found. Cannot install {package_name}.",
+                fg=typer.colors.RED,
+            )
             return False
         except KeyboardInterrupt:
             raise

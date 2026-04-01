@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "chegi"
 version = "0.3.0"
-description = "Fast & Concurrent Git Repository Manager"
+description = "The ultimate Git companion. Type less, do more."
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0.0",
+    "ruff>=0.3.0"
 ]
 
 [project.scripts]
@@ -29,3 +30,16 @@ pythonpath = [
 
 [tool.setuptools.package-data]
 chegi = ["environments/*.json"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

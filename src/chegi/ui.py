@@ -1,7 +1,10 @@
 from typing import List
+
 from rich.console import Console
 from rich.table import Table
+
 from chegi.git_utils import GitStatus
+
 
 class TerminalUI:
     """Handles all visual outputs in the terminal using the Rich library.
@@ -46,11 +49,11 @@ class TerminalUI:
             None
         """
         self.console.print(f"[bold green]Success:[/bold green] {message}")
-        
+
     def print_info(self, message: str) -> None:
         """
         Prints an informational message to the console.
-        
+
         Args:
             message (str): The information message to display.
         """
@@ -66,7 +69,9 @@ class TerminalUI:
             None
         """
         if not statuses:
-            self.console.print("[bold yellow]No Git repositories found in the specified path.[/bold yellow]")
+            self.console.print(
+                "[bold yellow]No Git repositories found in the specified path.[/bold yellow]"
+            )
             return
 
         show_security = any(s.security_status is not None for s in statuses)
@@ -76,7 +81,7 @@ class TerminalUI:
             show_header=True,
             header_style="bold magenta",
             title_style="bold cyan",
-            title_justify="left"
+            title_justify="left",
         )
 
         table.add_column("Repository", style="cyan", no_wrap=True)
@@ -92,14 +97,14 @@ class TerminalUI:
         for status in sorted_statuses:
             if status.error:
                 row_data = [
-                    status.repo_name, 
-                    "N/A", 
-                    "[red]Error[/red]", 
-                    f"[dim]{status.error}[/dim]"
+                    status.repo_name,
+                    "N/A",
+                    "[red]Error[/red]",
+                    f"[dim]{status.error}[/dim]",
                 ]
                 if show_security:
                     row_data.append("-")
-                
+
                 table.add_row(*row_data)
                 continue
 
@@ -113,15 +118,14 @@ class TerminalUI:
             else:
                 remote_ui = "[yellow]⚠ No Remote[/yellow]"
 
-            row_data = [
-                status.repo_name,
-                status.branch,
-                local_status_ui,
-                remote_ui
-            ]
+            row_data = [status.repo_name, status.branch, local_status_ui, remote_ui]
 
             if show_security:
-                sec_display = status.security_status if status.security_status else "[dim]N/A[/dim]"
+                sec_display = (
+                    status.security_status
+                    if status.security_status
+                    else "[dim]N/A[/dim]"
+                )
                 row_data.append(sec_display)
 
             table.add_row(*row_data)

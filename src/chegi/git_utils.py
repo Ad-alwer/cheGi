@@ -6,7 +6,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Tuple, Callable, Optional
+from typing import Callable, Iterable, Iterator, Optional, Tuple
 
 MIN_GIT_VERSION = (2, 25, 0)
 
@@ -21,23 +21,23 @@ def check_git_environment() -> Tuple[bool, str]:
     """
     try:
         result = subprocess.run(
-            ["git", "--version"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["git", "--version"], capture_output=True, text=True, check=True
         )
         version_str = result.stdout.strip()
-        
+
         match = re.search(r"(\d+)\.(\d+)\.(\d+)", version_str)
         if match:
             current_version = tuple(map(int, match.groups()))
-            
+
             if current_version < MIN_GIT_VERSION:
-                min_v_str = '.'.join(map(str, MIN_GIT_VERSION))
-                return False, f"Git version is too old: {version_str}. Minimum required: {min_v_str}"
-            
+                min_v_str = ".".join(map(str, MIN_GIT_VERSION))
+                return (
+                    False,
+                    f"Git version is too old: {version_str}. Minimum required: {min_v_str}",
+                )
+
             return True, version_str
-        
+
         return False, "Could not determine Git version."
 
     except FileNotFoundError:
@@ -49,7 +49,7 @@ def check_git_environment() -> Tuple[bool, str]:
 @dataclass
 class GitStatus:
     """Represents the extracted status of a single Git repository.
-    
+
     Attributes:
         path (Path): Absolute path to the repository.
         repo_name (str): The name of the repository folder.
@@ -60,19 +60,20 @@ class GitStatus:
         error (str): Error message if the repository analysis fails.
         security_status (Optional[str]): Security scan result if requested.
     """
+
     path: Path
     repo_name: str
     branch: str
     is_dirty: bool
     has_remote: bool
     error: str = ""
-    has_staged_files: bool =False
+    has_staged_files: bool = False
     security_status: Optional[str] = None
 
 
 class GitAnalyzer:
     """Handles executing Git commands and analyzing repository statuses concurrently."""
-    
+
     def __init__(self, max_workers: int = 10):
         """Initializes the GitAnalyzer with a specific concurrency limit.
 
@@ -90,24 +91,22 @@ class GitAnalyzer:
 
         Returns:
             str: The standard output of the git command, stripped of leading/trailing whitespace.
-            
+
         Raises:
             RuntimeError: If the git command execution fails.
         """
         try:
             result = subprocess.run(
-                ["git", *args],
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                check=True
+                ["git", *args], cwd=cwd, capture_output=True, text=True, check=True
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.strip() or "Git command execution failed"
             raise RuntimeError(error_msg)
 
-    def analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], str]] = None) -> GitStatus:
+    def analyze_single_repo(
+        self, repo_path: Path, security_scanner: Optional[Callable[[Path], str]] = None
+    ) -> GitStatus:
         """Extracts the git status for a single repository.
 
         Args:
@@ -118,32 +117,32 @@ class GitAnalyzer:
             GitStatus: An object containing the analyzed status of the repository.
         """
         repo_name = repo_path.name
-        
+
         try:
             branch = self._run_git_command(repo_path, "branch", "--show-current")
             if not branch:
                 branch = "No Commits"
-                
+
             status_output = self._run_git_command(repo_path, "status", "--porcelain")
             is_dirty = len(status_output) > 0
-            
+
             has_staged_files = False
             if is_dirty:
                 for line in status_output.splitlines():
-                    if line and line[0] not in (' ', '?'):
+                    if line and line[0] not in (" ", "?"):
                         has_staged_files = True
                         break
-            
+
             remote_output = self._run_git_command(repo_path, "remote")
             has_remote = len(remote_output) > 0
-            
+
             sec_status = None
             if security_scanner:
                 try:
                     sec_status = security_scanner(repo_path)
                 except Exception:
                     sec_status = "Scan Failed"
-            
+
             return GitStatus(
                 path=repo_path,
                 repo_name=repo_name,
@@ -151,9 +150,9 @@ class GitAnalyzer:
                 is_dirty=is_dirty,
                 has_staged_files=has_staged_files,
                 has_remote=has_remote,
-                security_status=sec_status
+                security_status=sec_status,
             )
-            
+
         except Exception as e:
             return GitStatus(
                 path=repo_path,
@@ -162,10 +161,14 @@ class GitAnalyzer:
                 is_dirty=False,
                 has_staged_files=False,
                 has_remote=False,
-                error=str(e)
+                error=str(e),
             )
 
-    def analyze_concurrently(self, repo_paths: Iterable[Path], security_scanner: Optional[Callable[[Path], str]] = None) -> Iterator[GitStatus]:
+    def analyze_concurrently(
+        self,
+        repo_paths: Iterable[Path],
+        security_scanner: Optional[Callable[[Path], str]] = None,
+    ) -> Iterator[GitStatus]:
         """Processes an iterable of repository paths concurrently using a thread pool.
 
         Args:
@@ -177,12 +180,13 @@ class GitAnalyzer:
         """
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_path = {
-                executor.submit(self.analyze_single_repo, path, security_scanner): path 
+                executor.submit(self.analyze_single_repo, path, security_scanner): path
                 for path in repo_paths
             }
-            
+
             for future in as_completed(future_to_path):
                 yield future.result()
+
 
 def perform_automated_rebase(target_hash: str, new_message: str) -> None:
     """Performs an automated interactive rebase to reword a specific commit.
@@ -200,7 +204,7 @@ def perform_automated_rebase(target_hash: str, new_message: str) -> None:
     """
     seq_editor_path = ""
     msg_editor_path = ""
-    
+
     try:
         with tempfile.NamedTemporaryFile(mode="w", delete=False) as seq_editor:
             seq_editor.write(f"""#!{sys.executable}
@@ -235,12 +239,14 @@ with open(sys.argv[1], 'w') as f:
             ["git", "rebase", "-i", f"{target_hash}^"],
             env=env,
             check=True,
-            capture_output=True
+            capture_output=True,
         )
 
     except subprocess.CalledProcessError as e:
         subprocess.run(["git", "rebase", "--abort"], capture_output=True, check=False)
-        raise RuntimeError(f"Automated rebase failed: {e.stderr.decode('utf-8') if e.stderr else str(e)}") from e
+        raise RuntimeError(
+            f"Automated rebase failed: {e.stderr.decode('utf-8') if e.stderr else str(e)}"
+        ) from e
 
     finally:
         if seq_editor_path and os.path.exists(seq_editor_path):
@@ -248,10 +254,11 @@ with open(sys.argv[1], 'w') as f:
         if msg_editor_path and os.path.exists(msg_editor_path):
             os.remove(msg_editor_path)
 
+
 def is_workspace_clean() -> bool:
     """Checks if the Git workspace is clean (no uncommitted changes).
 
-    Uses `git status --porcelain` to check for any modified, staged, 
+    Uses `git status --porcelain` to check for any modified, staged,
     or untracked files in a stable, machine-readable format.
 
     Returns:
@@ -263,14 +270,12 @@ def is_workspace_clean() -> bool:
     try:
         # --porcelain guarantees a stable output format across git versions
         result = subprocess.run(
-            ["git", "status", "--porcelain"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["git", "status", "--porcelain"], capture_output=True, text=True, check=True
         )
         return len(result.stdout.strip()) == 0
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to check git status: {e.stderr}")
+
 
 def stash_changes() -> None:
     """Stashes uncommitted changes securely with a descriptive message.
@@ -284,10 +289,11 @@ def stash_changes() -> None:
             ["git", "stash", "push", "-m", "chegi auto stash before sync"],
             capture_output=True,
             text=True,
-            check=True
+            check=True,
         )
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to stash changes: {e.stderr}")
+
 
 def pop_stash() -> None:
     """Pops the most recently stashed changes back into the workspace.
@@ -297,19 +303,17 @@ def pop_stash() -> None:
     """
     try:
         subprocess.run(
-            ["git", "stash", "pop"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["git", "stash", "pop"], capture_output=True, text=True, check=True
         )
     except subprocess.CalledProcessError as e:
         # git stash pop returns non-zero if a merge conflict occurs
         raise RuntimeError(f"Conflict or error popping stash:\n{e.stdout}\n{e.stderr}")
 
+
 def pull_rebase() -> None:
     """Executes a git pull using rebase to maintain a linear history.
 
-    Fetches from the remote and rebases current local commits on top of 
+    Fetches from the remote and rebases current local commits on top of
     the remote tracking branch.
 
     Raises:
@@ -317,14 +321,14 @@ def pull_rebase() -> None:
     """
     try:
         subprocess.run(
-            ["git", "pull", "--rebase"],
-            capture_output=True,
-            text=True,
-            check=True
+            ["git", "pull", "--rebase"], capture_output=True, text=True, check=True
         )
     except subprocess.CalledProcessError as e:
         # Rebase stops and exits with non-zero on conflicts
-        raise RuntimeError(f"Failed to pull changes (Conflict or network error):\n{e.stdout}\n{e.stderr}")
+        raise RuntimeError(
+            f"Failed to pull changes (Conflict or network error):\n{e.stdout}\n{e.stderr}"
+        )
+
 
 def push_changes() -> None:
     """Pushes local commits to the remote repository.
@@ -333,11 +337,6 @@ def push_changes() -> None:
         RuntimeError: If the push operation is rejected or fails.
     """
     try:
-        subprocess.run(
-            ["git", "push"],
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        subprocess.run(["git", "push"], capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to push changes: {e.stderr}")

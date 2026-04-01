@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Set, Dict, Any, List, Tuple,Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 # Git requirements
 MIN_GIT_VERSION: Tuple[int, int, int] = (2, 25, 0)
@@ -29,12 +29,12 @@ DEFAULT_EXCLUDES: List[str] = [
     "__pycache__",
     ".idea",
     ".vscode",
-    ".git"
+    ".git",
 ]
 DEFAULT_MAX_DEPTH: int = 3
 DEFAULT_MCTS: int = 10
 # Changed to support lists of URLs instead of a single string
-DEFAULT_MIRRORS: Dict[str, List[str]] = {}  
+DEFAULT_MIRRORS: Dict[str, List[str]] = {}
 
 
 class ChegiConfig:
@@ -56,37 +56,39 @@ class ChegiConfig:
         """Initializes the configuration manager with default values and loads user settings.
 
         Args:
-            base_path (str, optional): The base directory where `.chegi.json` is located. 
+            base_path (str, optional): The base directory where `.chegi.json` is located.
                 Defaults to "." (current working directory).
         """
         self.config_file: Path = Path(base_path) / ".chegi.json"
-        
+
         self.exclude_dirs: Set[str] = set(DEFAULT_EXCLUDES)
         self.max_depth: int = DEFAULT_MAX_DEPTH
         self.mcts: int = DEFAULT_MCTS
         # Deep copy the default mirrors to prevent shared state mutations
-        self.mirrors: Dict[str, List[str]] = {k: list(v) for k, v in DEFAULT_MIRRORS.items()}
-        
+        self.mirrors: Dict[str, List[str]] = {
+            k: list(v) for k, v in DEFAULT_MIRRORS.items()
+        }
+
         self.load()
 
     def load(self) -> None:
         """Loads configuration from the `.chegi.json` file if it exists.
 
         Reads the JSON file and overrides the default attributes with user-defined
-        settings. If the JSON file is invalid or corrupted, it silently falls back 
+        settings. If the JSON file is invalid or corrupted, it silently falls back
         to the default values.
         """
         if self.config_file.exists() and self.config_file.is_file():
             try:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    
+
                     custom_excludes = data.get("exclude_dirs", [])
                     self.exclude_dirs.update(custom_excludes)
-                    
+
                     self.max_depth = data.get("max_depth", DEFAULT_MAX_DEPTH)
                     self.mcts = data.get("mcts", DEFAULT_MCTS)
-                    
+
                     # Load mirrors and gracefully migrate legacy string formats to lists
                     loaded_mirrors = data.get("mirrors", {})
                     if isinstance(loaded_mirrors, dict):
@@ -109,7 +111,7 @@ class ChegiConfig:
             "exclude_dirs": list(self.exclude_dirs),
             "max_depth": self.max_depth,
             "mcts": self.mcts,
-            "mirrors": self.mirrors
+            "mirrors": self.mirrors,
         }
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
@@ -147,7 +149,7 @@ class ChegiConfig:
                 self.add_mirrors_from_string(value)
         else:
             return False
-        
+
         self.save()
         return True
 
@@ -161,7 +163,7 @@ class ChegiConfig:
             "exclude_dirs": list(self.exclude_dirs),
             "max_depth": self.max_depth,
             "mcts": self.mcts,
-            "mirrors": self.mirrors
+            "mirrors": self.mirrors,
         }
 
     def add_exclude(self, folder_name: str) -> None:
@@ -182,11 +184,11 @@ class ChegiConfig:
 
     def set_mirror(self, pm_name: str, url: str) -> None:
         """Adds a permanent mirror URL for a package manager without overwriting existing ones.
-        
+
         Args:
             pm_name (str): The name of the package manager (e.g., 'pip', 'npm').
             url (str): The URL of the mirror to append.
-            
+
         Raises:
             ValueError: If the package manager is not in SUPPORTED_PMS.
         """
@@ -196,10 +198,10 @@ class ChegiConfig:
                 f"Unsupported package manager: '{pm_name}'. "
                 f"Supported ones are: {', '.join(SUPPORTED_PMS)}"
             )
-            
+
         if pm_name not in self.mirrors:
             self.mirrors[pm_name] = []
-            
+
         clean_url = url.strip()
         # Prevent appending duplicate URLs for the same package manager
         if clean_url and clean_url not in self.mirrors[pm_name]:
@@ -208,27 +210,29 @@ class ChegiConfig:
 
     def add_mirrors_from_string(self, mirrors_str: str) -> None:
         """Parses a string of multiple mirrors and appends them to their respective lists.
-        
+
         Expects a comma-separated list of key=value pairs, e.g., 'pip=url1,npm=url2'.
-        
+
         Args:
             mirrors_str (str): The string containing package managers and URLs.
-            
+
         Raises:
             ValueError: If the string format is invalid or contains unsupported package managers.
         """
         if not mirrors_str or not mirrors_str.strip():
             return
-            
+
         parts = mirrors_str.split(",")
         for part in parts:
             part = part.strip()
             if not part:
                 continue
-                
+
             if "=" not in part:
-                raise ValueError(f"Invalid format '{part}'. Expected format: 'pm_name=url'")
-            
+                raise ValueError(
+                    f"Invalid format '{part}'. Expected format: 'pm_name=url'"
+                )
+
             pm, url = part.split("=", 1)
             self.set_mirror(pm, url)
 
@@ -260,13 +264,12 @@ class ChegiConfig:
             del self.mirrors[pm_name]
             return True
 
-
     def get_mirror(self, pm_name: str) -> List[str]:
         """Retrieves the list of permanent mirror URLs for a specific package manager.
-        
+
         Args:
             pm_name (str): The name of the package manager.
-            
+
         Returns:
             List[str]: A list of assigned URLs, or an empty list if none are set.
         """
