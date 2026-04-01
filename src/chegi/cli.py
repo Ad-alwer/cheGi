@@ -32,8 +32,23 @@ from chegi.scanner import find_git_repos
 from chegi.security import SecurityGuard
 from chegi.ui import TerminalUI
 
-app = typer.Typer(help="cheGi - The ultimate Git companion. Type less, do more.")
-config_app = typer.Typer(help="Manage cheGi configuration")
+app = typer.Typer(
+    help=(
+        "cheGi - The ultimate Git companion. Type less, do more.\n\n"
+        "A fast, concurrent Git toolkit to scan repositories, guard sensitive data, "
+        "safely sync changes, generate .gitignore files, and setup dev environments "
+        "with automated system installers and custom mirror support."
+    )
+)
+
+config_app = typer.Typer(
+    help=(
+        "Manage cheGi's global configuration.\n\n"
+        "Configure scan depths, add/remove ignored directories, and setup custom "
+        "registry mirrors (e.g., pip, npm) to speed up environment setups."
+    )
+)
+
 app.add_typer(config_app, name="config")
 
 
