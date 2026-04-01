@@ -21,7 +21,7 @@ dev = [
 ]
 
 [project.scripts]
-chegi = "chegi.cli:app"
+chegi = "chegi.cli.main:app"
 
 [tool.pytest.ini_options]
 pythonpath = [
