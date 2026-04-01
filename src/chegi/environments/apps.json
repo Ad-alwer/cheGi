@@ -1,0 +1,109 @@
+{
+  "name": "General Apps",
+  "description": "Essential cross-platform applications and developer tools",
+  "tools": {
+    "git": {
+      "level": "Essential",
+      "description": "Version control system",
+      "check_command": "git --version",
+      "platforms": {
+        "windows": "winget install --id Git.Git -e --source winget",
+        "darwin": "brew install git",
+        "linux": "sudo apt-get install -y git"
+      }
+    },
+    "vscode": {
+      "level": "Editors",
+      "description": "Visual Studio Code",
+      "check_command": "code --version",
+      "platforms": {
+        "windows": "winget install --id Microsoft.VisualStudioCode -e --source winget",
+        "darwin": "brew install --cask visual-studio-code",
+        "linux": "sudo snap install code --classic"
+      }
+    },
+    "postman": {
+      "level": "API Tools",
+      "description": "API testing and development platform",
+      "is_gui": true,
+      "check_command": "postman --version",
+      "platforms": {
+        "windows": "winget install --id Postman.Postman -e --source winget",
+        "darwin": "brew install --cask postman",
+        "linux": "sudo snap install postman"
+      }
+    },
+    "docker": {
+      "level": "Pro/Advanced",
+      "description": "Docker Desktop / Engine",
+      "check_command": "docker --version",
+      "platforms": {
+        "windows": "winget install --id Docker.DockerDesktop -e --source winget",
+        "darwin": "brew install --cask docker",
+        "linux": "sudo apt-get install -y docker.io"
+      }
+    },
+    "nodejs": {
+      "level": "Essential",
+      "description": "Node.js JavaScript runtime",
+      "check_command": "node --version",
+      "platforms": {
+        "windows": "winget install --id OpenJS.NodeJS -e --source winget",
+        "darwin": "brew install node",
+        "linux": "sudo apt-get install -y nodejs npm"
+      }
+    },
+    "gh": {
+      "level": "Recommended",
+      "description": "GitHub’s official command line tool",
+      "check_command": "gh --version",
+      "platforms": {
+        "windows": "winget install --id GitHub.cli -e --source winget",
+        "darwin": "brew install gh",
+        "linux": "sudo snap install gh"
+      }
+    },
+    "dbeaver": {
+      "level": "Database Tools",
+      "description": "Free universal database tool and SQL client",
+      "is_gui": true,
+      "check_command": "dbeaver --version",
+      "platforms": {
+        "windows": "winget install --id dbeaver.dbeaver -e --source winget",
+        "darwin": "brew install --cask dbeaver-community",
+        "linux": "sudo snap install dbeaver-ce"
+      }
+    },
+    "insomnia": {
+      "level": "API Tools",
+      "description": "Open-source API client",
+      "is_gui": true,
+      "check_command": "insomnia --version",
+      "platforms": {
+        "windows": "winget install --id Kong.Insomnia -e --source winget",
+        "darwin": "brew install --cask insomnia",
+        "linux": "sudo snap install insomnia"
+      }
+    },
+    "neovim": {
+      "level": "Editors",
+      "description": "Hyperextensible Vim-based text editor",
+      "check_command": "nvim --version",
+      "platforms": {
+        "windows": "winget install --id Neovim.Neovim -e --source winget",
+        "darwin": "brew install neovim",
+        "linux": "sudo apt-get install -y neovim"
+      }
+    },
+    "jq": {
+      "level": "Terminal Tools",
+      "description": "Command-line JSON processor",
+      "check_command": "jq --version",
+      "platforms": {
+        "windows": "winget install --id jqlang.jq -e --source winget",
+        "darwin": "brew install jq",
+        "linux": "sudo apt-get install -y jq"
+      }
+    }
+  }
+}

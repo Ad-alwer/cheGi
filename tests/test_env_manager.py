@@ -237,3 +237,47 @@ def test_get_required_package_managers_duplicates(mock_load):
     pms = manager.get_required_package_managers(["env1", "env2", "env1"])
     
     assert pms == {"shared_tool", "tool_a", "tool_b"}
+
+@patch("chegi.env_manager.EnvManager.load_environments")
+def test_find_setup_target_as_environment(mock_load):
+    """Tests finding a target that is a full environment."""
+    manager = EnvManager()
+    python_env = {"name": "Python", "tools": {"pip": {}}}
+    manager.db = {"python": python_env}
+
+    result = manager.find_setup_target("python")
+
+    assert result is not None
+    assert result == python_env
+
+
+@patch("chegi.env_manager.EnvManager.load_environments")
+def test_find_setup_target_as_standalone_tool(mock_load):
+    """Tests finding a target that is a standalone tool and wrapping it."""
+    manager = EnvManager()
+    postman_tool = {"check_cmd": "postman --version", "description": "Postman API Platform"}
+    manager.db = {
+        "apps": {"tools": {"postman": postman_tool, "git": {}}},
+        "python": {"tools": {"pip": {}}}
+    }
+
+    result = manager.find_setup_target("postman")
+
+    assert result is not None
+    # Check that the tool data is correctly placed inside the wrapped structure
+    assert result["tools"]["postman"] == postman_tool
+    # Check that it's identified as a standalone tool
+    assert "Standalone tool" in result["description"]
+    # Check that the temporary name is derived from the tool's description or name
+    assert result["name"] == "Postman API Platform"
+
+
+@patch("chegi.env_manager.EnvManager.load_environments")
+def test_find_setup_target_not_found(mock_load):
+    """Tests returning None when the target is neither an env nor a tool."""
+    manager = EnvManager()
+    manager.db = {"python": {"tools": {"pip": {}}}}
+
+    result = manager.find_setup_target("unknown_tool")
+
+    assert result is None

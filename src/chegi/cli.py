@@ -8,7 +8,6 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskPr
 from rich.prompt import Confirm
 from rich.table import Table
 
-
 from chegi.config import ChegiConfig, SUPPORTED_PMS
 from chegi.scanner import find_git_repos
 from chegi.git_utils import GitAnalyzer, check_git_environment, perform_automated_rebase, is_workspace_clean, stash_changes, pop_stash, pull_rebase, push_changes
@@ -20,7 +19,6 @@ from chegi.env_manager import EnvManager
 app = typer.Typer(help="cheGi - Fast & Concurrent Git Repository Manager")
 config_app = typer.Typer(help="Manage cheGi configuration")
 app.add_typer(config_app, name="config")
-
 
 
 @app.callback()
@@ -660,7 +658,7 @@ def config_mirror_clear(
 def setup_environment(
     environment: str = typer.Argument(
         ..., 
-        help="The programming language or toolset to setup (e.g., python, ruby)."
+        help="The programming language or toolset to setup (e.g., python, ruby, postman)."
     ),
     auto_yes: bool = typer.Option(
         False, 
@@ -669,42 +667,33 @@ def setup_environment(
         help="Automatically answer yes to all installation prompts."
     )
 ) -> None:
-    """Sets up the development environment for a specific language or toolset.
-
-    Analyzes the current system environment against a predefined JSON database
-    to determine missing tools, handles dependency resolution, prompts the user
-    for mirror configurations (supporting multiple URLs), and executes the
-    installation sequence.
+    """Sets up the development environment or installs a standalone tool.
 
     Args:
-        environment (str): The name of the environment to set up (e.g., 'python').
-        auto_yes (bool): If True, bypasses interactive prompts and uses defaults.
-
-    Raises:
-        typer.Exit: Exits with code 1 on errors, missing configs, or user cancellation.
+        environment: Name of the environment or tool to install.
+        auto_yes: Skip prompts and answer yes to all.
     """
     ui = TerminalUI()
     env_manager = EnvManager()
     
-    available_envs = env_manager.get_available_envs()
-
-    if environment.lower() not in available_envs:
-        ui.print_error(f"Environment '{environment}' is not supported.")
+    # 1. Target Resolution: Find the target tool/env
+    env_data = env_manager.find_setup_target(environment.lower())
+    
+    if not env_data:
+        available_envs = env_manager.get_available_envs()
+        ui.print_error(f"Target '{environment}' is not supported.")
         ui.print_info(f"Available environments: {', '.join(available_envs)}")
         raise typer.Exit(code=1)
-
-    env_data = env_manager.get_env(environment.lower())
-    if not env_data:
-        ui.print_error(f"Failed to load configuration data for '{environment}'.")
-        raise typer.Exit(code=1)
     
-    ui.print_info(f"Analyzing environment for: [bold yellow]{environment.capitalize()}[/bold yellow]")
+    display_name = env_data.get('name', environment.capitalize())
+    ui.print_info(f"Analyzing environment for: [bold yellow]{display_name}[/bold yellow]")
     
     pkg_manager = SystemInstaller.get_os_package_manager()
     ui.console.print(f"Detected Package Manager: [bold cyan]{pkg_manager}[/bold cyan]\n")
     
+    # Setup status table
     table = Table(
-        title=f"{environment.capitalize()} Environment Status", 
+        title=f"{display_name} Status", 
         show_header=True, 
         header_style="bold magenta"
     )
@@ -714,44 +703,55 @@ def setup_environment(
     table.add_column("Status", justify="center")
     table.add_column("Version/Info", style="dim")
 
+    # 2. Data Normalization: Make standalone tools compatible with the main loop
+    tool_name = environment.lower()
+    
     levels = env_data.get("levels", {})
     levels_info = env_data.get("levels_info", {})
     tools_data = env_data.get("tools", {})
+    
+    if not levels or not tools_data:
+        levels = {"standalone": [tool_name]}
+        levels_info = {"standalone": "Standalone App"}
+        
+        if "tools" in env_data and isinstance(env_data["tools"], dict) and tool_name in env_data["tools"]:
+            tools_data = {tool_name: env_data["tools"][tool_name]}
+        else:
+            tools_data = {tool_name: env_data}
 
     tools_to_install = []
     installed_tools = set()
 
+    # 3. Check installed tools
     with ui.console.status("[bold green]Checking installed tools...[/bold green]", spinner="dots"):
         for level_id, tool_names in levels.items():
             level_name = levels_info.get(level_id, f"Level {level_id}")
             
-            for tool_name in tool_names:
-                tool_info = tools_data.get(tool_name)
-                
+            for t_name in tool_names:
+                tool_info = tools_data.get(t_name)
                 if not tool_info:
                     continue
-                    
-                check_cmd = tool_info.get("check_cmd", "")
+                
+                check_cmd = tool_info.get("check_command") or tool_info.get("check_cmd") or f"{t_name} --version"
                 requires_list = tool_info.get("requires", [])
                 requires_str = ", ".join(requires_list) if requires_list else "-"
                 
-                if not check_cmd:
-                    continue
-                
-                is_installed, info = SystemInstaller.is_tool_installed(check_cmd)
+                is_gui_app = bool(tool_info.get("is_gui", False))
+                is_installed, info = SystemInstaller.is_tool_installed(check_cmd, is_gui=is_gui_app)
                 
                 if is_installed:
-                    installed_tools.add(tool_name)
+                    installed_tools.add(t_name)
                     status_str = "[bold green]✔ Installed[/bold green]"
+                    if is_gui_app and not info:
+                        info = "GUI Tool"
                 else:
                     status_str = "[bold red]✖ Missing[/bold red]"
                     
-                    install_cmds = tool_info.get("install", {})
-                    cmd_to_run = install_cmds.get(pkg_manager) or install_cmds.get("default")
+                    cmd_to_run = SystemInstaller.get_install_command(tool_info, pkg_manager)
                     
                     if cmd_to_run:
                         tools_to_install.append({
-                            "name": tool_name,
+                            "name": t_name,
                             "level": level_name,
                             "cmd": cmd_to_run,
                             "requires": requires_list
@@ -759,16 +759,16 @@ def setup_environment(
                     else:
                         status_str = "[bold yellow]⚠ Manual[/bold yellow]"
                         
-                table.add_row(tool_name, requires_str, level_name, status_str, info)
+                table.add_row(t_name, requires_str, level_name, status_str, info)
 
     ui.console.print(table)
     ui.console.print("\n")
 
     if not tools_to_install:
-        ui.print_success(f"All critical tools for {environment.capitalize()} are already installed! 🎉")
+        ui.print_success(f"All critical tools for {display_name} are already installed! 🎉")
         raise typer.Exit()
 
-    # Sort tools based on dependency requirements to ensure correct installation order
+    # 4. Dependency Sorting: Install required tools first
     sorted_tools_to_install = []
     remaining_tools = tools_to_install.copy()
     
@@ -786,8 +786,7 @@ def setup_environment(
                 progress = True
                 break
                 
-        if not progress:
-            # Fallback for circular dependencies or unresolved graphs
+        if not progress: # Break on circular dependency
             sorted_tools_to_install.extend(remaining_tools)
             break
             
@@ -795,66 +794,73 @@ def setup_environment(
 
     ui.print_info(f"Found {len(tools_to_install)} missing tools that can be installed automatically.")
     
+    # Check if we are dealing with exactly one standalone tool
+    is_single_standalone_tool = (
+        len(tools_to_install) == 1 and
+        tools_to_install[0]['level'] == 'Standalone App'
+    )
+
+    # 5. User Prompts
     if not auto_yes:
-        choices = [
-            questionary.Choice(
-                title=f"{t['name']} ({t['level']})" + (f" [Requires: {', '.join(t['requires'])}]" if t['requires'] else ""), 
-                value=t, 
-                checked=True
-            )
-            for t in tools_to_install
-        ]
-        
-        selected_tools = questionary.checkbox(
-            "Select the tools you want to install (Space to toggle, Enter to confirm):",
-            choices=choices
-        ).ask()
-
-        if not selected_tools:
-            ui.print_info("Setup aborted by user or no tools selected. No changes were made.")
-            raise typer.Exit()
+        if is_single_standalone_tool:
+            single_tool_name = tools_to_install[0]['name']
+            if not typer.confirm(f"Do you want to install '{single_tool_name}'?"):
+                ui.print_info("Setup aborted by user. No changes were made.")
+                raise typer.Exit()
+        else:
+            choices = [
+                questionary.Choice(
+                    title=f"{t['name']} ({t['level']})" + (f" [Requires: {', '.join(t['requires'])}]" if t['requires'] else ""), 
+                    value=t, 
+                    checked=True
+                )
+                for t in tools_to_install
+            ]
             
-        tools_to_install = selected_tools
+            selected_tools = questionary.checkbox(
+                "Select the tools you want to install (Space to toggle, Enter to confirm):",
+                choices=choices
+            ).ask()
 
-    # --- Pre-flight Check for Mirrors ---
+            if not selected_tools:
+                ui.print_info("Setup aborted by user or no tools selected.")
+                raise typer.Exit()
+                
+            tools_to_install = selected_tools
+
+    # 6. Mirror Configuration: Setup proxy/mirror if needed
     session_mirrors = {}
-    
-    # Load configuration to access permanent mirrors
     config = ChegiConfig()
     config.load()
     
-    # Identify which supported package managers are actually going to be run
     active_pms_in_tools = {tool["cmd"].split()[0].lower() for tool in tools_to_install}
-    required_pms = env_manager.get_required_package_managers([environment.lower()])
     
-    # Filter: Must be required by JSON, supported by our mirror system, AND actually selected to be installed
+    if environment.lower() in env_manager.get_available_envs():
+        required_pms = env_manager.get_required_package_managers([environment.lower()])
+    else:
+        required_pms = active_pms_in_tools.copy()
+    
     pms_to_ask = required_pms.intersection(SUPPORTED_PMS).intersection(active_pms_in_tools)
 
     if pms_to_ask:
         ui.console.print("\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]")
-        ui.console.print("[dim]Useful if you are behind a restricted network and need custom download URLs.[/dim]")
+        ui.console.print("[dim]Useful if you are behind a restricted network.[/dim]")
         
         for pm in list(pms_to_ask):
             saved_mirrors = config.get_mirror(pm) if hasattr(config, 'get_mirror') else None
             
             if saved_mirrors:
-                # Normalize saved mirrors to a list to handle both legacy strings and new lists safely
                 mirror_list = saved_mirrors if isinstance(saved_mirrors, list) else [saved_mirrors]
                 
                 if auto_yes:
-                    # Auto-use the primary (first) configured mirror if --yes flag is provided
                     primary_mirror = mirror_list[0]
                     session_mirrors[pm] = primary_mirror
-                    ui.console.print(f"[dim]Auto-using primary configured mirror for {pm}: {primary_mirror}[/dim]")
+                    ui.console.print(f"[dim]Auto-using primary mirror for {pm}: {primary_mirror}[/dim]")
                 else:
-                    # Dynamically build choices from the list of saved mirrors
-                    choices = [
-                        questionary.Choice(f"✅ Use: {url}", value=url)
-                        for url in mirror_list
-                    ]
+                    choices = [questionary.Choice(f"✅ Use: {url}", value=url) for url in mirror_list]
                     choices.extend([
-                        questionary.Choice("✏️  Use a different mirror (One-time or Update)", value="new"),
-                        questionary.Choice("❌ Do NOT use a mirror (Use default registry)", value="none")
+                        questionary.Choice("✏️  Use a different mirror", value="new"),
+                        questionary.Choice("❌ Do NOT use a mirror", value="none")
                     ])
 
                     choice = questionary.select(
@@ -865,10 +871,8 @@ def setup_environment(
                     if choice is None:
                         ui.console.print("\n[bold red]❌ Cancelled by user.[/bold red]")
                         raise typer.Exit(code=1)
-                        
                     elif choice == "none":
-                        ui.console.print(f"[yellow]ℹ Skipping mirror for {pm} in this session.[/yellow]")
-                        
+                        ui.console.print(f"[yellow]ℹ Skipping mirror for {pm}.[/yellow]")
                     elif choice == "new":
                         new_url = questionary.text(
                             f"Enter the new mirror URL for {pm}:",
@@ -883,29 +887,22 @@ def setup_environment(
                             new_url = new_url.strip()
                             session_mirrors[pm] = new_url
                             
-                            # Ask if they want to append the new URL to permanent config
                             if new_url not in mirror_list:
-                                if typer.confirm(f"Add this new URL to the permanent config for {pm}?", default=False):
+                                if typer.confirm(f"Add this URL to the permanent config for {pm}?", default=False):
                                     config.set_mirror(pm, new_url)
                                     config.save()
                                     ui.console.print(f"[green]✔ Added mirror permanently for {pm}[/green]")
-                                else:
-                                    ui.console.print(f"[yellow]ℹ Using new mirror for this session only[/yellow]")
                     else:
-                        # User selected one of the existing configured mirrors
                         session_mirrors[pm] = choice
 
             else:
-                # Normal logic for when NO mirror is saved
                 if not auto_yes:
                     use_mirror = typer.confirm(
                         f"Do you want to use a mirror/custom registry for '{pm}'?", 
                         default=False
                     )
                     if use_mirror:
-                        mirror_url = questionary.text(
-                            f"Enter the mirror URL for {pm} (e.g. https://registry.npmmirror.com/):"
-                        ).ask()
+                        mirror_url = questionary.text(f"Enter mirror URL for {pm}:").ask()
                         
                         if mirror_url is None:
                             ui.console.print("\n[bold red]❌ Cancelled by user.[/bold red]")
@@ -914,15 +911,12 @@ def setup_environment(
                         if mirror_url and mirror_url.strip():
                             session_mirrors[pm] = mirror_url.strip()
                             
-                            save_permanent = typer.confirm("Save this mirror permanently in config?", default=True)
-                            if save_permanent:
+                            if typer.confirm("Save this mirror permanently in config?", default=True):
                                 config.set_mirror(pm, session_mirrors[pm])
                                 config.save()
                                 ui.console.print(f"[green]✔ Saved mirror permanently for {pm}[/green]")
-                            else:
-                                ui.console.print(f"[green]✔ Using mirror for {pm} in this session only[/green]")
 
-    # --- Installation Loop ---
+    # 7. Execution Loop: Run install commands
     success_count = 0
     skipped_count = 0
     
@@ -937,7 +931,6 @@ def setup_environment(
 
             ui.console.print(f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]")
             
-            # Detect the package manager from the command string
             pm_name = tool["cmd"].split()[0].lower()
             mirror_url = session_mirrors.get(pm_name)
             
@@ -948,19 +941,28 @@ def setup_environment(
             )
             
             if success:
-                ui.print_success(f"✅ {tool['name']} installed successfully.")
+                # Print individual success message only for multi-tool setups
+                if len(tools_to_install) > 1:
+                    ui.console.print(f"[bold green]✅ {tool['name']} installed successfully.[/bold green]")
                 installed_tools.add(tool["name"])
                 success_count += 1
             else:
-                ui.print_error(f"❌ Failed to install {tool['name']}. You may need to run with sudo or install it manually.")
+                ui.print_error(f"❌ Failed to install {tool['name']}. Check permissions or install manually.")
                 
     except KeyboardInterrupt:
         ui.console.print("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
         raise typer.Exit(code=1)
 
+    # Final Output
     ui.console.print("\n")
-    if success_count == len(tools_to_install):
-        ui.print_success("✨ Environment setup completed successfully! ✨")
+    if success_count == len(tools_to_install) and success_count > 0:
+        if len(tools_to_install) == 1:
+            # Single tool installation success message
+            single_installed_tool = tools_to_install[0]['name']
+            ui.print_success(f"✨ {single_installed_tool} installed successfully! ✨")
+        else:
+            # Multi-tool environment success message
+            ui.print_success(f"✨ Setup for {display_name} completed successfully! ✨")
     else:
         ui.print_info(f"Setup finished. Installed: {success_count}, Skipped: {skipped_count}, Failed/Canceled: {len(tools_to_install) - success_count - skipped_count}.")
 

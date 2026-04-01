@@ -258,3 +258,37 @@ class EnvManager:
         subprocess.run(["git", "commit", ".gitignore", "-m", commit_msg], check=True, cwd=target_path)
         
         return commit_msg
+
+    def find_setup_target(self, target_name: str) -> Optional[Dict[str, Any]]:
+        """Finds a setup target, which can be a full environment or a single tool.
+
+        First, it attempts to find a complete environment configuration (e.g., 'python').
+        If not found, it searches across all loaded environments for a standalone
+        tool (e.g., 'postman', 'git'). If a tool is found, it constructs and returns 
+        a minimal, temporary environment dictionary wrapping that tool to maintain 
+        compatibility with the setup pipeline.
+
+        Args:
+            target_name (str): The name of the environment or tool to find.
+
+        Returns:
+            Optional[Dict[str, Any]]: A dictionary containing the target's configuration,
+                or None if neither an environment nor a tool is found.
+        """
+        # Attempt to retrieve a full environment first
+        env_data = self.get_env(target_name)
+        if env_data:
+            return env_data
+
+        # Fallback to searching for a standalone tool across all environments
+        tool_data = self.get_tool(target_name)
+        if tool_data:
+            return {
+                "name": tool_data.get("description", target_name.capitalize()),
+                "description": f"Standalone tool: {target_name.capitalize()}",
+                "tools": {
+                    target_name.lower(): tool_data
+                }
+            }
+
+        return None

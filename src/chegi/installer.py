@@ -44,18 +44,60 @@ class SystemInstaller:
         return "default"
 
     @classmethod
-    def is_tool_installed(cls, check_cmd: str) -> Tuple[bool, str]:
+    def get_install_command(cls, tool_info: dict, pkg_manager: str) -> Optional[str]:
+        """Gets the appropriate installation command based on the OS and package manager."""
+        
+        # 1. Check if it uses the simple 'install' key mapping
+        if "install" in tool_info:
+            return tool_info["install"].get(pkg_manager) or tool_info["install"].get("default")
+            
+        # 2. Check if it uses the detailed 'platforms' key mapping
+        elif "platforms" in tool_info:
+            os_name = platform.system().lower()
+            if os_name == "darwin": 
+                os_name = "mac"
+            
+            platform_cmds = tool_info["platforms"].get(os_name, {})
+            
+            if isinstance(platform_cmds, dict):
+                return platform_cmds.get(pkg_manager) or platform_cmds.get("default")
+            elif isinstance(platform_cmds, str):
+                return platform_cmds
+                
+        # 3. Fallback for newer potential keys
+        install_data = tool_info.get("install_cmd") or tool_info.get("install_command")
+        if isinstance(install_data, str):
+            return install_data
+        elif isinstance(install_data, dict):
+            return install_data.get(pkg_manager) or install_data.get("default")
+            
+        return None
+
+    @classmethod
+    def is_tool_installed(cls, check_cmd: str, is_gui: bool = False) -> Tuple[bool, str]:
         """Runs a check command to determine if a dynamic tool is installed.
 
         Args:
             check_cmd (str): The shell command to execute to check for the tool
                 (e.g., 'python --version').
+            is_gui (bool): If True, avoids executing the command (which would open
+                the GUI application) and only checks if the executable is in PATH.
 
         Returns:
             Tuple[bool, str]: A tuple where the first element is a boolean indicating
             success (True if installed), and the second element is the command's
             output or an error message.
         """
+        # --- Handle GUI Tools ---
+        # If the tool is a graphical app, running its command will open the app and freeze the terminal.
+        # Instead, we just check if its executable exists in the system PATH.
+        if is_gui:
+            executable_name = check_cmd.split()[0] # e.g., gets "postman" from "postman --version"
+            if shutil.which(executable_name):
+                return True, "Installed (GUI Tool)"
+            return False, "Not installed"
+
+        # --- Handle CLI Tools ---
         try:
             result = subprocess.run(
                 check_cmd,

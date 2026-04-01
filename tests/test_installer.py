@@ -398,3 +398,91 @@ def test_run_custom_command_with_mirror_list_integration(mock_run: MagicMock) ->
         "pip install --index-url http://primary.mirror django", 
         shell=True
     )
+
+def test_get_install_command_with_install_key() -> None:
+    """Tests command resolution using the simple 'install' dictionary key."""
+    tool_info = {
+        "install": {
+            "apt": "sudo apt install jq",
+            "default": "brew install jq"
+        }
+    }
+    
+    assert SystemInstaller.get_install_command(tool_info, "apt") == "sudo apt install jq"
+    assert SystemInstaller.get_install_command(tool_info, "dnf") == "brew install jq"
+
+
+@patch("chegi.installer.platform.system")
+def test_get_install_command_with_platforms_key(mock_system: MagicMock) -> None:
+    """Tests command resolution using the detailed OS-specific 'platforms' key."""
+    tool_info = {
+        "platforms": {
+            "mac": {
+                "brew": "brew install yq",
+                "default": "curl -s yq"
+            },
+            "linux": "sudo snap install yq"  # Direct string fallback instead of dict
+        }
+    }
+    
+    # macOS simulation
+    mock_system.return_value = "Darwin"
+    assert SystemInstaller.get_install_command(tool_info, "brew") == "brew install yq"
+    assert SystemInstaller.get_install_command(tool_info, "unknown_pm") == "curl -s yq"
+    
+    # Linux simulation
+    mock_system.return_value = "Linux"
+    assert SystemInstaller.get_install_command(tool_info, "apt") == "sudo snap install yq"
+
+
+def test_get_install_command_with_fallback_keys() -> None:
+    """Tests command resolution using older fallback keys (install_cmd, install_command)."""
+    tool_info_str = {"install_cmd": "pip install ruff"}
+    assert SystemInstaller.get_install_command(tool_info_str, "pip") == "pip install ruff"
+    
+    tool_info_dict = {
+        "install_command": {
+            "npm": "npm install -g pnpm",
+            "default": "corepack enable"
+        }
+    }
+    assert SystemInstaller.get_install_command(tool_info_dict, "npm") == "npm install -g pnpm"
+    assert SystemInstaller.get_install_command(tool_info_dict, "yarn") == "corepack enable"
+
+
+def test_get_install_command_not_found() -> None:
+    """Tests that the method returns None when no valid installation keys exist."""
+    tool_info = {
+        "name": "just_a_tool",
+        "version": "1.0.0"
+    }
+    assert SystemInstaller.get_install_command(tool_info, "apt") is None
+
+
+@patch("chegi.installer.shutil.which")
+@patch("chegi.installer.subprocess.run")
+def test_is_tool_installed_gui_success(mock_run: MagicMock, mock_which: MagicMock) -> None:
+    """Tests GUI tool check to ensure it bypasses subprocess execution."""
+    mock_which.return_value = "/usr/bin/postman"
+    
+    is_installed, output = SystemInstaller.is_tool_installed("postman --version", is_gui=True)
+    
+    assert is_installed is True
+    assert output == "Installed (GUI Tool)"
+    
+    # Subprocess should not run to prevent opening the actual app window
+    mock_run.assert_not_called()
+    mock_which.assert_called_once_with("postman")
+
+
+@patch("chegi.installer.shutil.which")
+@patch("chegi.installer.subprocess.run")
+def test_is_tool_installed_gui_failure(mock_run: MagicMock, mock_which: MagicMock) -> None:
+    """Tests GUI tool check when the tool is missing from the system."""
+    mock_which.return_value = None
+    
+    is_installed, output = SystemInstaller.is_tool_installed("insomnia", is_gui=True)
+    
+    assert is_installed is False
+    assert output == "Not installed"
+    mock_run.assert_not_called()
