@@ -14,16 +14,11 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 
-# A dummy callback to prevent Typer from crashing when there are no commands yet
-@app.callback()
-def main():
-    pass
-
 # Register subcommands
 # (Currently commented out. We will uncomment them one by one as we migrate the code)
 
 # app.add_typer(setup.app)
-# app.add_typer(config.app, name="config")
+app.add_typer(config.app, name="config")
 # app.add_typer(git.app)
 # app.add_typer(scan.app)
 # app.add_typer(security.app)
