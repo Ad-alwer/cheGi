@@ -8,9 +8,9 @@ from chegi.config import ChegiConfig
 def find_git_repos(start_path: str, config: ChegiConfig) -> Iterator[Path]:
     """Scans directories recursively to find Git repositories.
 
-    It uses the provided configuration object to limit depth and
-    exclude specific directories. It stops traversing deeper if a
-    Git repository is found (smart pruning).
+    Uses the provided configuration to limit depth, exclude specific
+    directories, and perform smart pruning to stop traversing deeper 
+    once a Git repository is found.
 
     Args:
         start_path (str): The base directory where the scan begins.
@@ -42,18 +42,17 @@ def find_git_repos(start_path: str, config: ChegiConfig) -> Iterator[Path]:
         except ValueError:
             depth = 0
 
-        # If the current depth has reached or exceeded max_depth,
-        # we do not check it for a repo and we do not go any deeper.
+        # Enforce max depth limit
         if depth >= config.max_depth:
             dirs.clear()
             continue
 
-        # Check if current directory is a Git repository
+        # Check for Git repository indicator
         if ".git" in dirs or ".git" in files:
             yield current_path
-            # Smart pruning: Do not scan subdirectories of a discovered repository
+            # Smart pruning: stop scanning subdirectories of this repo
             dirs.clear()
             continue
 
-        # Prune excluded directories and standard hidden folders (except .git)
+        # Filter out excluded and hidden directories
         dirs[:] = [d for d in dirs if d not in exclude_set and not d.startswith(".")]

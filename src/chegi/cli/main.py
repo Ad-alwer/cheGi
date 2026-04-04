@@ -20,7 +20,7 @@ app = typer.Typer(
 app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 # app.add_typer(git.app)
-# app.add_typer(scan.app)
+app.add_typer(scan.app , name="scan")
 # app.add_typer(security.app)
 
 if __name__ == "__main__":

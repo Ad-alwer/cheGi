@@ -1,23 +1,12 @@
-import json
 import subprocess
-from pathlib import Path
 from typing import Annotated, Optional
 
 import questionary
 import typer
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TaskProgressColumn,
-    TextColumn,
-)
 from rich.prompt import Confirm
 
-from chegi.config import ChegiConfig
 from chegi.env_manager import EnvManager
 from chegi.git_utils import (
-    GitAnalyzer,
     check_git_environment,
     is_workspace_clean,
     perform_automated_rebase,
@@ -27,14 +16,13 @@ from chegi.git_utils import (
     stash_changes,
 )
 from chegi.installer import SystemInstaller
-from chegi.scanner import find_git_repos
 from chegi.security import SecurityGuard
 from chegi.ui import TerminalUI
 
 app = typer.Typer(
     help=(
         "cheGi - The ultimate Git companion. Type less, do more.\n\n"
-        "A fast, concurrent Git toolkit to scan repositories, guard sensitive data, "
+        "A fast, concurrent Git toolkit to guard sensitive data, "
         "safely sync changes, generate .gitignore files, and setup dev environments "
         "with automated system installers and custom mirror support."
     )
@@ -85,88 +73,6 @@ def global_setup() -> None:
                 "Failed to install Git automatically. Please install it manually from https://git-scm.com/"
             )
             raise typer.Exit(code=1)
-
-
-@app.command("scan")
-def scan(
-    path: str = typer.Argument(".", help="Base directory to scan"),
-    max_depth: Optional[int] = typer.Option(
-        None, "--max-depth", "-d", help="Override max depth from config"
-    ),
-    workers: int = typer.Option(
-        5, "--workers", "-w", help="Number of concurrent workers"
-    ),
-    security: Annotated[
-        bool,
-        typer.Option("--security", "-s", help="Perform security scan on repositories"),
-    ] = False,
-    dirty: Annotated[
-        bool,
-        typer.Option("--dirty", help="Only show repositories with uncommitted changes"),
-    ] = False,
-    staged: Annotated[
-        bool, typer.Option("--staged", help="Only show repositories with staged files")
-    ] = False,
-) -> None:
-    """Scans a directory recursively for Git repositories and reports their status."""
-    ui = TerminalUI()
-    base_path = Path(path).resolve()
-
-    config = ChegiConfig(base_path=str(base_path))
-    config.load()
-
-    if max_depth is not None:
-        config.max_depth = max_depth
-
-    ui.console.print(
-        f"[dim]🔍 Scanning '{base_path}' (max depth: {config.max_depth})...[/dim]"
-    )
-
-    try:
-        repo_paths = list(find_git_repos(str(base_path), config))
-    except NotADirectoryError as e:
-        ui.print_error(str(e))
-        raise typer.Exit(code=1)
-
-    if not repo_paths:
-        ui.display_results_table([])
-        raise typer.Exit()
-
-    analyzer = GitAnalyzer(max_workers=workers)
-    scanner_func = SecurityGuard.scan_repo if security else None
-    statuses = []
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        console=ui.console,
-        transient=True,
-    ) as progress:
-        task = progress.add_task(
-            "[cyan]⚡ Analyzing repositories...", total=len(repo_paths)
-        )
-
-        for status in analyzer.analyze_concurrently(
-            repo_paths, security_scanner=scanner_func
-        ):
-            statuses.append(status)
-            progress.advance(task)
-
-    if dirty:
-        statuses = [s for s in statuses if s.is_dirty]
-
-    if staged:
-        statuses = [s for s in statuses if s.has_staged_files]
-
-    if not statuses:
-        ui.console.print(
-            "\n[bold yellow]No repositories matched your filters.[/bold yellow]"
-        )
-        raise typer.Exit()
-
-    ui.display_results_table(statuses)
 
 
 @app.command("guard")
