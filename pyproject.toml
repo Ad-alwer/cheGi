@@ -27,6 +27,9 @@ chegi = "chegi.cli.main:app"
 pythonpath = [
     "src"
 ]
+testpaths = [
+    "tests"
+]
 
 [tool.setuptools.package-data]
 chegi = ["environments/*.json"]
