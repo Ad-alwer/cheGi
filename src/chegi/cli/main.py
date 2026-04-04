@@ -17,7 +17,7 @@ app = typer.Typer(
 # Register subcommands
 # (Currently commented out. We will uncomment them one by one as we migrate the code)
 
-# app.add_typer(setup.app)
+app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 # app.add_typer(git.app)
 # app.add_typer(scan.app)
