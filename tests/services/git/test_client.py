@@ -1,0 +1,79 @@
+import subprocess
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+import pytest
+
+from chegi.services.git.client import GitClient
+from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
+
+@pytest.fixture
+def git_client():
+    # Initialize with a dummy path for testing
+    return GitClient(repo_path=Path("/fake/repo"))
+
+@patch("subprocess.run")
+def test_run_command_success(mock_run, git_client):
+    # Mock subprocess success
+    mock_result = MagicMock()
+    mock_result.stdout = "mocked output\n"
+    mock_run.return_value = mock_result
+
+    output = git_client.run_command(["git", "status"])
+    
+    assert output == "mocked output"
+    mock_run.assert_called_once_with(
+        ["git", "status"],
+        cwd=Path("/fake/repo"),
+        capture_output=True,
+        text=True,
+        check=True,
+        env=None,
+    )
+
+@patch("subprocess.run")
+def test_run_command_called_process_error(mock_run, git_client):
+    # Mock subprocess failure with exit code
+    mock_run.side_effect = subprocess.CalledProcessError(
+        returncode=1, cmd=["git", "status"], stderr="some error occurred"
+    )
+
+    with pytest.raises(GitCommandError) as exc_info:
+        git_client.run_command(["git", "status"])
+    
+    assert "some error occurred" in str(exc_info.value)
+
+@patch("subprocess.run")
+def test_run_command_file_not_found(mock_run, git_client):
+    # Mock missing git executable
+    mock_run.side_effect = FileNotFoundError()
+
+    with pytest.raises(GitNotInstalledError) as exc_info:
+        git_client.run_command(["git", "status"])
+        
+    assert "Git executable not found" in str(exc_info.value)
+
+@patch.object(GitClient, "run_command")
+def test_check_git_installation_success(mock_run_command, git_client):
+    # If run_command does not raise, it's installed
+    mock_run_command.return_value = "git version 2.34.1"
+    assert git_client.check_git_installation() is True
+
+@patch.object(GitClient, "run_command")
+def test_check_git_installation_failure(mock_run_command, git_client):
+    # Simulate git not installed error from run_command
+    mock_run_command.side_effect = GitNotInstalledError("Not installed")
+    
+    with pytest.raises(GitNotInstalledError):
+        git_client.check_git_installation()
+
+@patch.object(GitClient, "run_command")
+def test_is_workspace_clean_true(mock_run_command, git_client):
+    # Empty output from porcelain means clean workspace
+    mock_run_command.return_value = ""
+    assert git_client.is_workspace_clean() is True
+
+@patch.object(GitClient, "run_command")
+def test_is_workspace_clean_false(mock_run_command, git_client):
+    # Any output means dirty workspace
+    mock_run_command.return_value = " M file.py"
+    assert git_client.is_workspace_clean() is False
