@@ -8,12 +8,7 @@ from rich.prompt import Confirm
 from chegi.env_manager import EnvManager
 from chegi.git_utils import (
     check_git_environment,
-    is_workspace_clean,
     perform_automated_rebase,
-    pop_stash,
-    pull_rebase,
-    push_changes,
-    stash_changes,
 )
 from chegi.installer import SystemInstaller
 from chegi.security import SecurityGuard
@@ -357,88 +352,6 @@ def reword(
         except Exception as e:
             ui.print_error(f"❌ Failed to rebase: {e}")
             raise typer.Exit(1)
-
-
-@app.command()
-def sync():
-    """Synchronizes the local repository with the remote safely."""
-    ui = TerminalUI()
-    ui.print_info("Starting synchronization process...")
-
-    needs_stash = False
-
-    if not is_workspace_clean():
-        ui.print_warning("You have uncommitted changes in your workspace.")
-
-        confirm_stash = typer.confirm(
-            "Do you want to automatically stash changes, sync, and restore them?",
-            default=False,
-        )
-        if not confirm_stash:
-            ui.print_error(
-                "Sync aborted. Please commit or stash your changes manually."
-            )
-            raise typer.Exit(1)
-
-        ui.print_warning(
-            "Restoring changes (stash pop) after sync might result in merge conflicts."
-        )
-        confirm_again = typer.confirm(
-            "Are you absolutely sure you want to proceed?", default=False
-        )
-        if not confirm_again:
-            ui.print_error(
-                "Sync aborted. Please commit or stash your changes manually."
-            )
-            raise typer.Exit(1)
-
-        needs_stash = True
-
-    if needs_stash:
-        ui.print_info("Stashing uncommitted changes...")
-        try:
-            stash_changes()
-        except RuntimeError as e:
-            ui.print_error(str(e))
-            raise typer.Exit(1)
-
-    ui.print_info("Pulling latest changes from remote (rebase)...")
-    try:
-        pull_rebase()
-    except RuntimeError as e:
-        ui.print_error("❌ Conflict or error during pull --rebase.")
-        ui.print_error(str(e))
-        ui.print_warning(
-            "💡 Please resolve conflicts manually, then run 'git rebase --continue'."
-        )
-        if needs_stash:
-            ui.print_info("ℹ️ Your uncommitted changes are safely stored in git stash.")
-        raise typer.Exit(1)
-
-    ui.print_info("Pushing local commits to remote...")
-    try:
-        push_changes()
-    except RuntimeError as e:
-        ui.print_error("❌ Error during push.")
-        ui.print_error(str(e))
-        if needs_stash:
-            ui.print_info("ℹ️ Your uncommitted changes are safely stored in git stash.")
-        raise typer.Exit(1)
-
-    if needs_stash:
-        ui.print_info("Restoring stashed changes...")
-        try:
-            pop_stash()
-        except RuntimeError as e:
-            ui.print_warning(
-                "⚠️ Conflict or error occurred while restoring stashed changes."
-            )
-            ui.print_error(str(e))
-            ui.print_warning(
-                "💡 Please resolve the conflicts manually in your code editor."
-            )
-
-    ui.print_success("Synchronization completed successfully! 🚀")
 
 
 def main() -> None:

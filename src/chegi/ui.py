@@ -3,7 +3,7 @@ from typing import List
 from rich.console import Console
 from rich.table import Table
 
-from chegi.git_utils import GitStatus
+from chegi.services.git.models import GitStatus
 
 
 class TerminalUI:

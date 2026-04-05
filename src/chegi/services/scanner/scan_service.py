@@ -1,5 +1,7 @@
+import subprocess
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Callable, List, Optional
 
 import typer
 from rich.progress import (
@@ -11,10 +13,10 @@ from rich.progress import (
 )
 
 from chegi.config import ChegiConfig
-from chegi.git_utils import GitAnalyzer
 from chegi.security import SecurityGuard
 from chegi.ui import TerminalUI
 from chegi.utils.finder import find_git_repos
+from chegi.services.git.models import GitStatus
 
 
 class ScanService:
@@ -45,7 +47,7 @@ class ScanService:
         Args:
             path (str): Base directory to scan.
             max_depth (Optional[int]): Override max depth from config.
-            workers (int): Number of concurrent workers.
+            workers (int): Number of concurrent workers for analysis.
             security (bool): Perform security scan on repositories.
             dirty (bool): Only show repositories with uncommitted changes.
             staged (bool): Only show repositories with staged files.
@@ -107,34 +109,88 @@ class ScanService:
 
         self.ui.display_results_table(statuses)
 
-    def _get_repositories(self) -> List[str]:
+    def _get_repositories(self) -> List[Path]:
         """Finds all git repositories in the base path.
 
         Returns:
-            List[str]: A list of string paths pointing to git repositories.
+            List[Path]: A list of Path objects pointing to git repositories.
 
         Raises:
             typer.Exit: If the target path is not a valid directory.
         """
         try:
-            # Convert Path objects yielded by find_git_repos to strings
-            return [str(p) for p in find_git_repos(str(self.base_path), self.config)]
+            return list(find_git_repos(str(self.base_path), self.config))
         except NotADirectoryError as e:
             self.ui.print_error(str(e))
             raise typer.Exit(code=1)
 
-    def _analyze_repositories(self, repo_paths: List[str]) -> List[Any]:
+    def _analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], str]] = None) -> GitStatus:
+        """Extracts the git status for a single repository.
+
+        Args:
+            repo_path (Path): The path to the git repository to analyze.
+            security_scanner (Optional[Callable[[Path], str]]): A function to perform security scans.
+
+        Returns:
+            GitStatus: An object containing the extracted status of the repository.
+        """
+        repo_name = repo_path.name
+        try:
+            branch_result = subprocess.run(["git", "branch", "--show-current"], cwd=repo_path, capture_output=True, text=True)
+            branch = branch_result.stdout.strip() or "No Commits"
+
+            status_result = subprocess.run(["git", "status", "--porcelain"], cwd=repo_path, capture_output=True, text=True)
+            status_output = status_result.stdout.strip()
+            is_dirty = len(status_output) > 0
+
+            has_staged_files = False
+            if is_dirty:
+                for line in status_output.splitlines():
+                    if line and line[0] not in (" ", "?"):
+                        has_staged_files = True
+                        break
+
+            remote_result = subprocess.run(["git", "remote"], cwd=repo_path, capture_output=True, text=True)
+            has_remote = len(remote_result.stdout.strip()) > 0
+
+            sec_status = None
+            if security_scanner:
+                try:
+                    sec_status = security_scanner(repo_path)
+                except Exception:
+                    sec_status = "Scan Failed"
+
+            return GitStatus(
+                path=repo_path,
+                repo_name=repo_name,
+                branch=branch,
+                is_dirty=is_dirty,
+                has_staged_files=has_staged_files,
+                has_remote=has_remote,
+                security_status=sec_status,
+            )
+        except Exception as e:
+            return GitStatus(
+                path=repo_path,
+                repo_name=repo_name,
+                branch="Unknown",
+                is_dirty=False,
+                has_staged_files=False,
+                has_remote=False,
+                error=str(e),
+            )
+
+    def _analyze_repositories(self, repo_paths: List[Path]) -> List[GitStatus]:
         """Runs concurrent analysis on the found repositories.
 
         Args:
-            repo_paths (List[str]): List of repository paths to analyze.
+            repo_paths (List[Path]): List of repository paths to analyze.
 
         Returns:
-            List[Any]: A list of repository status objects containing analysis results.
+            List[GitStatus]: A list of GitStatus objects containing analysis results.
         """
-        analyzer = GitAnalyzer(max_workers=self.workers)
         scanner_func = SecurityGuard.scan_repo if self.security else None
-        statuses = []
+        statuses: List[GitStatus] = []
 
         with Progress(
             SpinnerColumn(),
@@ -144,34 +200,33 @@ class ScanService:
             console=self.ui.console,
             transient=True,
         ) as progress:
-            task = progress.add_task(
-                "[cyan]⚡ Analyzing repositories...", total=len(repo_paths)
-            )
+            task = progress.add_task("[cyan]⚡ Analyzing repositories...", total=len(repo_paths))
 
-            for status in analyzer.analyze_concurrently(
-                repo_paths, security_scanner=scanner_func
-            ):
-                statuses.append(status)
-                progress.advance(task)
+            with ThreadPoolExecutor(max_workers=self.workers) as executor:
+                future_to_path = {
+                    executor.submit(self._analyze_single_repo, path, scanner_func): path
+                    for path in repo_paths
+                }
+
+                for future in as_completed(future_to_path):
+                    statuses.append(future.result())
+                    progress.advance(task)
 
         return statuses
 
-    def _filter_results(self, statuses: List[Any]) -> List[Any]:
+    def _filter_results(self, statuses: List[GitStatus]) -> List[GitStatus]:
         """Filters the analysis results based on CLI flags.
 
         Args:
-            statuses (List[Any]): The raw list of repository statuses.
+            statuses (List[GitStatus]): The raw list of repository statuses.
 
         Returns:
-            List[Any]: The filtered list of repository statuses matching the conditions
+            List[GitStatus]: The filtered list of repository statuses matching the conditions
                 (e.g., dirty or staged).
         """
         filtered_statuses = statuses
-        
         if self.dirty:
             filtered_statuses = [s for s in filtered_statuses if s.is_dirty]
-
         if self.staged:
             filtered_statuses = [s for s in filtered_statuses if s.has_staged_files]
-
         return filtered_statuses
