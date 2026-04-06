@@ -1,4 +1,3 @@
-import subprocess
 from typing import Annotated, Optional
 
 import questionary
@@ -6,10 +5,7 @@ import typer
 from rich.prompt import Confirm
 
 from chegi.env_manager import EnvManager
-from chegi.git_utils import (
-    check_git_environment,
-    perform_automated_rebase,
-)
+from chegi.git_utils import check_git_environment
 from chegi.installer import SystemInstaller
 from chegi.security import SecurityGuard
 from chegi.ui import TerminalUI
@@ -218,140 +214,6 @@ def gitignore(
         ui.console.print(
             "[bold yellow]⚠️  Skipped commit: Not a git repository.[/bold yellow]"
         )
-
-
-@app.command("reword")
-def reword(
-    message: Optional[str] = typer.Argument(None, help="The new commit message"),
-    last: Optional[int] = typer.Option(
-        None, "--last", "-l", help="Number of recent commits to choose from", min=1
-    ),
-    start: Optional[int] = typer.Option(
-        None, "--start", "-s", help="Start index for commit list (e.g., 15)", min=0
-    ),
-    end: Optional[int] = typer.Option(
-        None, "--end", "-e", help="End index for commit list (e.g., 25)", min=1
-    ),
-) -> None:
-    """Changes a commit message interactively or directly."""
-    ui = TerminalUI()
-
-    if last is not None and last > 20:
-        ui.print_error("❌ Maximum limit for --last is 20.")
-        ui.print_error(
-            "💡 Please use --start/-s and --end/-e flags to navigate older commits."
-        )
-        raise typer.Exit(1)
-
-    try:
-        subprocess.run(
-            ["git", "rev-parse", "--is-inside-work-tree"],
-            check=True,
-            capture_output=True,
-        )
-    except subprocess.CalledProcessError:
-        ui.print_error("❌ Not a git repository.")
-        raise typer.Exit(1)
-
-    target_hash = "HEAD"
-    is_head = True
-
-    show_menu = last is not None or start is not None or end is not None
-
-    if show_menu:
-        if start is not None and end is not None:
-            if start >= end:
-                ui.print_error("❌ Error: --start must be less than --end.")
-                raise typer.Exit(1)
-            skip = start
-            limit = end - start
-        elif start is not None:
-            skip = start
-            limit = 10
-        elif end is not None:
-            skip = max(0, end - 10)
-            limit = end - skip
-        else:
-            skip = 0
-            limit = last if last else 10
-
-        try:
-            result = subprocess.run(
-                [
-                    "git",
-                    "log",
-                    f"--max-count={limit}",
-                    f"--skip={skip}",
-                    "--format=%h %s",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            commits = [line for line in result.stdout.strip().split("\n") if line]
-
-            if not commits:
-                ui.print_error("❌ No commits found in the specified range.")
-                raise typer.Exit(1)
-
-            choice = questionary.select(
-                "Select the commit to reword:", choices=commits
-            ).ask()
-
-            if not choice:
-                raise typer.Exit(0)
-
-            target_hash = choice.split(" ")[0]
-
-            head_hash = subprocess.run(
-                ["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True
-            ).stdout.strip()
-
-            is_head = target_hash == head_hash
-
-        except subprocess.CalledProcessError:
-            ui.print_error("❌ Failed to fetch git history.")
-            raise typer.Exit(1)
-
-    try:
-        old_msg_result = subprocess.run(
-            ["git", "log", "--format=%B", "-n", "1", target_hash],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        old_message = old_msg_result.stdout.strip()
-    except subprocess.CalledProcessError:
-        ui.print_error("❌ Failed to fetch the commit message.")
-        raise typer.Exit(1)
-
-    if not message:
-        message = questionary.text(
-            "Enter new commit message:", default=old_message
-        ).ask()
-
-        if not message:
-            ui.print_error("❌ Commit message cannot be empty.")
-            raise typer.Exit(1)
-
-    if message == old_message:
-        ui.print_success("✅ Message is unchanged. Exiting without modifying history.")
-        return
-
-    if is_head:
-        try:
-            subprocess.run(["git", "commit", "--amend", "-m", message], check=True)
-            ui.print_success("✅ Last commit message updated successfully!")
-        except subprocess.CalledProcessError:
-            ui.print_error("❌ Failed to amend the commit.")
-            raise typer.Exit(1)
-    else:
-        try:
-            perform_automated_rebase(target_hash, message)
-            ui.print_success(f"✅ Commit {target_hash} updated successfully!")
-        except Exception as e:
-            ui.print_error(f"❌ Failed to rebase: {e}")
-            raise typer.Exit(1)
 
 
 def main() -> None:

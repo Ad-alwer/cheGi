@@ -1,7 +1,7 @@
 import typer
 
 # Import command modules
-from chegi.cli.commands import config, sync, scan, security, setup
+from chegi.cli.commands import config, sync, scan, security,reword, setup
 
 app = typer.Typer(
     help=(
@@ -21,6 +21,7 @@ app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 app.add_typer(sync.app, name="sync")
 app.add_typer(scan.app , name="scan")
+app.add_typer(reword.app, name="reword")
 # app.add_typer(security.app)
 
 if __name__ == "__main__":
