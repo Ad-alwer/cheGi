@@ -7,7 +7,6 @@ from rich.prompt import Confirm
 from chegi.env_manager import EnvManager
 from chegi.git_utils import check_git_environment
 from chegi.installer import SystemInstaller
-from chegi.security import SecurityGuard
 from chegi.ui import TerminalUI
 
 app = typer.Typer(
@@ -64,76 +63,6 @@ def global_setup() -> None:
                 "Failed to install Git automatically. Please install it manually from https://git-scm.com/"
             )
             raise typer.Exit(code=1)
-
-
-@app.command("guard")
-def guard(
-    fix: Annotated[
-        bool,
-        typer.Option(
-            "--fix",
-            "-f",
-            help="Automatically unstage sensitive files without prompting",
-        ),
-    ] = False,
-) -> None:
-    """Checks staged files for sensitive data to prevent accidental commits."""
-    ui = TerminalUI()
-    ui.console.print("[dim]🔒 Running Security Guard...[/dim]")
-
-    staged_files = SecurityGuard.get_staged_files()
-    if not staged_files:
-        ui.console.print(
-            "[bold blue]No staged files found. Nothing to check.[/bold blue]"
-        )
-        raise typer.Exit()
-
-    sensitive_files = SecurityGuard.find_sensitive_files(staged_files)
-
-    if sensitive_files:
-        ui.console.print(
-            "\n[bold red]⚠️  WARNING: Sensitive files detected in staging area![/bold red]"
-        )
-        for f in sensitive_files:
-            ui.console.print(f"  [red]- {f}[/red]")
-
-        files_str = " ".join(sensitive_files)
-        exact_command = f"git rm --cached {files_str}"
-        ui.console.print(
-            f"\n[bold yellow]To fix this manually, run:[/bold yellow] [cyan]{exact_command}[/cyan]\n"
-        )
-
-        if fix:
-            success = SecurityGuard.unstage_files(sensitive_files)
-            if success:
-                ui.console.print(
-                    "\n[bold green]✅ Files successfully unstaged automatically (via --fix). You can now commit safely.[/bold green]"
-                )
-            else:
-                ui.print_error(
-                    "\nFailed to unstage files automatically. Please run the command manually."
-                )
-        else:
-            should_unstage = typer.confirm(
-                "Do you want cheGi to automatically unstage these files for you?"
-            )
-
-            if should_unstage:
-                success = SecurityGuard.unstage_files(sensitive_files)
-                if success:
-                    ui.console.print(
-                        "\n[bold green]✅ Files successfully unstaged. You can now commit safely.[/bold green]"
-                    )
-                else:
-                    ui.print_error(
-                        "\nFailed to unstage files automatically. Please run the command manually."
-                    )
-
-        raise typer.Exit(code=1)
-    else:
-        ui.console.print(
-            "[bold green]✅ Security check passed. No sensitive files found in staging.[/bold green]"
-        )
 
 
 @app.command("gitignore")

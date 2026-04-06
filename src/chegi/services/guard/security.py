@@ -4,28 +4,21 @@ from pathlib import Path
 from typing import List, Optional
 
 from chegi.config import DEFAULT_SENSITIVE_PATTERNS
+from chegi.services.guard.models import GuardScanResult
 
 
 class SecurityGuard:
-    """Handles security checks for Git operations to prevent accidental commits of sensitive data.
-
-    This class provides static methods to scan files currently staged in Git and
-    compare them against known sensitive file patterns (e.g., .env, private keys).
-    """
+    """Handles security checks for Git operations to prevent accidental commits of sensitive data."""
 
     @staticmethod
     def get_staged_files(repo_path: Optional[Path] = None) -> List[str]:
         """Retrieves a list of currently staged files in a Git repository.
 
-        Executes the `git diff --name-only --cached` command to fetch the paths
-        of files that are staged and ready to be committed.
-
         Args:
-            repo_path (Optional[Path]): The path to the repository. If None, uses the current directory.
+            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
 
         Returns:
-            List[str]: A list of file paths that are staged for commit. Returns an
-            empty list if the directory is not a git repository or if git is not installed.
+            List[str]: A list of file paths staged for commit. Returns an empty list on failure.
         """
         cwd = repo_path if repo_path else Path.cwd()
         try:
@@ -45,11 +38,10 @@ class SecurityGuard:
         """Checks a list of file paths against known sensitive file patterns.
 
         Args:
-            files_to_check (List[str]): A list of file paths to scan (typically staged files).
+            files_to_check (List[str]): A list of file paths to scan.
 
         Returns:
-            List[str]: A list of file paths that match any of the sensitive patterns
-            defined in `DEFAULT_SENSITIVE_PATTERNS`.
+            List[str]: A list of file paths matching any sensitive pattern.
         """
         detected_files = []
         for file_path in files_to_check:
@@ -62,17 +54,15 @@ class SecurityGuard:
         return detected_files
 
     @staticmethod
-    def unstage_files(
-        files_to_unstage: List[str], repo_path: Optional[Path] = None
-    ) -> bool:
+    def unstage_files(files_to_unstage: List[str], repo_path: Optional[Path] = None) -> bool:
         """Unstages the specified files using git rm --cached.
 
         Args:
-            files_to_unstage (List[str]): A list of file paths to unstage.
-            repo_path (Optional[Path]): The path to the repository. If None, uses the current directory.
+            files_to_unstage (List[str]): Paths of files to unstage.
+            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
 
         Returns:
-            bool: True if successfully unstaged, False otherwise.
+            bool: True if unstaged successfully or if list is empty, False otherwise.
         """
         if not files_to_unstage:
             return True
@@ -90,23 +80,21 @@ class SecurityGuard:
             return False
 
     @staticmethod
-    def scan_repo(repo_path: Path) -> str:
-        """Scans a specific repository for staged sensitive files.
+    def scan_repo(repo_path: Path) -> GuardScanResult:
+        """Scans a repository for staged sensitive files.
 
         Args:
             repo_path (Path): The path to the repository to scan.
 
         Returns:
-            str: A formatted status string indicating the security status (e.g., Safe or amount of secrets).
+            GuardScanResult: An object containing safety status and detected files.
         """
         staged = SecurityGuard.get_staged_files(repo_path)
         if not staged:
-            return "[green]✅ Safe[/green]"
+            return GuardScanResult(is_safe=True, sensitive_files=[])
 
         sensitive = SecurityGuard.find_sensitive_files(staged)
         if not sensitive:
-            return "[green]✅ Safe[/green]"
+            return GuardScanResult(is_safe=True, sensitive_files=[])
 
-        count = len(sensitive)
-        s = "s" if count > 1 else ""
-        return f"[red]❌ {count} Staged Secret{s}[/red]"
+        return GuardScanResult(is_safe=False, sensitive_files=sensitive)
