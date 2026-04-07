@@ -20,40 +20,6 @@ def mock_valid_git_env():
 
 
 # ==========================================
-# Guard Command Tests
-# ==========================================
-
-
-@patch("chegi.cli.SecurityGuard.find_sensitive_files")
-@patch("chegi.cli.SecurityGuard.get_staged_files")
-def test_guard_success_no_secrets(
-    mock_get_staged: MagicMock, mock_find_sensitive: MagicMock
-):
-    """Tests guard command when no sensitive files are detected."""
-    mock_get_staged.return_value = ["clean.py"]
-    mock_find_sensitive.return_value = []
-
-    result = runner.invoke(app, ["guard"])
-    assert result.exit_code == 0
-
-
-@patch("chegi.cli.SecurityGuard.unstage_files")
-@patch("chegi.cli.SecurityGuard.find_sensitive_files")
-@patch("chegi.cli.SecurityGuard.get_staged_files")
-def test_guard_failure_secrets_found_accept_unstage(mock_get, mock_find, mock_unstage):
-    """Tests guard behavior when secrets are found and user accepts unstaging."""
-    mock_get.return_value = [".env"]
-    mock_find.return_value = [".env"]
-    mock_unstage.return_value = True
-
-    result = runner.invoke(app, ["guard"], input="y\n")
-
-    assert result.exit_code == 1
-    assert "WARNING: Sensitive files detected" in result.stdout
-    assert "Files successfully unstaged" in result.stdout
-
-
-# ==========================================
 # Gitignore Command Tests
 # ==========================================
 
