@@ -21,6 +21,17 @@ class GitClient:
         """
         self.repo_path = repo_path
 
+    def is_valid_repo(self) -> bool:
+        """Checks if the repository path is a valid Git repository.
+
+        Returns:
+            bool: True if it is a valid Git repo, False otherwise.
+        """
+        try:
+            self.run_command(["git", "rev-parse", "--is-inside-work-tree"])
+            return True
+        except (GitCommandError, GitNotInstalledError):
+            return False
     def run_command(
         self, command: List[str], check: bool = True, env: Optional[dict] = None
     ) -> str:

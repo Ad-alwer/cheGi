@@ -13,7 +13,7 @@ from rich.progress import (
 )
 
 from chegi.config import ChegiConfig
-from chegi.security import SecurityGuard
+from chegi.services.guard import SecurityGuard
 from chegi.ui import TerminalUI
 from chegi.utils.finder import find_git_repos
 from chegi.services.git.models import GitStatus

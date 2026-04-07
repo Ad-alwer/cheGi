@@ -77,3 +77,23 @@ def test_is_workspace_clean_false(mock_run_command, git_client):
     # Any output means dirty workspace
     mock_run_command.return_value = " M file.py"
     assert git_client.is_workspace_clean() is False
+    
+@patch.object(GitClient, "run_command")
+def test_is_valid_repo_true(mock_run_command, git_client):
+    # Command success means it is a valid repo
+    mock_run_command.return_value = "true"
+    assert git_client.is_valid_repo() is True
+    mock_run_command.assert_called_once_with(["git", "rev-parse", "--is-inside-work-tree"])
+
+@patch.object(GitClient, "run_command")
+def test_is_valid_repo_false_not_a_repo(mock_run_command, git_client):
+    # Command error implies not inside a git repository
+    mock_run_command.side_effect = GitCommandError("fatal: not a git repository")
+    assert git_client.is_valid_repo() is False
+
+@patch.object(GitClient, "run_command")
+def test_is_valid_repo_false_git_not_installed(mock_run_command, git_client):
+    # Missing git executable also means not a valid repo context
+    mock_run_command.side_effect = GitNotInstalledError("Git executable not found")
+    assert git_client.is_valid_repo() is False
+

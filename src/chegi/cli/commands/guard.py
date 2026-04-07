@@ -1,8 +1,10 @@
 import typer
 from typing import Annotated
+from pathlib import Path
 
 from chegi.ui import TerminalUI
 from chegi.services.guard import SecurityGuard
+from chegi.services.git.client import GitClient
 
 app = typer.Typer(help="Checks staged files for sensitive data to prevent accidental commits.")
 
@@ -36,6 +38,13 @@ def guard(
         return
 
     ui = TerminalUI()
+    
+    # Check if we are inside a valid git repository
+    git_client = GitClient(Path.cwd())
+    if not git_client.is_valid_repo():
+        ui.print_error("fatal: not a git repository (or any of the parent directories): .git")
+        raise typer.Exit(code=1)
+
     ui.console.print("[dim]🔒 Running Security Guard...[/dim]")
 
     staged_files = SecurityGuard.get_staged_files()
