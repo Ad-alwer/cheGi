@@ -11,7 +11,7 @@ TEST_REPO_PATH = Path("/fake/repo")
 
 @patch("subprocess.run")
 def test_get_staged_files_success(mock_run):
-    # Mock successful git diff command
+    """Test retrieving staged files successfully via git diff."""
     mock_result = MagicMock()
     mock_result.stdout = "main.py\nconfig.json\n\n"
     mock_run.return_value = mock_result
@@ -30,7 +30,7 @@ def test_get_staged_files_success(mock_run):
 
 @patch("subprocess.run")
 def test_get_staged_files_failure(mock_run):
-    # Mock git command failure returning empty list
+    """Test that an empty list is returned when the git command fails."""
     mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
 
     files = SecurityGuard.get_staged_files(TEST_REPO_PATH)
@@ -40,7 +40,7 @@ def test_get_staged_files_failure(mock_run):
 
 @patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env", "*.pem", "secret.*"])
 def test_find_sensitive_files_found():
-    # Detects files that match the mocked sensitive patterns
+    """Test detection of files matching the sensitive patterns."""
     files_to_check = ["main.py", ".env", "utils.py", "key.pem", "secret.txt"]
     detected = SecurityGuard.find_sensitive_files(files_to_check)
 
@@ -52,7 +52,7 @@ def test_find_sensitive_files_found():
 
 @patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env", "*.pem"])
 def test_find_sensitive_files_clean():
-    # Returns empty list when no files match sensitive patterns
+    """Test that an empty list is returned when no sensitive files are present."""
     files_to_check = ["main.py", "README.md"]
     detected = SecurityGuard.find_sensitive_files(files_to_check)
 
@@ -61,7 +61,7 @@ def test_find_sensitive_files_clean():
 
 @patch("subprocess.run")
 def test_unstage_files_success(mock_run):
-    # Unstaging specific files successfully
+    """Test successfully unstaging specific files using git rm."""
     result = SecurityGuard.unstage_files([".env", "key.pem"], TEST_REPO_PATH)
 
     assert result is True
@@ -75,7 +75,7 @@ def test_unstage_files_success(mock_run):
 
 @patch("subprocess.run")
 def test_unstage_files_empty_list(mock_run):
-    # Passing empty list returns True without calling subprocess
+    """Test that unstaging an empty list returns True without executing git commands."""
     result = SecurityGuard.unstage_files([], TEST_REPO_PATH)
 
     assert result is True
@@ -84,7 +84,7 @@ def test_unstage_files_empty_list(mock_run):
 
 @patch("subprocess.run")
 def test_unstage_files_failure(mock_run):
-    # Subprocess failure returns False
+    """Test that a subprocess failure during unstage returns False."""
     mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
     
     result = SecurityGuard.unstage_files([".env"], TEST_REPO_PATH)
@@ -95,7 +95,7 @@ def test_unstage_files_failure(mock_run):
 @patch.object(SecurityGuard, "find_sensitive_files")
 @patch.object(SecurityGuard, "get_staged_files")
 def test_scan_repo_no_staged_files(mock_get_staged, mock_find_sensitive):
-    # If nothing is staged, repo is safe
+    """Test repository scan when no files are staged (returns safe)."""
     mock_get_staged.return_value = []
     
     result = SecurityGuard.scan_repo(TEST_REPO_PATH)
@@ -108,7 +108,7 @@ def test_scan_repo_no_staged_files(mock_get_staged, mock_find_sensitive):
 @patch.object(SecurityGuard, "find_sensitive_files")
 @patch.object(SecurityGuard, "get_staged_files")
 def test_scan_repo_staged_but_clean(mock_get_staged, mock_find_sensitive):
-    # Staged files exist but no sensitive patterns match
+    """Test repository scan when staged files exist but none are sensitive (returns safe)."""
     mock_get_staged.return_value = ["main.py"]
     mock_find_sensitive.return_value = []
     
@@ -121,7 +121,7 @@ def test_scan_repo_staged_but_clean(mock_get_staged, mock_find_sensitive):
 @patch.object(SecurityGuard, "find_sensitive_files")
 @patch.object(SecurityGuard, "get_staged_files")
 def test_scan_repo_staged_and_sensitive(mock_get_staged, mock_find_sensitive):
-    # Staged files contain sensitive data
+    """Test repository scan when staged files contain sensitive data (returns unsafe)."""
     mock_get_staged.return_value = ["main.py", ".env"]
     mock_find_sensitive.return_value = [".env"]
     
