@@ -1,7 +1,9 @@
 import typer
 
 # Import command modules
-from chegi.cli.commands import config, sync, scan, guard,reword, setup
+from chegi.cli.commands import config, sync, scan, guard, reword, setup
+# Import the preflight orchestrator
+from chegi.cli.core.preflight import run_preflight_checks
 
 app = typer.Typer(
     help=(
@@ -15,14 +17,23 @@ app = typer.Typer(
 )
 
 # Register subcommands
-# (Currently commented out. We will uncomment them one by one as we migrate the code)
-
 app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 app.add_typer(sync.app, name="sync")
-app.add_typer(scan.app , name="scan")
+app.add_typer(scan.app, name="scan")
 app.add_typer(reword.app, name="reword")
 app.add_typer(guard.app, name="guard")
+
+
+@app.callback()
+def global_setup() -> None:
+    """Global setup executed before any command is routed.
+
+    Runs essential preflight system checks (e.g., Git installation)
+    to ensure the environment is ready for cheGi operations.
+    """
+    run_preflight_checks()
+
 
 if __name__ == "__main__":
     app()

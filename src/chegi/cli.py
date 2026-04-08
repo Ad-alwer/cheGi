@@ -5,7 +5,6 @@ import typer
 from rich.prompt import Confirm
 
 from chegi.env_manager import EnvManager
-from chegi.git_utils import check_git_environment
 from chegi.installer import SystemInstaller
 from chegi.ui import TerminalUI
 
@@ -17,52 +16,6 @@ app = typer.Typer(
         "with automated system installers and custom mirror support."
     )
 )
-
-
-@app.callback()
-def global_setup() -> None:
-    """Global setup executed before any command.
-
-    Validates the Git environment. If Git is missing or outdated, it prompts
-    the user to automatically install or update it using the SystemInstaller.
-
-    Raises:
-        typer.Exit: If the user aborts the installation, if the installation
-            fails, or upon successful installation requiring a terminal restart.
-    """
-    is_valid, message = check_git_environment()
-
-    if not is_valid:
-        ui = TerminalUI()
-        ui.print_error(f"Environment Check Failed: {message}")
-
-        install_now = typer.confirm(
-            "Git is missing or outdated. Do you want cheGi to automatically install/update Git for you?"
-        )
-
-        if not install_now:
-            ui.print_error(
-                "Installation aborted. cheGi requires Git to function properly."
-            )
-            raise typer.Exit(code=1)
-
-        ui.console.print("\n[bold cyan]Starting installation process...[/bold cyan]")
-        success = SystemInstaller.install_package("git")
-
-        if success:
-            ui.console.print(
-                "\n[bold green]Success! Git has been installed/updated.[/bold green]"
-            )
-            ui.console.print(
-                "[bold magenta]IMPORTANT: Please restart your terminal (close and open it again) "
-                "so the system can recognize the 'git' command.[/bold magenta]"
-            )
-            raise typer.Exit(code=0)
-        else:
-            ui.print_error(
-                "Failed to install Git automatically. Please install it manually from https://git-scm.com/"
-            )
-            raise typer.Exit(code=1)
 
 
 @app.command("gitignore")
