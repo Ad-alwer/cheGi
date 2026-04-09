@@ -5,6 +5,8 @@ from typing import List, Optional, Tuple, Union
 
 import typer
 
+from .exceptions import TargetNotSupportedError, UserAbortedSetupError
+
 
 class SystemInstaller:
     """System and package installer for dependencies.
@@ -191,7 +193,7 @@ class SystemInstaller:
             bool: True if the command executed with a zero return code, False otherwise.
 
         Raises:
-            KeyboardInterrupt: If the user interrupts execution (e.g., Ctrl+C),
+            UserAbortedSetupError: If the user interrupts execution (e.g., Ctrl+C),
                 allowing higher CLI layers to handle the graceful exit.
         """
         final_cmd = cls._build_command_with_mirror(cmd, pm_name, mirror_url)
@@ -205,7 +207,7 @@ class SystemInstaller:
 
         except KeyboardInterrupt:
             # Re-raise to let the caller handle SIGINT cleanly without standard traceback.
-            raise
+            raise UserAbortedSetupError("Installation aborted by user.")
         except Exception as e:
             typer.secho(f"Error executing command: {e}", fg=typer.colors.RED)
             return False
@@ -224,7 +226,7 @@ class SystemInstaller:
             typer.secho(
                 f"Package '{package_name}' is not supported.", fg=typer.colors.RED
             )
-            return False
+            raise TargetNotSupportedError(f"Package '{package_name}' is not supported.")
 
         os_name = platform.system()
 
@@ -236,7 +238,7 @@ class SystemInstaller:
             return cls._install_package_mac(package_name)
         else:
             typer.secho(f"OS '{os_name}' is not supported.", fg=typer.colors.RED)
-            return False
+            raise TargetNotSupportedError(f"OS '{os_name}' is not supported.")
 
     @classmethod
     def _install_package_windows(cls, package_name: str) -> bool:
@@ -249,7 +251,7 @@ class SystemInstaller:
             bool: True if winget installs the package successfully, False otherwise.
 
         Raises:
-            KeyboardInterrupt: If the installation is interrupted by the user.
+            UserAbortedSetupError: If the installation is interrupted by the user.
         """
         winget_map = {"git": "Git.Git"}
         winget_id = winget_map.get(package_name.lower(), package_name)
@@ -264,7 +266,7 @@ class SystemInstaller:
                 )
                 return result.returncode == 0
             except KeyboardInterrupt:
-                raise
+                raise UserAbortedSetupError("Installation aborted by user.")
 
         typer.secho(
             "Error: 'winget' not found. Please install manually.", fg=typer.colors.RED
@@ -282,7 +284,7 @@ class SystemInstaller:
             bool: True on successful installation, False otherwise.
 
         Raises:
-            KeyboardInterrupt: If the installation is interrupted by the user.
+            UserAbortedSetupError: If the installation is interrupted by the user.
         """
         try:
             if shutil.which("apt"):
@@ -312,7 +314,7 @@ class SystemInstaller:
             typer.secho("Error: Unsupported Linux distribution.", fg=typer.colors.RED)
             return False
         except KeyboardInterrupt:
-            raise
+            raise UserAbortedSetupError("Installation aborted by user.")
 
     @classmethod
     def _install_package_mac(cls, package_name: str) -> bool:
@@ -325,7 +327,7 @@ class SystemInstaller:
             bool: True on successful installation, False otherwise.
 
         Raises:
-            KeyboardInterrupt: If the installation is interrupted by the user.
+            UserAbortedSetupError: If the installation is interrupted by the user.
         """
         try:
             if shutil.which("brew"):
@@ -350,4 +352,4 @@ class SystemInstaller:
             )
             return False
         except KeyboardInterrupt:
-            raise
+            raise UserAbortedSetupError("Installation aborted by user.")

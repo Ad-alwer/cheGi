@@ -10,9 +10,11 @@ import typer
 from rich.table import Table
 
 from chegi.config import SUPPORTED_PMS, ChegiConfig
-from chegi.env_manager import EnvManager
-from chegi.installer import SystemInstaller
+from chegi.services.environment import EnvManager
 from chegi.ui import TerminalUI
+
+from .exceptions import UserAbortedSetupError
+from .system_installer import SystemInstaller
 
 
 class SetupService:
@@ -362,7 +364,7 @@ class SetupService:
                 else:
                     self.ui.print_error(f"❌ Failed to install {tool['name']}.")
 
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, UserAbortedSetupError):
             self.ui.console.print("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
             raise typer.Exit(code=1)
 

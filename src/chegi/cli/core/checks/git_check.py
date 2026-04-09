@@ -4,7 +4,7 @@ import subprocess
 import typer
 
 from chegi.cli.core.checks import PreflightCheck
-from chegi.installer import SystemInstaller
+from chegi.services.installer import SystemInstaller
 from chegi.ui import TerminalUI
 
 
