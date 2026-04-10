@@ -1,117 +1,105 @@
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
-# Git requirements
-MIN_GIT_VERSION: Tuple[int, int, int] = (2, 25, 0)
-
-# Security Constants (Immutable)
-DEFAULT_SENSITIVE_PATTERNS: Tuple[str, ...] = (
-    ".env*",
-    "*.pem",
-    "*.key",
-    "id_rsa*",
-    "*.pk8",
-    "*secret*",
-    "credentials.json",
-)
-
-# Supported Package Managers for Mirrors (Restrict to valid names)
-SUPPORTED_PMS: Set[str] = {"pip", "npm", "yarn", "gem", "cargo", "composer"}
-
-# Default settings
-DEFAULT_EXCLUDES: List[str] = [
-    "node_modules",
-    ".venv",
-    "venv",
-    "env",
-    ".tox",
-    "__pycache__",
-    ".idea",
-    ".vscode",
-    ".git",
-]
-DEFAULT_MAX_DEPTH: int = 3
-DEFAULT_MCTS: int = 10
-# Changed to support lists of URLs instead of a single string
-DEFAULT_MIRRORS: Dict[str, List[str]] = {}
+from .constants import SUPPORTED_PMS
+from .models import ChegiConfigModel
+from .exceptions import InvalidMirrorFormatError, UnsupportedPackageManagerError
 
 
 class ChegiConfig:
     """Manages loading, updating, and saving configurations for the cheGi CLI.
 
-    This class handles the persistent state of the application by reading from
-    and writing to a `.chegi.json` file. It manages settings such as directories
-    to exclude, maximum scan depth, maximum concurrent tasks, and custom mirrors.
-
-    Attributes:
-        config_file (Path): The absolute or relative path to the `.chegi.json` file.
-        exclude_dirs (Set[str]): A collection of directory names to be ignored during the scan.
-        max_depth (int): The maximum depth to traverse when scanning directories.
-        mcts (int): Maximum Concurrent Tasks, limiting the number of async operations.
-        mirrors (Dict[str, List[str]]): Persistent custom mirror URLs for package managers.
+    This class handles the core state of the configuration using `ChegiConfigModel`
+    and provides an interface to interact with settings like exclusions, depth limits,
+    and package manager mirrors.
     """
 
     def __init__(self, base_path: str = ".") -> None:
-        """Initializes the configuration manager with default values and loads user settings.
+        """Initializes the configuration manager and loads user settings.
 
         Args:
-            base_path (str, optional): The base directory where `.chegi.json` is located.
-                Defaults to "." (current working directory).
+            base_path (str, optional): The base directory where the `.chegi.json`
+                configuration file is located. Defaults to ".".
         """
         self.config_file: Path = Path(base_path) / ".chegi.json"
-
-        self.exclude_dirs: Set[str] = set(DEFAULT_EXCLUDES)
-        self.max_depth: int = DEFAULT_MAX_DEPTH
-        self.mcts: int = DEFAULT_MCTS
-        # Deep copy the default mirrors to prevent shared state mutations
-        self.mirrors: Dict[str, List[str]] = {
-            k: list(v) for k, v in DEFAULT_MIRRORS.items()
-        }
-
+        
+        # Core state is managed by the data class model
+        self._state = ChegiConfigModel()
+        
         self.load()
+
+    # --- Properties for Backward Compatibility ---
+    
+    @property
+    def exclude_dirs(self) -> Set[str]:
+        """Set[str]: A set of directory names to exclude from operations."""
+        return self._state.exclude_dirs
+
+    @property
+    def max_depth(self) -> int:
+        """int: The maximum depth for directory traversal operations."""
+        return self._state.max_depth
+
+    @max_depth.setter
+    def max_depth(self, value: int) -> None:
+        self._state.max_depth = value
+
+    @property
+    def mcts(self) -> int:
+        """int: The maximum concurrent tasks/threads setting."""
+        return self._state.mcts
+
+    @mcts.setter
+    def mcts(self, value: int) -> None:
+        self._state.mcts = value
+
+    @property
+    def mirrors(self) -> Dict[str, List[str]]:
+        """Dict[str, List[str]]: A dictionary mapping package managers to their mirror URLs."""
+        return self._state.mirrors
+
+    # --- Core Methods ---
 
     def load(self) -> None:
         """Loads configuration from the `.chegi.json` file if it exists.
 
-        Reads the JSON file and overrides the default attributes with user-defined
-        settings. If the JSON file is invalid or corrupted, it silently falls back
-        to the default values.
+        Reads the JSON file and updates the internal state (`_state`).
+        Ignores JSON decoding errors if the file is malformed.
         """
         if self.config_file.exists() and self.config_file.is_file():
             try:
                 with open(self.config_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
-                    custom_excludes = data.get("exclude_dirs", [])
-                    self.exclude_dirs.update(custom_excludes)
+                    if "exclude_dirs" in data:
+                        self._state.exclude_dirs.update(data["exclude_dirs"])
 
-                    self.max_depth = data.get("max_depth", DEFAULT_MAX_DEPTH)
-                    self.mcts = data.get("mcts", DEFAULT_MCTS)
+                    self._state.max_depth = data.get("max_depth", self._state.max_depth)
+                    self._state.mcts = data.get("mcts", self._state.mcts)
 
-                    # Load mirrors and gracefully migrate legacy string formats to lists
                     loaded_mirrors = data.get("mirrors", {})
                     if isinstance(loaded_mirrors, dict):
                         for pm, urls in loaded_mirrors.items():
                             if pm in SUPPORTED_PMS:
                                 if isinstance(urls, str):
-                                    self.mirrors[pm] = [urls]
+                                    self._state.mirrors[pm] = [urls]
                                 elif isinstance(urls, list):
-                                    self.mirrors[pm] = [str(u) for u in urls if u]
+                                    self._state.mirrors[pm] = [str(u) for u in urls if u]
             except json.JSONDecodeError:
                 pass
 
     def save(self) -> None:
         """Saves the current configuration state to the `.chegi.json` file.
 
-        Serializes the current attributes into JSON format and writes them to disk
-        with an indentation of 4 spaces for readability.
+        Dumps the properties (exclude_dirs, max_depth, mcts, mirrors)
+        into a formatted JSON file.
         """
         data: Dict[str, Any] = {
-            "exclude_dirs": list(self.exclude_dirs),
-            "max_depth": self.max_depth,
-            "mcts": self.mcts,
-            "mirrors": self.mirrors,
+            "exclude_dirs": list(self._state.exclude_dirs),
+            "max_depth": self._state.max_depth,
+            "mcts": self._state.mcts,
+            "mirrors": self._state.mirrors,
         }
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
@@ -120,11 +108,11 @@ class ChegiConfig:
         """Updates a specific configuration key and saves the changes.
 
         Args:
-            key (str): The configuration key to update (e.g., 'max_depth', 'mcts', 'exclude_dirs', 'mirrors').
+            key (str): The configuration key to update (e.g., 'max_depth', 'mirrors').
             value (Any): The new value for the configuration key.
 
         Returns:
-            bool: True if the key was successfully updated, False if the key is not recognized.
+            bool: True if the setting was successfully updated, False if the key is unknown.
         """
         if key == "max_depth":
             self.max_depth = int(value)
@@ -139,7 +127,6 @@ class ChegiConfig:
         elif key == "mirrors":
             if isinstance(value, dict):
                 for pm, url_data in value.items():
-                    # Handle both single strings and lists of strings gracefully
                     if isinstance(url_data, list):
                         for u in url_data:
                             self.set_mirror(pm, str(u))
@@ -154,10 +141,10 @@ class ChegiConfig:
         return True
 
     def get_all(self) -> Dict[str, Any]:
-        """Retrieves all current configurations.
+        """Retrieves all current configurations as a dictionary.
 
         Returns:
-            Dict[str, Any]: A dictionary containing all configuration keys and their current values.
+            Dict[str, Any]: A dictionary containing all configuration settings.
         """
         return {
             "exclude_dirs": list(self.exclude_dirs),
@@ -167,12 +154,23 @@ class ChegiConfig:
         }
 
     def add_exclude(self, folder_name: str) -> None:
-        """Adds a single folder name to the exclusion list and saves the changes."""
+        """Adds a single folder name to the exclusion list and saves the changes.
+
+        Args:
+            folder_name (str): The name of the folder to exclude.
+        """
         self.exclude_dirs.add(folder_name.strip())
         self.save()
 
     def remove_exclude(self, folder_name: str) -> bool:
-        """Removes a single folder name from the exclusion list and saves the changes."""
+        """Removes a single folder name from the exclusion list and saves the changes.
+
+        Args:
+            folder_name (str): The name of the folder to remove from exclusions.
+
+        Returns:
+            bool: True if the folder was found and removed, False otherwise.
+        """
         folder_name = folder_name.strip()
         if folder_name in self.exclude_dirs:
             self.exclude_dirs.remove(folder_name)
@@ -183,18 +181,18 @@ class ChegiConfig:
     # --- Methods for Mirror Management ---
 
     def set_mirror(self, pm_name: str, url: str) -> None:
-        """Adds a permanent mirror URL for a package manager without overwriting existing ones.
+        """Adds a permanent mirror URL for a specific package manager.
 
         Args:
-            pm_name (str): The name of the package manager (e.g., 'pip', 'npm').
-            url (str): The URL of the mirror to append.
+            pm_name (str): The name of the package manager (e.g., 'npm', 'pip').
+            url (str): The mirror URL to add.
 
         Raises:
-            ValueError: If the package manager is not in SUPPORTED_PMS.
+            UnsupportedPackageManagerError: If the package manager is not in `SUPPORTED_PMS`.
         """
         pm_name = pm_name.strip().lower()
         if pm_name not in SUPPORTED_PMS:
-            raise ValueError(
+            raise UnsupportedPackageManagerError(
                 f"Unsupported package manager: '{pm_name}'. "
                 f"Supported ones are: {', '.join(SUPPORTED_PMS)}"
             )
@@ -203,21 +201,19 @@ class ChegiConfig:
             self.mirrors[pm_name] = []
 
         clean_url = url.strip()
-        # Prevent appending duplicate URLs for the same package manager
         if clean_url and clean_url not in self.mirrors[pm_name]:
             self.mirrors[pm_name].append(clean_url)
             self.save()
 
     def add_mirrors_from_string(self, mirrors_str: str) -> None:
-        """Parses a string of multiple mirrors and appends them to their respective lists.
-
-        Expects a comma-separated list of key=value pairs, e.g., 'pip=url1,npm=url2'.
+        """Parses a string of multiple mirrors and adds them to their respective lists.
 
         Args:
-            mirrors_str (str): The string containing package managers and URLs.
+            mirrors_str (str): A comma-separated string of mirrors in 'pm_name=url' format.
 
         Raises:
-            ValueError: If the string format is invalid or contains unsupported package managers.
+            InvalidMirrorFormatError: If a part of the string does not match the expected format.
+            UnsupportedPackageManagerError: If a parsed package manager is not supported.
         """
         if not mirrors_str or not mirrors_str.strip():
             return
@@ -229,7 +225,7 @@ class ChegiConfig:
                 continue
 
             if "=" not in part:
-                raise ValueError(
+                raise InvalidMirrorFormatError(
                     f"Invalid format '{part}'. Expected format: 'pm_name=url'"
                 )
 
@@ -240,27 +236,26 @@ class ChegiConfig:
         """Removes a specific mirror URL or all mirrors for a package manager.
 
         Args:
-            pm_name (str): The package manager name.
-            url (Optional[str]): The specific URL to remove. If None, removes all URLs for pm_name.
+            pm_name (str): The name of the package manager.
+            url (Optional[str], optional): The specific URL to remove. If None, all mirrors
+                for the specified package manager are removed. Defaults to None.
 
         Returns:
-            bool: True if a removal occurred, False otherwise.
+            bool: True if the removal was successful, False if the package manager
+                or URL was not found.
         """
         pm_name = pm_name.lower()
         if pm_name not in self.mirrors:
             return False
 
         if url:
-            # Remove specific URL
             if url in self.mirrors[pm_name]:
                 self.mirrors[pm_name].remove(url)
-                # If the list is now empty, remove the pm_name key entirely
                 if not self.mirrors[pm_name]:
                     del self.mirrors[pm_name]
                 return True
-            return False  # URL was not in the list
+            return False
         else:
-            # No URL specified, remove the entire package manager entry
             del self.mirrors[pm_name]
             return True
 
@@ -271,6 +266,6 @@ class ChegiConfig:
             pm_name (str): The name of the package manager.
 
         Returns:
-            List[str]: A list of assigned URLs, or an empty list if none are set.
+            List[str]: A list of configured mirror URLs for the package manager.
         """
         return self.mirrors.get(pm_name.strip().lower(), [])
