@@ -4,7 +4,7 @@ from typing import Optional
 import typer
 
 from chegi.config import ChegiConfig
-from chegi.ui import TerminalUI
+from chegi.ui import TerminalUI, console
 
 app = typer.Typer(
     help=(
@@ -26,29 +26,28 @@ def config_list(
     """
     config = ChegiConfig(base_path=path)
     config.load()
-    ui = TerminalUI()
 
-    ui.console.print("[bold]Current Configuration:[/bold]")
-    ui.console.print(f"  Max Depth: {config.max_depth}")
-    ui.console.print(f"  MCTS: {getattr(config, 'mcts', 10)}")
-    ui.console.print(f"  Exclude Dirs: {', '.join(config.exclude_dirs)}")
+    console.print("[bold]Current Configuration:[/bold]")
+    console.print(f"  Max Depth: {config.max_depth}")
+    console.print(f"  MCTS: {getattr(config, 'mcts', 10)}")
+    console.print(f"  Exclude Dirs: {', '.join(config.exclude_dirs)}")
 
     # Display configured mirrors if any exist
     if hasattr(config, "mirrors") and config.mirrors:
-        ui.console.print("  [bold]Saved Mirrors:[/bold]")
+        console.print("  [bold]Saved Mirrors:[/bold]")
         for pm, urls in config.mirrors.items():
             if not urls:
                 continue
 
             # Format the output depending on whether there's a single URL or multiple
             if len(urls) == 1:
-                ui.console.print(f"    - {pm}: [cyan]{urls[0]}[/cyan]")
+                console.print(f"    - {pm}: [cyan]{urls[0]}[/cyan]")
             else:
-                ui.console.print(f"    - {pm}:")
+                console.print(f"    - {pm}:")
                 for url in urls:
-                    ui.console.print(f"      • [cyan]{url}[/cyan]")
+                    console.print(f"      • [cyan]{url}[/cyan]")
     else:
-        ui.console.print("  [bold]Saved Mirrors:[/bold] None")
+        console.print("  [bold]Saved Mirrors:[/bold] None")
 
 
 @app.command("set")
@@ -69,14 +68,13 @@ def config_set(
     """
     config = ChegiConfig(base_path=path)
     config.load()
-    ui = TerminalUI()
 
     try:
         config.update_setting(key, value)
         config.save()
-        ui.console.print(f"[green]Successfully updated '{key}' to {value}.[/green]")
+        console.print(f"[green]Successfully updated '{key}' to {value}.[/green]")
     except ValueError as e:
-        ui.print_error(str(e))
+        TerminalUI.print_error(str(e))
         raise typer.Exit(code=1)
 
 
@@ -96,8 +94,7 @@ def config_exclude_add(
     config.add_exclude(folder)
     config.save()
 
-    ui = TerminalUI()
-    ui.console.print(f"[green]Added '{folder}' to the exclude list.[/green]")
+    console.print(f"[green]Added '{folder}' to the exclude list.[/green]")
 
 
 @app.command("exclude-remove")
@@ -116,14 +113,13 @@ def config_exclude_remove(
     """
     config = ChegiConfig(base_path=path)
     config.load()
-    ui = TerminalUI()
 
     try:
         config.remove_exclude(folder)
         config.save()
-        ui.console.print(f"[green]Removed '{folder}' from the exclude list.[/green]")
+        console.print(f"[green]Removed '{folder}' from the exclude list.[/green]")
     except ValueError as e:
-        ui.print_error(str(e))
+        TerminalUI.print_error(str(e))
         raise typer.Exit(code=1)
 
 
@@ -145,16 +141,15 @@ def config_mirror_add(
     """
     config = ChegiConfig(base_path=path)
     config.load()
-    ui = TerminalUI()
 
     try:
         config.set_mirror(pm_name, url)
         config.save()
-        ui.console.print(
+        console.print(
             f"[green]✔ Successfully added/updated mirror for '{pm_name.lower()}' -> '{url}'.[/green]"
         )
     except ValueError as e:
-        ui.print_error(str(e))
+        TerminalUI.print_error(str(e))
         raise typer.Exit(code=1)
 
 
@@ -179,14 +174,13 @@ def config_mirror_remove(
     Raises:
         typer.Exit: If the mirror or package manager is not found.
     """
-    ui = TerminalUI()
     config = ChegiConfig(base_path=path)
     config.load()
 
     pm_name = pm_name.lower()
 
     if not hasattr(config, "mirrors") or pm_name not in config.mirrors:
-        ui.print_error(f"No mirror configuration found for '{pm_name}'.")
+        TerminalUI.print_error(f"No mirror configuration found for '{pm_name}'.")
         raise typer.Exit(code=1)
 
     success = config.remove_mirror(pm_name, url)
@@ -194,14 +188,14 @@ def config_mirror_remove(
     if success:
         config.save()
         if url:
-            ui.print_success(f"Removed mirror URL '{url}' for '{pm_name}'.")
+            TerminalUI.print_success(f"Removed mirror URL '{url}' for '{pm_name}'.")
         else:
-            ui.print_success(f"Removed all mirror configurations for '{pm_name}'.")
+            TerminalUI.print_success(f"Removed all mirror configurations for '{pm_name}'.")
     else:
         if url:
-            ui.print_error(f"URL '{url}' not found in saved mirrors for '{pm_name}'.")
+            TerminalUI.print_error(f"URL '{url}' not found in saved mirrors for '{pm_name}'.")
         else:
-            ui.print_error(f"Failed to remove mirror configuration for '{pm_name}'.")
+            TerminalUI.print_error(f"Failed to remove mirror configuration for '{pm_name}'.")
         raise typer.Exit(code=1)
 
 
@@ -224,7 +218,6 @@ def config_mirror_set_all(
     """
     config = ChegiConfig(base_path=path)
     config.load()
-    ui = TerminalUI()
 
     try:
         # Parse incoming JSON payload
@@ -244,12 +237,12 @@ def config_mirror_set_all(
                 )
 
     except json.JSONDecodeError:
-        ui.print_error(
+        TerminalUI.print_error(
             'Invalid JSON format! Please wrap the string properly (e.g. \'{"pip": "url"}\').'
         )
         raise typer.Exit(code=1)
     except ValueError as e:
-        ui.print_error(f"Validation Error: {e}")
+        TerminalUI.print_error(f"Validation Error: {e}")
         raise typer.Exit(code=1)
 
     if not hasattr(config, "mirrors") or config.mirrors is None:
@@ -261,10 +254,10 @@ def config_mirror_set_all(
         config.update_setting("mirrors", new_mirrors)
         config.save()
     except ValueError as e:
-        ui.print_error(f"Validation Error: {e}")
+        TerminalUI.print_error(f"Validation Error: {e}")
         raise typer.Exit(code=1)
 
-    ui.console.print(
+    console.print(
         f"[green]✔ Mirrors configuration has been completely overwritten with {len(new_mirrors)} items.[/green]"
     )
 
@@ -280,11 +273,10 @@ def config_mirror_clear(
     """
     config = ChegiConfig(base_path=path)
     config.load()
-    ui = TerminalUI()
 
     if hasattr(config, "mirrors") and config.mirrors:
         config.mirrors = {}
         config.save()
-        ui.console.print("[green]✔ All mirrors have been completely cleared.[/green]")
+        console.print("[green]✔ All mirrors have been completely cleared.[/green]")
     else:
-        ui.console.print("[yellow]⚠ No mirrors were configured to clear.[/yellow]")
+        console.print("[yellow]⚠ No mirrors were configured to clear.[/yellow]")

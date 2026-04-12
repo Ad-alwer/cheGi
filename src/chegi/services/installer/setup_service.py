@@ -11,7 +11,7 @@ from rich.table import Table
 
 from chegi.config import SUPPORTED_PMS, ChegiConfig
 from chegi.services.environment import EnvManager
-from chegi.ui import TerminalUI
+from chegi.ui import TerminalUI, console
 
 from .exceptions import UserAbortedSetupError
 from .system_installer import SystemInstaller
@@ -23,7 +23,6 @@ class SetupService:
     Attributes:
         environment (str): The target programming language or toolset.
         auto_yes (bool): Flag to skip prompts and automatically accept.
-        ui (TerminalUI): UI instance for rich terminal output.
         env_manager (EnvManager): Manager for parsing environment definitions.
         config (ChegiConfig): Configuration instance for managing settings/mirrors.
         env_data (Dict[str, Any]): Data of the resolved target environment.
@@ -43,7 +42,6 @@ class SetupService:
         self.auto_yes = auto_yes
         
         # Initialize core components
-        self.ui = TerminalUI()
         self.env_manager = EnvManager()
         self.config = ChegiConfig()
         self.config.load()
@@ -66,8 +64,8 @@ class SetupService:
         """
         # 1. Resolve Target
         self._resolve_target()
-        self.ui.print_info(f"Analyzing environment for: [bold yellow]{self.display_name}[/bold yellow]")
-        self.ui.console.print(f"Detected Package Manager: [bold cyan]{self.pkg_manager}[/bold cyan]\n")
+        TerminalUI.print_info(f"Analyzing environment for: [bold yellow]{self.display_name}[/bold yellow]")
+        console.print(f"Detected Package Manager: [bold cyan]{self.pkg_manager}[/bold cyan]\n")
 
         # 2. Normalize Data
         levels, levels_info, tools_data = self._normalize_data()
@@ -76,12 +74,12 @@ class SetupService:
         tools_to_install = self._check_installed_tools(levels, levels_info, tools_data)
 
         if not tools_to_install:
-            self.ui.print_success(f"All critical tools for {self.display_name} are already installed! 🎉")
+            TerminalUI.print_success(f"All critical tools for {self.display_name} are already installed! 🎉")
             raise typer.Exit()
 
         # 4. Sort Dependencies
         tools_to_install = self._sort_dependencies(tools_to_install)
-        self.ui.print_info(f"Found {len(tools_to_install)} missing tools.")
+        TerminalUI.print_info(f"Found {len(tools_to_install)} missing tools.")
 
         # 5. User Selection
         tools_to_install = self._prompt_user_selection(tools_to_install)
@@ -101,8 +99,8 @@ class SetupService:
         self.env_data = self.env_manager.find_setup_target(self.environment)
         if not self.env_data:
             available_envs = self.env_manager.get_available_envs()
-            self.ui.print_error(f"Target '{self.environment}' is not supported.")
-            self.ui.print_info(f"Available environments: {', '.join(available_envs)}")
+            TerminalUI.print_error(f"Target '{self.environment}' is not supported.")
+            TerminalUI.print_info(f"Available environments: {', '.join(available_envs)}")
             raise typer.Exit(code=1)
         
         self.display_name = self.env_data.get("name", self.environment.capitalize())
@@ -152,7 +150,7 @@ class SetupService:
 
         tools_to_install = []
 
-        with self.ui.console.status("[bold green]Checking installed tools...[/bold green]", spinner="dots"):
+        with console.status("[bold green]Checking installed tools...[/bold green]", spinner="dots"):
             for level_id, tool_names in levels.items():
                 level_name = levels_info.get(level_id, f"Level {level_id}")
 
@@ -189,8 +187,8 @@ class SetupService:
 
                     table.add_row(t_name, requires_str, level_name, status_str, info)
 
-        self.ui.console.print(table)
-        self.ui.console.print("\n")
+        console.print(table)
+        console.print("\n")
         return tools_to_install
 
     def _sort_dependencies(self, tools_to_install: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -242,7 +240,7 @@ class SetupService:
 
         if is_single_standalone:
             if not typer.confirm(f"Do you want to install '{tools_to_install[0]['name']}'?"):
-                self.ui.print_info("Setup aborted by user. No changes were made.")
+                TerminalUI.print_info("Setup aborted by user. No changes were made.")
                 raise typer.Exit()
             return tools_to_install
             
@@ -260,7 +258,7 @@ class SetupService:
         ).ask()
 
         if not selected:
-            self.ui.print_info("Setup aborted by user or no tools selected.")
+            TerminalUI.print_info("Setup aborted by user or no tools selected.")
             raise typer.Exit()
 
         return selected
@@ -287,8 +285,8 @@ class SetupService:
         if not pms_to_ask:
             return session_mirrors
 
-        self.ui.console.print("\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]")
-        self.ui.console.print("[dim]Useful if you are behind a restricted network.[/dim]")
+        console.print("\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]")
+        console.print("[dim]Useful if you are behind a restricted network.[/dim]")
 
         for pm in list(pms_to_ask):
             saved_mirrors = self.config.get_mirror(pm) if hasattr(self.config, "get_mirror") else None
@@ -297,7 +295,7 @@ class SetupService:
                 mirror_list = saved_mirrors if isinstance(saved_mirrors, list) else [saved_mirrors]
                 if self.auto_yes:
                     session_mirrors[pm] = mirror_list[0]
-                    self.ui.console.print(f"[dim]Auto-using primary mirror for {pm}: {mirror_list[0]}[/dim]")
+                    console.print(f"[dim]Auto-using primary mirror for {pm}: {mirror_list[0]}[/dim]")
                     continue
 
                 choices = [questionary.Choice(f"✅ Use: {url}", value=url) for url in mirror_list]
@@ -346,11 +344,11 @@ class SetupService:
             for tool in tools_to_install:
                 missing_deps = [dep for dep in tool.get("requires", []) if dep not in self.installed_tools]
                 if missing_deps:
-                    self.ui.print_warning(f"⏭️  Skipping {tool['name']}: Missing prerequisites ({', '.join(missing_deps)})")
+                    TerminalUI.print_warning(f"⏭️  Skipping {tool['name']}: Missing prerequisites ({', '.join(missing_deps)})")
                     skipped_count += 1
                     continue
 
-                self.ui.console.print(f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]")
+                console.print(f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]")
                 pm_name = tool["cmd"].split()[0].lower()
                 mirror_url = session_mirrors.get(pm_name)
 
@@ -358,22 +356,22 @@ class SetupService:
 
                 if success:
                     if len(tools_to_install) > 1:
-                        self.ui.console.print(f"[bold green]✅ {tool['name']} installed successfully.[/bold green]")
+                        console.print(f"[bold green]✅ {tool['name']} installed successfully.[/bold green]")
                     self.installed_tools.add(tool["name"])
                     success_count += 1
                 else:
-                    self.ui.print_error(f"❌ Failed to install {tool['name']}.")
+                    TerminalUI.print_error(f"❌ Failed to install {tool['name']}.")
 
         except (KeyboardInterrupt, UserAbortedSetupError):
-            self.ui.console.print("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
+            console.print("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
             raise typer.Exit(code=1)
 
         # Final Output
-        self.ui.console.print("\n")
+        console.print("\n")
         if success_count == len(tools_to_install) and success_count > 0:
             if len(tools_to_install) == 1:
-                self.ui.print_success(f"✨ {tools_to_install[0]['name']} installed successfully! ✨")
+                TerminalUI.print_success(f"✨ {tools_to_install[0]['name']} installed successfully! ✨")
             else:
-                self.ui.print_success(f"✨ Setup for {self.display_name} completed successfully! ✨")
+                TerminalUI.print_success(f"✨ Setup for {self.display_name} completed successfully! ✨")
         else:
-            self.ui.print_info(f"Setup finished. Installed: {success_count}, Skipped: {skipped_count}, Failed/Canceled: {len(tools_to_install) - success_count - skipped_count}.")
+            TerminalUI.print_info(f"Setup finished. Installed: {success_count}, Skipped: {skipped_count}, Failed/Canceled: {len(tools_to_install) - success_count - skipped_count}.")

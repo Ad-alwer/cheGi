@@ -14,7 +14,7 @@ from rich.progress import (
 
 from chegi.config import ChegiConfig
 from chegi.services.guard import SecurityGuard
-from chegi.ui import TerminalUI
+from chegi.ui import TerminalUI, console, display_results_table
 from chegi.utils.finder import find_git_repos
 from chegi.services.git.models import GitStatus
 
@@ -29,7 +29,6 @@ class ScanService:
         security (bool): Flag to enable security scanning.
         dirty (bool): Flag to filter and show only repositories with uncommitted changes.
         staged (bool): Flag to filter and show only repositories with staged files.
-        ui (TerminalUI): Instance of the terminal UI manager.
         config (ChegiConfig): Loaded configuration for the scanner.
     """
 
@@ -59,7 +58,6 @@ class ScanService:
         self.dirty = dirty
         self.staged = staged
         
-        self.ui = TerminalUI()
         self.config = self._init_config()
 
     def _init_config(self) -> ChegiConfig:
@@ -84,14 +82,14 @@ class ScanService:
         analyzing them concurrently, applying user filters, and displaying
         the final results in the terminal.
         """
-        self.ui.console.print(
+        console.print(
             f"[dim]🔍 Scanning '{self.base_path}' (max depth: {self.config.max_depth})...[/dim]"
         )
 
         # 1. Find Repositories
         repo_paths = self._get_repositories()
         if not repo_paths:
-            self.ui.display_results_table([])
+            display_results_table([])
             return
 
         # 2. Analyze Repositories
@@ -102,12 +100,12 @@ class ScanService:
 
         # 4. Display Results
         if not statuses:
-            self.ui.console.print(
+            console.print(
                 "\n[bold yellow]No repositories matched your filters.[/bold yellow]"
             )
             return
 
-        self.ui.display_results_table(statuses)
+        display_results_table(statuses)
 
     def _get_repositories(self) -> List[Path]:
         """Finds all git repositories in the base path.
@@ -121,7 +119,7 @@ class ScanService:
         try:
             return list(find_git_repos(str(self.base_path), self.config))
         except NotADirectoryError as e:
-            self.ui.print_error(str(e))
+            TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
 
     def _analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], str]] = None) -> GitStatus:
@@ -197,7 +195,7 @@ class ScanService:
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TaskProgressColumn(),
-            console=self.ui.console,
+            console=console,
             transient=True,
         ) as progress:
             task = progress.add_task("[cyan]⚡ Analyzing repositories...", total=len(repo_paths))
