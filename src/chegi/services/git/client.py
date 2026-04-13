@@ -32,6 +32,7 @@ class GitClient:
             return True
         except (GitCommandError, GitNotInstalledError):
             return False
+
     def run_command(
         self, command: List[str], check: bool = True, env: Optional[dict] = None
     ) -> str:
@@ -90,3 +91,20 @@ class GitClient:
         """
         output = self.run_command(["git", "status", "--porcelain"])
         return len(output) == 0
+
+    def commit_file(self, file_path: str, commit_msg: str) -> str:
+        """Adds and commits a specific file to the repository.
+
+        Args:
+            file_path (str): The name or relative path of the file to add.
+            commit_msg (str): The commit message.
+
+        Returns:
+            str: The commit message used.
+            
+        Raises:
+            GitCommandError: If the git add or commit commands fail.
+        """
+        self.run_command(["git", "add", file_path])
+        self.run_command(["git", "commit", "-m", commit_msg])
+        return commit_msg

@@ -32,7 +32,7 @@ testpaths = [
 ]
 
 [tool.setuptools.package-data]
-chegi = ["environments/*.json"]
+chegi = ["services/environment/presets/*.json"]
 
 [tool.ruff]
 line-length = 88

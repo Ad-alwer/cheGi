@@ -1,29 +1,23 @@
-from typing import Annotated, Optional
+from pathlib import Path
+from typing import Optional
 
-import questionary
 import typer
+import questionary
 from rich.prompt import Confirm
 
-from chegi.env_manager import EnvManager
-from chegi.installer import SystemInstaller
-from chegi.ui import TerminalUI
+from chegi.services.environment import EnvManager
+from chegi.services.git.client import GitClient
+from chegi.ui.console import TerminalUI
 
-app = typer.Typer(
-    help=(
-        "cheGi - The ultimate Git companion. Type less, do more.\n\n"
-        "A fast, concurrent Git toolkit to guard sensitive data, "
-        "safely sync changes, generate .gitignore files, and setup dev environments "
-        "with automated system installers and custom mirror support."
-    )
-)
+app = typer.Typer(help="Generate a .gitignore file interactively.")
 
 
-@app.command("gitignore")
+@app.command("gitignore", help="Generate a .gitignore file interactively.")
 def gitignore(
     path: str = typer.Option(
         ".", "--path", "-p", help="Directory to save the .gitignore file."
     ),
-    auto_commit: bool = typer.Option(
+    auto_commit: Optional[bool] = typer.Option(
         None, "--commit", "-c", help="Automatically commit the generated file."
     ),
 ) -> None:
@@ -31,9 +25,21 @@ def gitignore(
 
     Prompts the user to select one or more environments, generates a deduplicated
     .gitignore file, and optionally commits it to the local git repository.
+
+    Args:
+        path (str): Directory to save the .gitignore file. Defaults to ".".
+        auto_commit (Optional[bool]): Automatically commit the generated file.
+            If None, the user will be prompted interactively.
+
+    Raises:
+        typer.Exit: If the operation is cancelled, aborted, or encounters an error.
     """
     ui = TerminalUI()
     env_manager = EnvManager()
+    
+    # Initialize GitClient with the target path
+    target_path = Path(path).expanduser().resolve()
+    git_client = GitClient(target_path)
 
     ui.console.print("\n[bold blue] 🐆 Chegi .gitignore Generator[/bold blue]\n")
 
@@ -56,22 +62,24 @@ def gitignore(
 
     selected_langs = [lang.lower() for lang in selected_langs_caps]
 
-    if env_manager.has_existing_gitignore(path):
+    # Prevent accidental overwrites
+    if env_manager.has_existing_gitignore(str(target_path)):
         if not Confirm.ask(
-            f"⚠️  [yellow].gitignore already exists in '{path}'. Overwrite?[/yellow]",
+            f"⚠️  [yellow].gitignore already exists in '{target_path}'. Overwrite?[/yellow]",
             default=False,
         ):
             ui.console.print("[bold red]Aborted.[/bold red]")
-            raise typer.Exit()
+            raise typer.Exit(1)
 
     try:
-        created_path = env_manager.generate_gitignore(selected_langs, path)
+        created_path = env_manager.generate_gitignore(selected_langs, str(target_path))
         ui.console.print(f"\n[bold green]✅ Created:[/bold green] {created_path}")
     except Exception as e:
         ui.print_error(f"Error generating file: {e}")
         raise typer.Exit(1)
 
-    if env_manager.is_git_repo(path):
+    # Handle git integration using GitClient
+    if git_client.is_valid_repo():
         should_commit = (
             auto_commit
             if auto_commit is not None
@@ -83,7 +91,11 @@ def gitignore(
         if should_commit:
             try:
                 ui.console.print("[dim]Adding and committing .gitignore...[/dim]")
-                commit_msg = env_manager.commit_gitignore(path)
+                commit_msg = "chore: add .gitignore [cheGi]"
+                
+                # Using the new generic commit_file method
+                git_client.commit_file(".gitignore", commit_msg)
+                
                 ui.console.print(
                     f"[bold green]✨ Committed with message:[/bold green] [cyan]{commit_msg}[/cyan]"
                 )
@@ -96,8 +108,3 @@ def gitignore(
         ui.console.print(
             "[bold yellow]⚠️  Skipped commit: Not a git repository.[/bold yellow]"
         )
-
-
-def main() -> None:
-    """Main entry point for the cheGi Typer CLI application."""
-    app()
