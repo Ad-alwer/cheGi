@@ -17,10 +17,8 @@ class TerminalUI:
             msg_type (MessageType, optional): The type of message determining 
                 color and style. Defaults to MessageType.NEUTRAL.
         """
-        # Rich tags can be compound (e.g., 'bold red'). 
-        # We extract the last word to properly close the tag (e.g., '[/red]').
-        closing_tag = msg_type.value.split()[-1]
-        console.print(f"[{msg_type.value}]{text}[/{closing_tag}]")
+        # Using the universal closing tag '[/]' for Rich
+        console.print(f"[{msg_type.value}]{text}[/]")
 
     @staticmethod
     def print_success(text: str) -> None:

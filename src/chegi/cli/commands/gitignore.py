@@ -7,12 +7,12 @@ from rich.prompt import Confirm
 
 from chegi.services.environment import EnvManager
 from chegi.services.git.client import GitClient
-from chegi.ui.console import TerminalUI
+from chegi.ui.console import TerminalUI, console
 
 app = typer.Typer(help="Generate a .gitignore file interactively.")
 
 
-@app.command("gitignore", help="Generate a .gitignore file interactively.")
+@app.callback(invoke_without_command=True)
 def gitignore(
     path: str = typer.Option(
         ".", "--path", "-p", help="Directory to save the .gitignore file."
@@ -34,18 +34,17 @@ def gitignore(
     Raises:
         typer.Exit: If the operation is cancelled, aborted, or encounters an error.
     """
-    ui = TerminalUI()
     env_manager = EnvManager()
     
     # Initialize GitClient with the target path
     target_path = Path(path).expanduser().resolve()
     git_client = GitClient(target_path)
 
-    ui.console.print("\n[bold blue] 🐆 Chegi .gitignore Generator[/bold blue]\n")
+    console.print("\n[bold blue] 🐆 Chegi .gitignore Generator[/bold blue]\n")
 
     envs_with_gitignore = env_manager.get_envs_with_gitignore()
     if not envs_with_gitignore:
-        ui.print_error("No gitignore templates found in the environments database.")
+        TerminalUI.print_error("No gitignore templates found in the environments database.")
         raise typer.Exit(1)
 
     choices = [env.capitalize() for env in sorted(envs_with_gitignore)]
@@ -55,9 +54,7 @@ def gitignore(
     ).ask()
 
     if not selected_langs_caps:
-        ui.console.print(
-            "[bold red]Operation cancelled or no technologies selected.[/bold red]"
-        )
+        TerminalUI.print_error("Operation cancelled or no technologies selected.")
         raise typer.Exit(1)
 
     selected_langs = [lang.lower() for lang in selected_langs_caps]
@@ -68,14 +65,14 @@ def gitignore(
             f"⚠️  [yellow].gitignore already exists in '{target_path}'. Overwrite?[/yellow]",
             default=False,
         ):
-            ui.console.print("[bold red]Aborted.[/bold red]")
+            TerminalUI.print_error("Aborted.")
             raise typer.Exit(1)
 
     try:
         created_path = env_manager.generate_gitignore(selected_langs, str(target_path))
-        ui.console.print(f"\n[bold green]✅ Created:[/bold green] {created_path}")
+        console.print(f"\n[bold green]✅ Created:[/bold green] {created_path}")
     except Exception as e:
-        ui.print_error(f"Error generating file: {e}")
+        TerminalUI.print_error(f"Error generating file: {e}")
         raise typer.Exit(1)
 
     # Handle git integration using GitClient
@@ -90,21 +87,19 @@ def gitignore(
 
         if should_commit:
             try:
-                ui.console.print("[dim]Adding and committing .gitignore...[/dim]")
+                console.print("[dim]Adding and committing .gitignore...[/dim]")
                 commit_msg = "chore: add .gitignore [cheGi]"
                 
-                # Using the new generic commit_file method
+                # Using the generic commit_file method
                 git_client.commit_file(".gitignore", commit_msg)
                 
-                ui.console.print(
+                console.print(
                     f"[bold green]✨ Committed with message:[/bold green] [cyan]{commit_msg}[/cyan]"
                 )
 
             except Exception as e:
-                ui.print_error(f"Failed to execute git commit: {e}")
+                TerminalUI.print_error(f"Failed to execute git commit: {e}")
         else:
-            ui.console.print("[dim]Skipping commit.[/dim]")
+            console.print("[dim]Skipping commit.[/dim]")
     else:
-        ui.console.print(
-            "[bold yellow]⚠️  Skipped commit: Not a git repository.[/bold yellow]"
-        )
+        TerminalUI.print_warning("Skipped commit: Not a git repository.")
