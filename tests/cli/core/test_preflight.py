@@ -13,18 +13,18 @@ class DummyCheck(PreflightCheck):
         self.executed = True
 
 
-def test_orchestrator_add_and_execute_checks():
-    """Tests that the orchestrator can register multiple checks and execute them all."""
+def test_orchestrator_execute_checks():
+    """Tests that the orchestrator can execute all registered checks."""
     orchestrator = PreflightOrchestrator()
     dummy_check_1 = DummyCheck()
     dummy_check_2 = DummyCheck()
 
-    orchestrator.add_check(dummy_check_1)
-    orchestrator.add_check(dummy_check_2)
+    # Override the default checks with our dummy checks for isolated testing
+    orchestrator.checks = [dummy_check_1, dummy_check_2]
 
-    assert len(orchestrator._checks) == 2
+    assert len(orchestrator.checks) == 2
 
-    orchestrator.execute_all()
+    orchestrator.run_all()
 
     assert dummy_check_1.executed is True
     assert dummy_check_2.executed is True
@@ -37,5 +37,4 @@ def test_run_preflight_checks(mock_orchestrator_class: MagicMock):
 
     run_preflight_checks()
 
-    mock_orchestrator.add_check.assert_called()
-    mock_orchestrator.execute_all.assert_called_once()
+    mock_orchestrator.run_all.assert_called_once()
