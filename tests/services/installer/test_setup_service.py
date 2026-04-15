@@ -1,6 +1,6 @@
 import pytest
 import typer
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from chegi.services.installer.setup_service import SetupService
 from chegi.services.installer.exceptions import UserAbortedSetupError
@@ -10,19 +10,23 @@ from chegi.services.installer.exceptions import UserAbortedSetupError
 @pytest.fixture
 @patch("chegi.services.installer.setup_service.ChegiConfig")
 @patch("chegi.services.installer.setup_service.EnvManager")
-@patch("chegi.services.installer.setup_service.TerminalUI")
 @patch("chegi.services.installer.setup_service.SystemInstaller")
-def setup_service(mock_installer, mock_ui, mock_env_manager, mock_config):
+def setup_service(mock_installer_class, mock_env_manager_class, mock_config_class):
     """Fixture to provide a SetupService instance with mocked external dependencies."""
-    mock_installer.get_os_package_manager.return_value = "apt"
-    return SetupService(environment="python", auto_yes=True)
+    mock_installer_class.get_os_package_manager.return_value = "apt"
+    
+    service = SetupService(environment="python", auto_yes=True)
+    
+    # Attach the mocked instance for easier access in test functions
+    service.mock_env_manager = mock_env_manager_class.return_value
+    return service
 
 
 # Tests
 
 def test_resolve_target_success(setup_service):
     """Test successful resolution of a target environment."""
-    setup_service.env_manager.find_setup_target.return_value = {
+    setup_service.mock_env_manager.find_setup_target.return_value = {
         "name": "PythonEnv",
         "tools": {}
     }
@@ -33,16 +37,17 @@ def test_resolve_target_success(setup_service):
     assert setup_service.env_data is not None
 
 
-def test_resolve_target_unsupported_exits(setup_service):
+@patch("chegi.services.installer.setup_service.TerminalUI")
+def test_resolve_target_unsupported_exits(mock_ui, setup_service):
     """Test that resolving an unsupported target raises Typer Exit."""
-    setup_service.env_manager.find_setup_target.return_value = None
-    setup_service.env_manager.get_available_envs.return_value = ["go", "rust"]
+    setup_service.mock_env_manager.find_setup_target.return_value = None
+    setup_service.mock_env_manager.get_available_envs.return_value = ["go", "rust"]
     
     with pytest.raises(typer.Exit) as exc_info:
         setup_service._resolve_target()
         
     assert exc_info.value.exit_code == 1
-    setup_service.ui.print_error.assert_called_once()
+    mock_ui.print_error.assert_called_once()
 
 
 def test_normalize_data_standalone_app(setup_service):
@@ -72,8 +77,9 @@ def test_sort_dependencies(setup_service):
     assert sorted_tools[2]["name"] == "AppC"
 
 
+@patch("chegi.services.installer.setup_service.TerminalUI")
 @patch("chegi.services.installer.setup_service.SystemInstaller.run_custom_command")
-def test_execute_installations_skips_missing_deps(mock_run_cmd, setup_service):
+def test_execute_installations_skips_missing_deps(mock_run_cmd, mock_ui, setup_service):
     """Test that tools with missing dependencies are skipped."""
     tools_to_install = [
         {"name": "ToolB", "cmd": "install b", "requires": ["ToolA"], "level": "App"}
@@ -83,7 +89,7 @@ def test_execute_installations_skips_missing_deps(mock_run_cmd, setup_service):
     setup_service._execute_installations(tools_to_install, session_mirrors={})
     
     mock_run_cmd.assert_not_called()
-    setup_service.ui.print_warning.assert_called_once()
+    mock_ui.print_warning.assert_called_once()
 
 
 @patch("chegi.services.installer.setup_service.SystemInstaller.run_custom_command")
@@ -101,8 +107,9 @@ def test_execute_installations_success(mock_run_cmd, setup_service):
     assert "ToolA" in setup_service.installed_tools
 
 
+@patch("chegi.services.installer.setup_service.console")
 @patch("chegi.services.installer.setup_service.SystemInstaller.run_custom_command")
-def test_execute_installations_handles_user_abort(mock_run_cmd, setup_service):
+def test_execute_installations_handles_user_abort(mock_run_cmd, mock_console, setup_service):
     """Test that execution handles UserAbortedSetupError correctly and exits gracefully."""
     mock_run_cmd.side_effect = UserAbortedSetupError("Installation aborted by user.")
     tools_to_install = [
@@ -114,4 +121,4 @@ def test_execute_installations_handles_user_abort(mock_run_cmd, setup_service):
         setup_service._execute_installations(tools_to_install, session_mirrors={})
     
     assert exc_info.value.exit_code == 1
-    setup_service.ui.console.print.assert_any_call("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
+    mock_console.print.assert_any_call("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
