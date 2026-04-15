@@ -1,7 +1,8 @@
+import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Callable, Iterator, List, Optional
 
 import typer
 from rich.progress import (
@@ -15,48 +16,28 @@ from rich.progress import (
 from chegi.config import ChegiConfig
 from chegi.services.guard import SecurityGuard
 from chegi.ui import TerminalUI, console, display_results_table
-from chegi.utils.finder import find_git_repos
 from chegi.services.git.models import GitStatus
+from chegi.services.scanner.exceptions import InvalidDirectoryError
+from chegi.services.scanner.models import ScanOptions
 
 
 class ScanService:
     """Service responsible for executing the repository scanning logic.
 
     Attributes:
+        options (ScanOptions): The configuration options for the scan.
         base_path (Path): The resolved absolute path to start scanning from.
-        max_depth (Optional[int]): Maximum directory depth to traverse.
-        workers (int): Number of concurrent threads for analyzing repositories.
-        security (bool): Flag to enable security scanning.
-        dirty (bool): Flag to filter and show only repositories with uncommitted changes.
-        staged (bool): Flag to filter and show only repositories with staged files.
         config (ChegiConfig): Loaded configuration for the scanner.
     """
 
-    def __init__(
-        self,
-        path: str,
-        max_depth: Optional[int],
-        workers: int,
-        security: bool,
-        dirty: bool,
-        staged: bool,
-    ):
-        """Initializes the ScanService with the provided CLI arguments.
+    def __init__(self, options: ScanOptions):
+        """Initializes the ScanService with the provided scan options.
 
         Args:
-            path (str): Base directory to scan.
-            max_depth (Optional[int]): Override max depth from config.
-            workers (int): Number of concurrent workers for analysis.
-            security (bool): Perform security scan on repositories.
-            dirty (bool): Only show repositories with uncommitted changes.
-            staged (bool): Only show repositories with staged files.
+            options (ScanOptions): Configuration and filter options for scanning.
         """
-        self.base_path = Path(path).resolve()
-        self.max_depth = max_depth
-        self.workers = workers
-        self.security = security
-        self.dirty = dirty
-        self.staged = staged
+        self.options = options
+        self.base_path = Path(self.options.path).resolve()
         
         self.config = self._init_config()
 
@@ -71,8 +52,8 @@ class ScanService:
         """
         config = ChegiConfig(base_path=str(self.base_path))
         config.load()
-        if self.max_depth is not None:
-            config.max_depth = self.max_depth
+        if self.options.max_depth is not None:
+            config.max_depth = self.options.max_depth
         return config
 
     def execute(self) -> None:
@@ -107,6 +88,42 @@ class ScanService:
 
         display_results_table(statuses)
 
+    def _find_git_repos(self, start_path: str) -> Iterator[Path]:
+        """Core logic to traverse directories and find .git folders.
+
+        Args:
+            start_path (str): The directory path to start the search from.
+
+        Yields:
+            Iterator[Path]: Paths to discovered Git repositories.
+
+        Raises:
+            InvalidDirectoryError: If the start_path is not a valid directory.
+        """
+        start_path_obj = Path(start_path)
+        if not start_path_obj.is_dir():
+            raise InvalidDirectoryError(f"The directory '{start_path}' does not exist.")
+
+        start_level = len(start_path_obj.parts)
+
+        for root, dirs, _ in os.walk(start_path_obj):
+            root_path = Path(root)
+
+            # Check max depth
+            if self.config.max_depth is not None:
+                current_level = len(root_path.parts)
+                if current_level - start_level >= self.config.max_depth:
+                    dirs[:] = []  # Stop traversing deeper
+                    continue
+
+            # Remove ignored directories
+            dirs[:] = [d for d in dirs if d not in self.config.ignore_dirs]
+
+            # Yield if it's a git repo
+            if (root_path / ".git").is_dir():
+                yield root_path
+                dirs[:] = []  # Stop traversing inside the repository (ignores submodules)
+
     def _get_repositories(self) -> List[Path]:
         """Finds all git repositories in the base path.
 
@@ -117,8 +134,8 @@ class ScanService:
             typer.Exit: If the target path is not a valid directory.
         """
         try:
-            return list(find_git_repos(str(self.base_path), self.config))
-        except NotADirectoryError as e:
+            return list(self._find_git_repos(str(self.base_path)))
+        except InvalidDirectoryError as e:
             TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
 
@@ -187,7 +204,7 @@ class ScanService:
         Returns:
             List[GitStatus]: A list of GitStatus objects containing analysis results.
         """
-        scanner_func = SecurityGuard.scan_repo if self.security else None
+        scanner_func = SecurityGuard.scan_repo if self.options.security else None
         statuses: List[GitStatus] = []
 
         with Progress(
@@ -200,7 +217,7 @@ class ScanService:
         ) as progress:
             task = progress.add_task("[cyan]⚡ Analyzing repositories...", total=len(repo_paths))
 
-            with ThreadPoolExecutor(max_workers=self.workers) as executor:
+            with ThreadPoolExecutor(max_workers=self.options.workers) as executor:
                 future_to_path = {
                     executor.submit(self._analyze_single_repo, path, scanner_func): path
                     for path in repo_paths
@@ -223,8 +240,8 @@ class ScanService:
                 (e.g., dirty or staged).
         """
         filtered_statuses = statuses
-        if self.dirty:
+        if self.options.dirty:
             filtered_statuses = [s for s in filtered_statuses if s.is_dirty]
-        if self.staged:
+        if self.options.staged:
             filtered_statuses = [s for s in filtered_statuses if s.has_staged_files]
         return filtered_statuses

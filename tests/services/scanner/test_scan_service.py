@@ -5,10 +5,13 @@ import pytest
 import typer
 
 from chegi.services.scanner.scan_service import ScanService
+from chegi.services.scanner.models import ScanOptions
+from chegi.services.scanner.exceptions import InvalidDirectoryError
 
 
 @pytest.fixture
 def base_scan_kwargs():
+    """Provide base keyword arguments for ScanOptions."""
     return {
         "path": ".",
         "max_depth": None,
@@ -21,36 +24,141 @@ def base_scan_kwargs():
 
 @patch("chegi.services.scanner.scan_service.ChegiConfig")
 def test_init_config_override(mock_config_cls, base_scan_kwargs):
+    """Test that config max_depth is overridden when provided in options."""
     kwargs = {**base_scan_kwargs, "max_depth": 5}
-    service = ScanService(**kwargs)
+    service = ScanService(ScanOptions(**kwargs))
     
     assert service.config.max_depth == 5
     mock_config_cls.return_value.load.assert_called_once()
 
 
-@patch("chegi.services.scanner.scan_service.find_git_repos")
+# Finder Logic Tests
+
+def test_find_git_repos_invalid_dir(base_scan_kwargs):
+    """Test finding repos raises InvalidDirectoryError for non-existent path."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    with pytest.raises(InvalidDirectoryError, match="does not exist"):
+        list(service._find_git_repos("/path/that/does/not/exist/12345"))
+
+
+def test_find_git_repos_success(tmp_path: Path, base_scan_kwargs):
+    """Test successfully finding valid Git repositories."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    service.config.max_depth = 3
+    service.config.ignore_dirs = ["node_modules", "venv"]
+
+    # Setup dummy directory structure
+    repo1 = tmp_path / "project1"
+    repo1.mkdir()
+    (repo1 / ".git").mkdir()
+
+    repo2 = tmp_path / "project2"
+    repo2.mkdir()
+    (repo2 / ".git").mkdir()
+
+    not_repo = tmp_path / "project3"
+    not_repo.mkdir()
+
+    repos = list(service._find_git_repos(str(tmp_path)))
+    
+    assert len(repos) == 2
+    assert repo1.resolve() in repos
+    assert repo2.resolve() in repos
+
+
+def test_find_git_repos_max_depth(tmp_path: Path, base_scan_kwargs):
+    """Test that repository discovery respects the max_depth configuration."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    service.config.max_depth = 2
+    service.config.ignore_dirs = []
+
+    deep_repo = tmp_path / "level1" / "level2" / "repo"
+    deep_repo.mkdir(parents=True)
+    (deep_repo / ".git").mkdir()
+
+    shallow_repo = tmp_path / "repo2"
+    shallow_repo.mkdir()
+    (shallow_repo / ".git").mkdir()
+
+    repos = list(service._find_git_repos(str(tmp_path)))
+    
+    assert len(repos) == 1
+    assert shallow_repo.resolve() in repos
+
+
+def test_find_git_repos_ignore_dirs(tmp_path: Path, base_scan_kwargs):
+    """Test that ignored directories are not scanned for repositories."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    service.config.ignore_dirs = ["node_modules", ".hidden_folder"]
+
+    # Excluded directory
+    excluded_dir = tmp_path / "node_modules" / "repo"
+    excluded_dir.mkdir(parents=True)
+    (excluded_dir / ".git").mkdir()
+
+    # Hidden/Ignored directory
+    hidden_dir = tmp_path / ".hidden_folder" / "repo"
+    hidden_dir.mkdir(parents=True)
+    (hidden_dir / ".git").mkdir()
+
+    valid_repo = tmp_path / "valid_repo"
+    valid_repo.mkdir()
+    (valid_repo / ".git").mkdir()
+
+    repos = list(service._find_git_repos(str(tmp_path)))
+    
+    assert len(repos) == 1
+    assert valid_repo.resolve() in repos
+
+
+def test_find_git_repos_smart_pruning(tmp_path: Path, base_scan_kwargs):
+    """Ensure that once a repo is found, it does not scan its subdirectories."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    service.config.ignore_dirs = []
+    
+    parent_repo = tmp_path / "parent_repo"
+    parent_repo.mkdir()
+    (parent_repo / ".git").mkdir()
+
+    # Nested repo (should not be found because of pruning)
+    child_repo = parent_repo / "sub_repo"
+    child_repo.mkdir()
+    (child_repo / ".git").mkdir()
+
+    repos = list(service._find_git_repos(str(tmp_path)))
+    
+    assert len(repos) == 1
+    assert parent_repo.resolve() in repos
+
+
+# Scanner Flow Tests
+
+@patch.object(ScanService, "_find_git_repos")
 def test_get_repositories_success(mock_find, base_scan_kwargs):
+    """Test successful retrieval of repositories using mocked finder."""
     mock_find.return_value = [Path("/mock/repo1"), Path("/mock/repo2")]
-    service = ScanService(**base_scan_kwargs)
+    service = ScanService(ScanOptions(**base_scan_kwargs))
     
     repos = service._get_repositories()
-    assert repos == ["/mock/repo1", "/mock/repo2"]
+    assert repos == [Path("/mock/repo1"), Path("/mock/repo2")]
 
 
-@patch("chegi.services.scanner.scan_service.find_git_repos")
-@patch("chegi.services.scanner.scan_service.TerminalUI")
-def test_get_repositories_not_a_dir(mock_ui, mock_find, base_scan_kwargs):
-    mock_find.side_effect = NotADirectoryError("Invalid path")
-    service = ScanService(**base_scan_kwargs)
+@patch.object(ScanService, "_find_git_repos")
+@patch("chegi.services.scanner.scan_service.TerminalUI.print_error")
+def test_get_repositories_not_a_dir(mock_print_error, mock_find, base_scan_kwargs):
+    """Test get_repositories exits gracefully on InvalidDirectoryError."""
+    mock_find.side_effect = InvalidDirectoryError("Invalid path")
+    service = ScanService(ScanOptions(**base_scan_kwargs))
     
     with pytest.raises(typer.Exit) as exc_info:
         service._get_repositories()
     
     assert exc_info.value.exit_code == 1
-    service.ui.print_error.assert_called_once_with("Invalid path")
+    mock_print_error.assert_called_once_with("Invalid path")
 
 
 def test_filter_results(base_scan_kwargs):
+    """Test filtering repository statuses based on dirty and staged flags."""
     dirty_repo = MagicMock(is_dirty=True, has_staged_files=False)
     staged_repo = MagicMock(is_dirty=True, has_staged_files=True)
     clean_repo = MagicMock(is_dirty=False, has_staged_files=False)
@@ -59,79 +167,80 @@ def test_filter_results(base_scan_kwargs):
     
     # Test dirty filter
     kwargs_dirty = {**base_scan_kwargs, "dirty": True}
-    service_dirty = ScanService(**kwargs_dirty)
+    service_dirty = ScanService(ScanOptions(**kwargs_dirty))
     filtered = service_dirty._filter_results(statuses)
     assert len(filtered) == 2
     assert clean_repo not in filtered
 
     # Test staged filter
     kwargs_staged = {**base_scan_kwargs, "staged": True}
-    service_staged = ScanService(**kwargs_staged)
+    service_staged = ScanService(ScanOptions(**kwargs_staged))
     filtered = service_staged._filter_results(statuses)
     assert len(filtered) == 1
     assert staged_repo in filtered
 
 
-@patch("chegi.services.scanner.scan_service.GitAnalyzer")
-@patch("chegi.services.scanner.scan_service.Progress")
-def test_analyze_repositories(mock_progress, mock_analyzer_cls, base_scan_kwargs):
-    mock_analyzer = mock_analyzer_cls.return_value
-    mock_analyzer.analyze_concurrently.return_value = ["status1", "status2"]
+@patch.object(ScanService, "_analyze_single_repo")
+def test_analyze_repositories(mock_analyze_single, base_scan_kwargs):
+    """Test concurrent analysis of multiple repositories."""
+    mock_analyze_single.side_effect = ["status1", "status2"]
     
-    service = ScanService(**base_scan_kwargs)
-    statuses = service._analyze_repositories(["/path1", "/path2"])
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    statuses = service._analyze_repositories([Path("/path1"), Path("/path2")])
     
-    assert statuses == ["status1", "status2"]
-    mock_analyzer.analyze_concurrently.assert_called_once_with(
-        ["/path1", "/path2"], security_scanner=None
-    )
+    assert set(statuses) == {"status1", "status2"}
+    assert mock_analyze_single.call_count == 2
 
 
 @patch.object(ScanService, "_get_repositories")
-@patch("chegi.services.scanner.scan_service.TerminalUI")
-def test_execute_no_repos(mock_ui, mock_get_repos, base_scan_kwargs):
+@patch("chegi.services.scanner.scan_service.display_results_table")
+def test_execute_no_repos(mock_display, mock_get_repos, base_scan_kwargs):
+    """Test execute method when no repositories are found."""
     mock_get_repos.return_value = []
-    service = ScanService(**base_scan_kwargs)
+    service = ScanService(ScanOptions(**base_scan_kwargs))
     service.execute()
     
-    service.ui.display_results_table.assert_called_once_with([])
+    mock_display.assert_called_once_with([])
 
 
 @patch.object(ScanService, "_get_repositories")
 @patch.object(ScanService, "_analyze_repositories")
 @patch.object(ScanService, "_filter_results")
-@patch("chegi.services.scanner.scan_service.TerminalUI")
+@patch("chegi.services.scanner.scan_service.display_results_table")
 def test_execute_full_flow(
-    mock_ui, mock_filter, mock_analyze, mock_get_repos, base_scan_kwargs
+    mock_display, mock_filter, mock_analyze, mock_get_repos, base_scan_kwargs
 ):
+    """Test the complete execute flow with finding, analyzing, and filtering."""
     mock_get_repos.return_value = ["/path1"]
     mock_analyze.return_value = ["raw_status"]
     mock_filter.return_value = ["filtered_status"]
     
-    service = ScanService(**base_scan_kwargs)
+    service = ScanService(ScanOptions(**base_scan_kwargs))
     service.execute()
     
     mock_get_repos.assert_called_once()
     mock_analyze.assert_called_once_with(["/path1"])
     mock_filter.assert_called_once_with(["raw_status"])
-    service.ui.display_results_table.assert_called_once_with(["filtered_status"])
+    mock_display.assert_called_once_with(["filtered_status"])
 
 
 @patch.object(ScanService, "_get_repositories")
 @patch.object(ScanService, "_analyze_repositories")
 @patch.object(ScanService, "_filter_results")
-@patch("chegi.services.scanner.scan_service.TerminalUI")
+@patch("chegi.services.scanner.scan_service.display_results_table")
+@patch("chegi.services.scanner.scan_service.console.print")
 def test_execute_filtered_out_all(
-    mock_ui, mock_filter, mock_analyze, mock_get_repos, base_scan_kwargs
+    mock_print, mock_display, mock_filter, mock_analyze, mock_get_repos, base_scan_kwargs
 ):
+    """Test execute method when all found repositories are filtered out."""
     mock_get_repos.return_value = ["/path1"]
     mock_analyze.return_value = ["raw_status"]
-    mock_filter.return_value = [] # Everything filtered out
+    mock_filter.return_value = []
     
-    service = ScanService(**base_scan_kwargs)
+    service = ScanService(ScanOptions(**base_scan_kwargs))
     service.execute()
     
-    service.ui.display_results_table.assert_not_called()
-    service.ui.console.print.assert_any_call(
+    mock_display.assert_not_called()
+    mock_print.assert_any_call(
         "\n[bold yellow]No repositories matched your filters.[/bold yellow]"
     )
