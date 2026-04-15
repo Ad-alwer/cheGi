@@ -245,11 +245,6 @@ def config_mirror_set_all(
         TerminalUI.print_error(f"Validation Error: {e}")
         raise typer.Exit(code=1)
 
-    if not hasattr(config, "mirrors") or config.mirrors is None:
-        config.mirrors = {}
-
-    # Completely wipe existing mirrors and apply the new configuration
-    config.mirrors.clear()
     try:
         config.update_setting("mirrors", new_mirrors)
         config.save()
@@ -275,7 +270,7 @@ def config_mirror_clear(
     config.load()
 
     if hasattr(config, "mirrors") and config.mirrors:
-        config.mirrors = {}
+        config.update_setting("mirrors", {})
         config.save()
         console.print("[green]✔ All mirrors have been completely cleared.[/green]")
     else:

@@ -7,16 +7,10 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-# Import the main app to test the CLI as a user would execute it
+
 from chegi.cli.main import app
 
-# Initialize the CLI Runner for testing
 runner = CliRunner()
-
-
-# ==========================================
-# Configuration Command Tests
-# ==========================================
 
 def test_config_list(tmp_path: Path):
     """Tests listing configuration settings."""
