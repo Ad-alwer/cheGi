@@ -29,4 +29,4 @@ def test_terminal_ui_print_message_neutral():
     with patch.object(console, "print") as mock_print:
         TerminalUI.print_message("Neutral text")
         
-        mock_print.assert_called_once_with("[white]Neutral text[/white]")
+        mock_print.assert_called_once_with("[white]Neutral text[/]")
