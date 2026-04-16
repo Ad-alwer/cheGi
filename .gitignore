@@ -55,3 +55,9 @@ coverage.xml
 
 # cheGi specific configuration
 .chegi.json
+
+# Build and Release artifacts
+build/
+dist/
+releases/
+*.spec
