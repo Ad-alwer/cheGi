@@ -2,6 +2,8 @@ from typing import Annotated, Optional
 import typer
 
 from chegi.services.scanner.scan_service import ScanService
+from chegi.services.scanner.models import ScanOptions
+
 
 app = typer.Typer()
 
@@ -37,7 +39,7 @@ def scan_command(
         dirty (bool): Filters output to show only repositories with uncommitted changes.
         staged (bool): Filters output to show only repositories with staged files.
     """
-    service = ScanService(
+    options = ScanOptions(
         path=path,
         max_depth=max_depth,
         workers=workers,
@@ -46,4 +48,6 @@ def scan_command(
         staged=staged,
     )
     
+    service = ScanService(options=options)
     service.execute()
+

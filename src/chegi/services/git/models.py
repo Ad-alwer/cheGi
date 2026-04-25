@@ -24,3 +24,4 @@ class GitStatus:
     error: str = ""
     has_staged_files: bool = False
     security_status: Optional[str] = None
+    status: Optional[str] = None

@@ -117,7 +117,7 @@ class ScanService:
                     continue
 
             # Remove ignored directories
-            dirs[:] = [d for d in dirs if d not in self.config.ignore_dirs]
+            dirs[:] = [d for d in dirs if d not in self.config.exclude_dirs]
 
             # Yield if it's a git repo
             if (root_path / ".git").is_dir():
@@ -151,9 +151,11 @@ class ScanService:
         """
         repo_name = repo_path.name
         try:
+            # 1. Branch Name
             branch_result = subprocess.run(["git", "branch", "--show-current"], cwd=repo_path, capture_output=True, text=True)
             branch = branch_result.stdout.strip() or "No Commits"
 
+            # 2. Local Status (Dirty / Staged / Clean)
             status_result = subprocess.run(["git", "status", "--porcelain"], cwd=repo_path, capture_output=True, text=True)
             status_output = status_result.stdout.strip()
             is_dirty = len(status_output) > 0
@@ -165,9 +167,46 @@ class ScanService:
                         has_staged_files = True
                         break
 
+            local_status = "Staged" if has_staged_files else ("Dirty" if is_dirty else "Clean")
+
+            # 3. Remote Status
             remote_result = subprocess.run(["git", "remote"], cwd=repo_path, capture_output=True, text=True)
             has_remote = len(remote_result.stdout.strip()) > 0
+            
+            remote_status = "No Remote"
+            if has_remote and branch != "No Commits":
+                # Check if there is an upstream branch configured
+                upstream_res = subprocess.run(
+                    ["git", "rev-parse", "--abbrev-ref", "@{u}"], 
+                    cwd=repo_path, capture_output=True, text=True
+                )
+                if upstream_res.returncode != 0:
+                    remote_status = "Local Only"
+                else:
+                    # Check ahead and behind counts
+                    rev_list_res = subprocess.run(
+                        ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"],
+                        cwd=repo_path, capture_output=True, text=True
+                    )
+                    if rev_list_res.returncode == 0:
+                        counts = rev_list_res.stdout.strip().split()
+                        if len(counts) == 2:
+                            ahead, behind = int(counts[0]), int(counts[1])
+                            if ahead > 0 and behind > 0:
+                                remote_status = f"Diverged ({ahead}A/{behind}B)"
+                            elif ahead > 0:
+                                remote_status = f"Ahead ({ahead})"
+                            elif behind > 0:
+                                remote_status = f"Behind ({behind})"
+                            else:
+                                remote_status = "Synced"
+                        else:
+                            remote_status = "Unknown"
 
+            # Combine local and remote statuses
+            final_status = f"{local_status} | {remote_status}"
+
+            # 4. Security Status
             sec_status = None
             if security_scanner:
                 try:
@@ -183,6 +222,7 @@ class ScanService:
                 has_staged_files=has_staged_files,
                 has_remote=has_remote,
                 security_status=sec_status,
+                status=final_status,
             )
         except Exception as e:
             return GitStatus(
@@ -193,6 +233,7 @@ class ScanService:
                 has_staged_files=False,
                 has_remote=False,
                 error=str(e),
+                status="Error",
             )
 
     def _analyze_repositories(self, repo_paths: List[Path]) -> List[GitStatus]:
