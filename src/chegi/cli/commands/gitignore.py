@@ -9,6 +9,8 @@ from chegi.services.environment import EnvManager
 from chegi.services.git.client import GitClient
 from chegi.ui.console import TerminalUI, console
 
+from chegi.config import GITIGNORE_COMMIT_MESSAGE
+
 app = typer.Typer(help="Generate a .gitignore file interactively.")
 
 
@@ -88,7 +90,7 @@ def gitignore(
         if should_commit:
             try:
                 console.print("[dim]Adding and committing .gitignore...[/dim]")
-                commit_msg = "chore: add .gitignore [cheGi]"
+                commit_msg = GITIGNORE_COMMIT_MESSAGE
                 
                 # Using the generic commit_file method
                 git_client.commit_file(".gitignore", commit_msg)

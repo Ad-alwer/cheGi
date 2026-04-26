@@ -31,3 +31,6 @@ DEFAULT_MCTS: int = 10
 
 # Default mirrors dict
 DEFAULT_MIRRORS: Dict[str, List[str]] = {}
+
+# Internal / Branding Constants (Not modifiable by user)
+GITIGNORE_COMMIT_MESSAGE: str = "chore(gitignore): auto add .gitignore via cheGi 🐆"

@@ -12,6 +12,7 @@ from .constants import (
     DEFAULT_MAX_DEPTH,
     DEFAULT_MCTS,
     DEFAULT_MIRRORS,
+    GITIGNORE_COMMIT_MESSAGE
 )
 
 __all__ = [
@@ -26,4 +27,5 @@ __all__ = [
     "DEFAULT_MAX_DEPTH",
     "DEFAULT_MCTS",
     "DEFAULT_MIRRORS",
+    "GITIGNORE_COMMIT_MESSAGE"
 ]
