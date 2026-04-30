@@ -5,6 +5,9 @@ from typer.testing import CliRunner
 
 from chegi.cli.main import app
 
+from chegi.config import GITIGNORE_COMMIT_MESSAGE
+
+
 runner = CliRunner()
 
 @pytest.fixture(autouse=True)
@@ -45,7 +48,6 @@ def test_gitignore_success_without_commit(
 def test_gitignore_success_with_commit(
     mock_checkbox: MagicMock, mock_env_manager: MagicMock, mock_git_client: MagicMock
 ):
-    """Tests .gitignore creation with user accepting the automatic commit."""
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.get_envs_with_gitignore.return_value = ["python"]
     mock_env_instance.has_existing_gitignore.return_value = False
@@ -59,7 +61,7 @@ def test_gitignore_success_with_commit(
 
     assert result.exit_code == 0
     assert "Committed with message:" in result.stdout
-    mock_git_instance.commit_file.assert_called_once_with(".gitignore", "chore: add .gitignore [cheGi]")
+    mock_git_instance.commit_file.assert_called_once_with(".gitignore", GITIGNORE_COMMIT_MESSAGE)
 
 
 @patch("chegi.cli.commands.gitignore.EnvManager")

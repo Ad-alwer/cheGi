@@ -42,7 +42,7 @@ def test_scan_filter_dirty(mock_scan_service_class: MagicMock, tmp_path: Path):
     assert result.exit_code == 0
     mock_scan_service_class.assert_called_once()
     _, kwargs = mock_scan_service_class.call_args
-    assert kwargs.get("dirty") is True
+    assert kwargs["options"].dirty is True
 
 
 @patch("chegi.cli.commands.scan.ScanService")
@@ -53,7 +53,7 @@ def test_scan_filter_staged(mock_scan_service_class: MagicMock, tmp_path: Path):
     assert result.exit_code == 0
     mock_scan_service_class.assert_called_once()
     _, kwargs = mock_scan_service_class.call_args
-    assert kwargs.get("staged") is True
+    assert kwargs["options"].staged is True
 
 
 @patch("chegi.cli.commands.scan.ScanService")
@@ -64,4 +64,4 @@ def test_scan_with_security_flag(mock_scan_service_class: MagicMock, tmp_path: P
     assert result.exit_code == 0
     mock_scan_service_class.assert_called_once()
     _, kwargs = mock_scan_service_class.call_args
-    assert kwargs.get("security") is True
+    assert kwargs["options"].security is True

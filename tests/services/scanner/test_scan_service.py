@@ -89,7 +89,8 @@ def test_find_git_repos_max_depth(tmp_path: Path, base_scan_kwargs):
 def test_find_git_repos_ignore_dirs(tmp_path: Path, base_scan_kwargs):
     """Test that ignored directories are not scanned for repositories."""
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    service.config.ignore_dirs = ["node_modules", ".hidden_folder"]
+    service.config.exclude_dirs.clear()
+    service.config.exclude_dirs.update(["node_modules", ".hidden_folder"])
 
     # Excluded directory
     excluded_dir = tmp_path / "node_modules" / "repo"
@@ -244,3 +245,75 @@ def test_execute_filtered_out_all(
     mock_print.assert_any_call(
         "\n[bold yellow]No repositories matched your filters.[/bold yellow]"
     )
+
+
+@pytest.fixture
+def mock_subprocess_run():
+    with patch("subprocess.run") as mock_run:
+        yield mock_run
+
+def test_analyze_single_repo_synced(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = "origin\n"
+        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
+        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        return res
+        
+    mock_subprocess_run.side_effect = side_effect
+    status = service._analyze_single_repo(tmp_path)
+    assert status.status == "Clean | Synced"
+
+def test_analyze_single_repo_ahead(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = "origin\n"
+        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
+        elif "rev-list" in cmd: res.stdout = "2 0\n"  # Ahead 2
+        return res
+        
+    mock_subprocess_run.side_effect = side_effect
+    status = service._analyze_single_repo(tmp_path)
+    assert status.status == "Clean | Ahead (2)"
+
+def test_analyze_single_repo_behind(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = "origin\n"
+        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
+        elif "rev-list" in cmd: res.stdout = "0 3\n"  # Behind 3
+        return res
+        
+    mock_subprocess_run.side_effect = side_effect
+    status = service._analyze_single_repo(tmp_path)
+    assert status.status == "Clean | Behind (3)"
+
+def test_analyze_single_repo_no_origin(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+    
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = ""  # No remote
+        return res
+        
+    mock_subprocess_run.side_effect = side_effect
+    status = service._analyze_single_repo(tmp_path)
+    assert status.status == "Clean | No Remote"
