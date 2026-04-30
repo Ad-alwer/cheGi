@@ -1,0 +1,38 @@
+name: Release Builds
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install Python Dependencies
+        run: pip install pyinstaller
+
+      - name: Install System Dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      
+      - name: Run Custom Builder
+        run: python build.py
+        
+      - name: Upload Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          files: releases/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
