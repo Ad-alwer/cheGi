@@ -1,4 +1,4 @@
-import importlib.resources as pkg_resources
+import importlib.resources as _resources
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Set
@@ -18,7 +18,7 @@ class _Py38FileResource:
         return self.name.endswith(".json")
 
     def read_text(self, encoding: str = "utf-8") -> str:
-        return pkg_resources.read_text(self._package, self.name, encoding=encoding)
+        return _resources.read_text(self._package, self.name, encoding=encoding)
 
 
 GLOBAL_GITIGNORE_TEMPLATE = """
@@ -67,15 +67,15 @@ class EnvManager:
 
     def _get_preset_files(self):
         """Iterate JSON preset files with Python 3.8+ compatibility."""
-        try:
-            package_dir = pkg_resources.files("chegi.services.environment.presets")
+        files_fn = getattr(_resources, "files", None)
+        if files_fn is not None:
+            # Python 3.9+
+            package_dir = files_fn("chegi.services.environment.presets")
             return list(package_dir.iterdir())
-        except AttributeError:
-            pass
 
         # Python 3.8 fallback — importlib.resources.files() does not exist
         files = []
-        for name in pkg_resources.contents("chegi.services.environment.presets"):
+        for name in _resources.contents("chegi.services.environment.presets"):
             files.append(_Py38FileResource(name, "chegi.services.environment.presets"))
         return files
 

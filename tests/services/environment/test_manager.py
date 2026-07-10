@@ -25,17 +25,15 @@ def dummy_json_data():
     }
 
 
-@patch("chegi.services.environment.manager.pkg_resources.files")
-def test_load_environments_success(mock_files, dummy_json_data):
+@patch("chegi.services.environment.manager.EnvManager._get_preset_files")
+def test_load_environments_success(mock_get_files, dummy_json_data):
     """Tests successful loading and parsing of JSON presets into Dataclasses."""
     mock_file = MagicMock()
     mock_file.is_file.return_value = True
     mock_file.name = "python.json"
     mock_file.read_text.return_value = json.dumps(dummy_json_data)
 
-    mock_dir = MagicMock()
-    mock_dir.iterdir.return_value = [mock_file]
-    mock_files.return_value = mock_dir
+    mock_get_files.return_value = [mock_file]
 
     manager = EnvManager()
     preset = manager.db.get("python")
@@ -48,8 +46,8 @@ def test_load_environments_success(mock_files, dummy_json_data):
     assert preset.tools["pip"].args == ["-m", "ensurepip"]
 
 
-@patch("chegi.services.environment.manager.pkg_resources.files")
-def test_load_environments_preserves_levels_and_raw_tools(mock_files):
+@patch("chegi.services.environment.manager.EnvManager._get_preset_files")
+def test_load_environments_preserves_levels_and_raw_tools(mock_get_files):
     """Tests that levels, levels_info, and raw_tools are preserved from JSON."""
     data = {
         "name": "Go",
@@ -71,9 +69,7 @@ def test_load_environments_preserves_levels_and_raw_tools(mock_files):
     mock_file.is_file.return_value = True
     mock_file.name = "go.json"
     mock_file.read_text.return_value = json.dumps(data)
-    mock_dir = MagicMock()
-    mock_dir.iterdir.return_value = [mock_file]
-    mock_files.return_value = mock_dir
+    mock_get_files.return_value = [mock_file]
 
     manager = EnvManager()
     preset = manager.db.get("go")
@@ -86,32 +82,32 @@ def test_load_environments_preserves_levels_and_raw_tools(mock_files):
     assert isinstance(preset.tools["go"], ToolConfig)
 
 
-@patch("chegi.services.environment.manager.pkg_resources.files")
-def test_load_environments_exception_handling(mock_files):
+@patch("chegi.services.environment.manager.EnvManager._get_preset_files")
+def test_load_environments_exception_handling(mock_get_files):
     """Tests that a missing presets directory results in an empty database."""
-    mock_files.side_effect = FileNotFoundError("Presets directory not found")
+    mock_get_files.side_effect = FileNotFoundError("Presets directory not found")
     manager = EnvManager()
     assert manager.db == {}
 
 
-@patch("chegi.services.environment.manager.pkg_resources.files")
-def test_load_environments_bad_json_skipped(mock_files, tmp_path):
+@patch("chegi.services.environment.manager.EnvManager._get_preset_files")
+def test_load_environments_bad_json_skipped(mock_get_files, tmp_path):
     """Tests that a corrupted JSON file is skipped without breaking the whole load."""
     preset_dir = tmp_path / "presets"
     preset_dir.mkdir()
     (preset_dir / "good.json").write_text('{"name": "Python", "tools": {}}')
     (preset_dir / "bad.json").write_text("this is not json")
 
-    mock_files.return_value = preset_dir
+    mock_get_files.return_value = list(preset_dir.iterdir())
     manager = EnvManager()
     assert "python" in manager.db
     assert len(manager.db) == 1
 
 
-@patch("chegi.services.environment.manager.pkg_resources.files")
-def test_load_environments_unexpected_error_propagates(mock_files):
+@patch("chegi.services.environment.manager.EnvManager._get_preset_files")
+def test_load_environments_unexpected_error_propagates(mock_get_files):
     """Tests that an unexpected error during loading propagates instead of being swallowed."""
-    mock_files.side_effect = RuntimeError("Something unexpected broke")
+    mock_get_files.side_effect = RuntimeError("Something unexpected broke")
     with pytest.raises(RuntimeError, match="Something unexpected broke"):
         EnvManager()
 
