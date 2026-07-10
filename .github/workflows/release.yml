@@ -11,28 +11,112 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
-          
+
       - name: Install Python Dependencies
         run: pip install pyinstaller
 
       - name: Install System Dependencies
         if: matrix.os == 'ubuntu-latest'
         run: sudo apt-get update && sudo apt-get install -y rpm
-      
+
       - name: Run Custom Builder
-        run: python build.py
-        
+        run: python build.py --version $VERSION
+
       - name: Upload Releases
         uses: softprops/action-gh-release@v2
         with:
           files: releases/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-ppa:
+    name: Publish to Launchpad PPA
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y devscripts debhelper dput
+
+      - name: Import GPG key
+        run: |
+          echo "${{ secrets.LAUNCHPAD_GPG_KEY }}" > /tmp/gpg.key
+          gpg --batch --import /tmp/gpg.key
+          # Cache the passphrase in gpg-agent for non-interactive signing
+          gpg_agent=$(gpg-agent --daemon --allow-loopback-pinentry 2>/dev/null)
+          KEYGRIP=$(gpg --with-keygrip --list-secret-keys \
+            8DDFD98A5CEFC81AE71845B661FF935FEADAD1CE 2>/dev/null \
+            | grep Keygrip | head -1 | awk '{print $2}')
+          if [ -n "$KEYGRIP" ]; then
+            for prog in /usr/lib/gnupg2/gpg-preset-passphrase \
+                        /usr/libexec/gnupg/gpg-preset-passphrase \
+                        /usr/lib/gnupg/gpg-preset-passphrase; do
+              if [ -x "$prog" ]; then
+                echo "${{ secrets.LAUNCHPAD_GPG_PASSPHRASE }}" | "$prog" --preset "$KEYGRIP"
+                break
+              fi
+            done
+          fi
+
+      - name: Create Debian packaging
+        run: |
+          mkdir -p debian/source
+          echo "3.0 (native)" > debian/source/format
+          cat > debian/control << 'CONTROL'
+          Source: chegi
+          Section: utils
+          Priority: optional
+          Maintainer: Alwer <alwer.design@gmail.com>
+          Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools
+          Standards-Version: 4.5.0
+
+          Package: chegi
+          Architecture: any
+          Depends: ${python3:Depends}, ${misc:Depends}, git
+          Description: The ultimate Git companion. Type less, do more.
+           cheGi is a fast, developer-friendly CLI for managing Git across
+           your entire workspace. Scan multiple repositories at once, catch
+           secrets before they ship, sync branches safely, and automate
+           repetitive Git tasks.
+CONTROL
+          cat > debian/rules << 'RULES'
+          #!/usr/bin/make -f
+          export PYBUILD_NAME=chegi
+          %:
+          	dh $@ --with python3
+RULES
+          chmod +x debian/rules
+          cat > debian/changelog << EOF
+          chegi ($VERSION-1) unstable; urgency=medium
+
+            * New upstream release
+
+           -- Alwer <alwer.design@gmail.com>  $(date -R)
+EOF
+          cat > debian/compat <<< "9"
+
+      - name: Build source package
+        run: dpkg-buildpackage -S -d --no-sign
+
+      - name: Sign source package
+        run: |
+          debsign --no-re-sign -k8DDFD98A5CEFC81AE71845B661FF935FEADAD1CE \
+            ../chegi_${VERSION}-1_source.changes
+
+      - name: Upload to Launchpad PPA
+        run: dput ppa:ad-alwer/chegi ../chegi_${VERSION}-1_source.changes

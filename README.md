@@ -2,131 +2,108 @@
 
 **The ultimate Git companion. Type less, do more.**
 
-`cheGi` is a powerful, lightning-fast Command Line Interface (CLI) designed to supercharge your Git workflow. Built for developers who want to manage, track, and interact with multiple Git repositories effortlessly, `cheGi` drastically reduces manual typing and provides a beautiful, unified view of your workspace.
+[![PyPI version](https://img.shields.io/pypi/v/chegi)](https://pypi.org/project/chegi/)
+[![Python](https://img.shields.io/pypi/pyversions/chegi)](https://pypi.org/project/chegi/)
+[![Documentation](https://img.shields.io/badge/docs-ad--alwer.github.io%2FcheGi-blue)](https://ad-alwer.github.io/cheGi/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-While it currently excels at rapid repository discovery and status analysis, `cheGi` is evolving into a comprehensive suite for all your daily Git operations.
+cheGi is a fast, developer-friendly CLI for managing Git across your entire workspace. Scan multiple repositories at once, catch secrets before they ship, sync branches safely, and automate the repetitive parts of your daily Git workflow — all from a single tool with a beautiful terminal UI.
 
-## 🌟 Key Features
+cheGi donates **20% of all funding** to charity — local aid, disaster relief, and community causes. See [CHARITY.md](CHARITY.md) for details.
 
-- **Blazing Fast Concurrent Operations:** Processes multiple repositories simultaneously using Python's `ThreadPoolExecutor`.
-- **Built-in Security Guard:** Scans for secrets (API keys, tokens, `.env` files) before you commit or during a workspace scan.
-- **Beautiful Terminal UI:** High-readability tables powered by `Rich` with color-coded status updates.
-- **Smart Workspace Scanning:** Quickly discover Git repositories while intelligently pruning folders like `node_modules` or `.venv`.
-- **Instant Status Insights:** Bird's-eye view of branches, dirty trees, and remote sync status.
+## Features
 
-## Prerequisites
+- **Workspace scan** — Discover Git repos concurrently and get a unified status overview
+- **Security guard** — Detect sensitive files (`.env`, keys, tokens) in staged changes
+- **Safe sync** — Pull with rebase, push, and auto-stash when your tree is dirty
+- **Commit reword** — Update commit messages interactively, including older commits
+- **Environment setup** — Bootstrap dev toolchains (Python, Go, Rust, and more)
+- **Gitignore generator** — Build `.gitignore` files from technology presets
+- **Flexible config** — Per-workspace settings via `.chegi.json`
 
-- Python 3.10 or higher
-- Git installed on your system
+## Requirements
+
+- Python 3.8+
+- [Git](https://git-scm.com/) installed and available on your `PATH`
 
 ## Installation
 
-You can install `cheGi` locally for development and usage using `pip`:
-
-1. Clone the repository:
+### From PyPI
 
 ```bash
-git clone <your-repo-url>
+pip install chegi
+```
+
+### From PPA (Ubuntu/Debian)
+
+```bash
+sudo add-apt-repository ppa:ad-alwer/chegi
+sudo apt update
+sudo apt install chegi
+```
+
+### From source
+
+```bash
+git clone https://github.com/Ad-alwer/cheGi.git
 cd cheGi
-```
-
-2. Create and activate a virtual environment:
-
-```bash
 python -m venv .venv
-source .venv/bin/activate  # On Linux/macOS
-# .venv\Scripts\activate   # On Windows
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e ".[dev]"
 ```
 
-3. Install the package in editable mode:
+## Quick Start
 
 ```bash
-pip install -e .
-```
+# Scan all repositories under your projects folder
+chegi scan ~/projects
 
-## Usage
-
-Once installed, the `chegi` command will be available globally in your terminal environment.
-
-To quickly analyze all repositories in your current directory:
-
-```bash
-chegi scan .
-```
-
-To target a specific workspace path:
-
-```bash
-chegi scan /path/to/your/projects/folder
-```
-
-You can also override the maximum scanning depth on the fly:
-
-```bash
-chegi scan . --max-depth 5
-```
-
-To include a **Security Audit** 🛡️ (checks for staged secrets in all repos):
-
-```bash
-chegi scan . --security # or -s
-```
-
-### 🛡️ Security Guard
-
-Protect your current repository before committing. This command checks for sensitive information in staged files:
-
-```bash
+# Check staged files for secrets before committing
 chegi guard
+
+# Sync the current repository (pull --rebase, then push)
+chegi sync
 ```
 
-_If secrets are found, `cheGi` will offer an interactive prompt to unstage them automatically._
+## Commands
 
-### Example Output
+| Command | Description |
+|---------|-------------|
+| [`scan`](docs/commands/scan.md) | Scan a directory tree for Git repositories and report their status |
+| [`guard`](docs/commands/guard.md) | Check staged files for sensitive data before committing |
+| [`sync`](docs/commands/sync.md) | Safely sync the current branch with its remote |
+| [`reword`](docs/commands/reword.md) | Reword a commit message interactively |
+| [`setup`](docs/commands/setup.md) | Install and configure a development environment |
+| [`gitignore`](docs/commands/gitignore.md) | Generate a `.gitignore` file from technology presets |
+| [`config`](docs/commands/config.md) | Manage workspace settings and package-manager mirrors |
 
-The tool outputs a beautiful summary table. Depending on the flags used, it shows:
+Full documentation: **[ad-alwer.github.io/cheGi](https://ad-alwer.github.io/cheGi/)**
 
-- **Repository**: Name of the folder.
-- **Branch**: Current active branch.
-- **Local Status**: Clean or Dirty (with uncommitted changes).
-- **Remote**: Sync status (Synced, No Remote, or Pending Commits).
-- **Security 🛡️**: (Only with `--security`) Shows if staged files are Safe or contain Secrets.
+Run `chegi --help` or `chegi <command> --help` for built-in usage details.
 
 ## Configuration
 
-`cheGi` is highly customizable. You can easily manage your settings directly via the CLI:
-
-**View current configuration:**
+Settings are stored in `.chegi.json` at the root of your scan path:
 
 ```bash
 chegi config list
-```
-
-**Change a setting (e.g., maximum search depth):**
-
-```bash
 chegi config set max_depth 5
-```
-
-**Manage ignored directories (to optimize scanning speed):**
-
-```bash
 chegi config exclude-add node_modules
-chegi config exclude-remove .env
 ```
 
-Configurations are persistently saved in a `config.json` file in your root directory.
+- [Configuration Guide](docs/configuration.md) — full reference and troubleshooting
+- [Security Guide](docs/security.md) — guard, hooks, and CI integration
 
-## Development and Testing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and [SECURITY.md](SECURITY.md) for the security policy.
 
-`cheGi` comes with a comprehensive test suite covering 100% of the core modules to ensure maximum reliability. We use `pytest` for testing.
-
-To run the full test suite:
+## Development
 
 ```bash
+pip install -e ".[dev]"
 pytest -v
+ruff check src tests
 ```
 
 ## License
 
-This project is licensed under the MIT License.
+MIT — see [LICENSE](LICENSE).
