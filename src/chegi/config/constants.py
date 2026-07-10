@@ -6,9 +6,21 @@ DEFAULT_SENSITIVE_PATTERNS: Tuple[str, ...] = (
     "*.pem",
     "*.key",
     "id_rsa*",
+    "id_ecdsa*",
+    "id_ed25519*",
     "*.pk8",
     "*secret*",
     "credentials.json",
+    "*.jwt",
+    "*.token",
+    ".npmrc",
+    ".dockercfg",
+    "docker.json",
+    "service-account*.json",
+    "aws-credentials.json",
+    "*.credential",
+    "*.cred",
+    "*.passwd",
 )
 
 # Supported Package Managers for Mirrors
