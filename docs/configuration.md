@@ -71,14 +71,14 @@ When no `.chegi.json` exists, cheGi starts with these defaults:
 
 Directory **names** (not full paths) that `chegi scan` skips during traversal. This speeds up scans by avoiding heavy folders like `node_modules` and virtual environments.
 
-**How merging works:** When you load a `.chegi.json`, values in `exclude_dirs` are **added** to the built-in defaults — they do not replace them.
+**How merging works:** When you load a `.chegi.json`, values in `exclude_dirs` **replace** the built-in defaults — they do not merge with them. If you want to keep default excludes alongside custom ones, include them in the file.
 
 ```bash
 chegi config exclude-add dist
 chegi config exclude-remove .vscode
 ```
 
-**Example — monorepo workspace:**
+**Example — monorepo workspace (include defaults explicitly if you want them):**
 
 ```json
 {
@@ -91,6 +91,8 @@ chegi config exclude-remove .vscode
     ]
 }
 ```
+
+Without explicit defaults in the file, only `target`, `build`, and `dist` would be excluded.
 
 ---
 

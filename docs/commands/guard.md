@@ -22,9 +22,21 @@ This command must be run inside a Git repository.
 | `*.pem` | `cert.pem` |
 | `*.key` | `private.key` |
 | `id_rsa*` | `id_rsa`, `id_rsa.pub` |
+| `id_ecdsa*` | `id_ecdsa`, `id_ecdsa.pub` |
+| `id_ed25519*` | `id_ed25519`, `id_ed25519.pub` |
 | `*.pk8` | `key.pk8` |
 | `*secret*` | `my_secret.json` |
 | `credentials.json` | exact filename match |
+| `*.jwt` | `token.jwt` |
+| `*.token` | `session.token` |
+| `.npmrc` | exact filename match |
+| `.dockercfg` | exact filename match |
+| `docker.json` | exact filename match |
+| `service-account*.json` | `service-account-123.json` |
+| `aws-credentials.json` | exact filename match |
+| `*.credential` | `api.credential` |
+| `*.cred` | `db.cred` |
+| `*.passwd` | `shadow.passwd` |
 
 > **Note:** Guard uses filename pattern matching only. It does not scan file contents.
 

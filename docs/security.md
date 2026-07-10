@@ -28,9 +28,21 @@ These patterns are checked against the **filename** (not the full path):
 | `*.pem` | `cert.pem`, `server.pem` |
 | `*.key` | `private.key`, `api.key` |
 | `id_rsa*` | `id_rsa`, `id_rsa.pub` |
+| `id_ecdsa*` | `id_ecdsa`, `id_ecdsa.pub` |
+| `id_ed25519*` | `id_ed25519`, `id_ed25519.pub` |
 | `*.pk8` | `service-account.pk8` |
 | `*secret*` | `my_secret.json`, `client_secret.txt` |
 | `credentials.json` | exact filename |
+| `*.jwt` | `token.jwt` |
+| `*.token` | `session.token` |
+| `.npmrc` | exact filename |
+| `.dockercfg` | exact filename |
+| `docker.json` | exact filename |
+| `service-account*.json` | `service-account-123.json` |
+| `aws-credentials.json` | exact filename |
+| `*.credential` | `api.credential` |
+| `*.cred` | `db.cred` |
+| `*.passwd` | `shadow.passwd` |
 
 Patterns are case-insensitive.
 
