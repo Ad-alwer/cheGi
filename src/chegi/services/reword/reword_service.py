@@ -1,7 +1,10 @@
+import re
 from typing import List, Optional, Tuple
 
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError
+
+GIT_HASH_PATTERN = re.compile(r"^(HEAD|[0-9a-f]{7,40})$")
 
 class RewordService:
     """Service layer for handling git commit rewording logic.
@@ -69,6 +72,19 @@ class RewordService:
         except Exception as e:
             raise GitCommandError(f"Failed to fetch git history: {e}")
 
+    @staticmethod
+    def _validate_hash(target_hash: str) -> None:
+        """Validates that the hash is a valid git hash or HEAD.
+
+        Args:
+            target_hash (str): The hash to validate.
+
+        Raises:
+            ValueError: If the hash format is invalid.
+        """
+        if not GIT_HASH_PATTERN.match(target_hash):
+            raise ValueError(f"Invalid commit hash format: {target_hash}")
+
     def is_head(self, target_hash: str) -> bool:
         """Checks if the given commit hash is the current HEAD.
 
@@ -78,6 +94,7 @@ class RewordService:
         Returns:
             bool: True if the target hash matches the HEAD hash.
         """
+        self._validate_hash(target_hash)
         try:
             head_hash = self.git_client.run_command(["git", "rev-parse", "--short", "HEAD"])
             return target_hash == head_hash
@@ -93,6 +110,7 @@ class RewordService:
         Returns:
             str: The raw commit message.
         """
+        self._validate_hash(commit_hash)
         try:
             return self.git_client.run_command(["git", "log", "--format=%B", "-n", "1", commit_hash])
         except Exception as e:
@@ -116,6 +134,7 @@ class RewordService:
             target_hash (str): The short hash of the commit to modify.
             new_message (str): The new commit message.
         """
+        self._validate_hash(target_hash)
         try:
             # Use sed as the sequence editor to automatically change 'pick' to 'reword'
             env = {"GIT_SEQUENCE_EDITOR": f"sed -i -e 's/^pick {target_hash}/reword {target_hash}/'"}

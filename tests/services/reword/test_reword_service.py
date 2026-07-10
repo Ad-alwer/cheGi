@@ -110,6 +110,42 @@ class TestGitOperations:
         with pytest.raises(GitCommandError, match="Failed to amend HEAD commit"):
             reword_service.amend_head("New msg")
 
+class TestHashValidation:
+
+    def test_validate_hash_valid_short(self, reword_service):
+        reword_service._validate_hash("abc1234")
+
+    def test_validate_hash_valid_long(self, reword_service):
+        reword_service._validate_hash("abcdef0123456789abcdef0123456789abcdef01")
+
+    def test_validate_hash_head(self, reword_service):
+        reword_service._validate_hash("HEAD")
+
+    def test_validate_hash_invalid_chars(self, reword_service):
+        with pytest.raises(ValueError, match="Invalid commit hash format"):
+            reword_service._validate_hash("abc123; rm -rf /")
+
+    def test_validate_hash_empty(self, reword_service):
+        with pytest.raises(ValueError, match="Invalid commit hash format"):
+            reword_service._validate_hash("")
+
+    def test_validate_hash_too_short(self, reword_service):
+        with pytest.raises(ValueError, match="Invalid commit hash format"):
+            reword_service._validate_hash("abc123")
+
+    def test_is_head_rejects_invalid_hash(self, reword_service):
+        with pytest.raises(ValueError, match="Invalid commit hash format"):
+            reword_service.is_head("abc'; echo pwned #")
+
+    def test_get_commit_message_rejects_invalid_hash(self, reword_service):
+        with pytest.raises(ValueError, match="Invalid commit hash format"):
+            reword_service.get_commit_message("abc'; rm -rf / #")
+
+    def test_perform_automated_rebase_rejects_invalid_hash(self, reword_service, mock_git_client):
+        with pytest.raises(ValueError, match="Invalid commit hash format"):
+            reword_service.perform_automated_rebase("abc'; pwn #", "new msg")
+
+
 class TestAutomatedRebase:
 
     def test_perform_automated_rebase_success(self, reword_service, mock_git_client):
