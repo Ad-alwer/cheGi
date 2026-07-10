@@ -6,14 +6,12 @@ from .exceptions import (
     TargetNotSupportedError,
     UserAbortedSetupError,
 )
-from .models import InstallTask
 from .setup_service import SetupService
 from .system_installer import SystemInstaller
 
 __all__ = [
     "SetupService",
     "SystemInstaller",
-    "InstallTask",
     "InstallerError",
     "TargetNotSupportedError",
     "InstallationFailedError",
