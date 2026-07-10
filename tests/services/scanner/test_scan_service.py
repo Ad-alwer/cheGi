@@ -28,13 +28,14 @@ def test_init_config_override(mock_config_cls, base_scan_kwargs):
     """Test that config max_depth is overridden when provided in options."""
     kwargs = {**base_scan_kwargs, "max_depth": 5}
     service = ScanService(ScanOptions(**kwargs))
-    
+
     assert service.config.max_depth == 5
     mock_config_cls.assert_called_once()
     mock_config_cls.return_value.load.assert_not_called()
 
 
 # Finder Logic Tests
+
 
 def test_find_git_repos_invalid_dir(base_scan_kwargs):
     """Test finding repos raises InvalidDirectoryError for non-existent path."""
@@ -47,7 +48,8 @@ def test_find_git_repos_success(tmp_path: Path, base_scan_kwargs):
     """Test successfully finding valid Git repositories."""
     service = ScanService(ScanOptions(**base_scan_kwargs))
     service.config.max_depth = 3
-    service.config.ignore_dirs = ["node_modules", "venv"]
+    service.config.exclude_dirs.clear()
+    service.config.exclude_dirs.update(["node_modules", "venv"])
 
     # Setup dummy directory structure
     repo1 = tmp_path / "project1"
@@ -62,7 +64,7 @@ def test_find_git_repos_success(tmp_path: Path, base_scan_kwargs):
     not_repo.mkdir()
 
     repos = list(service._find_git_repos(str(tmp_path)))
-    
+
     assert len(repos) == 2
     assert repo1.resolve() in repos
     assert repo2.resolve() in repos
@@ -72,7 +74,7 @@ def test_find_git_repos_max_depth(tmp_path: Path, base_scan_kwargs):
     """Test that repository discovery respects the max_depth configuration."""
     service = ScanService(ScanOptions(**base_scan_kwargs))
     service.config.max_depth = 2
-    service.config.ignore_dirs = []
+    service.config.exclude_dirs.clear()
 
     deep_repo = tmp_path / "level1" / "level2" / "repo"
     deep_repo.mkdir(parents=True)
@@ -83,7 +85,7 @@ def test_find_git_repos_max_depth(tmp_path: Path, base_scan_kwargs):
     (shallow_repo / ".git").mkdir()
 
     repos = list(service._find_git_repos(str(tmp_path)))
-    
+
     assert len(repos) == 1
     assert shallow_repo.resolve() in repos
 
@@ -109,7 +111,7 @@ def test_find_git_repos_ignore_dirs(tmp_path: Path, base_scan_kwargs):
     (valid_repo / ".git").mkdir()
 
     repos = list(service._find_git_repos(str(tmp_path)))
-    
+
     assert len(repos) == 1
     assert valid_repo.resolve() in repos
 
@@ -117,8 +119,8 @@ def test_find_git_repos_ignore_dirs(tmp_path: Path, base_scan_kwargs):
 def test_find_git_repos_smart_pruning(tmp_path: Path, base_scan_kwargs):
     """Ensure that once a repo is found, it does not scan its subdirectories."""
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    service.config.ignore_dirs = []
-    
+    service.config.exclude_dirs.clear()
+
     parent_repo = tmp_path / "parent_repo"
     parent_repo.mkdir()
     (parent_repo / ".git").mkdir()
@@ -129,19 +131,20 @@ def test_find_git_repos_smart_pruning(tmp_path: Path, base_scan_kwargs):
     (child_repo / ".git").mkdir()
 
     repos = list(service._find_git_repos(str(tmp_path)))
-    
+
     assert len(repos) == 1
     assert parent_repo.resolve() in repos
 
 
 # Scanner Flow Tests
 
+
 @patch.object(ScanService, "_find_git_repos")
 def test_get_repositories_success(mock_find, base_scan_kwargs):
     """Test successful retrieval of repositories using mocked finder."""
     mock_find.return_value = [Path("/mock/repo1"), Path("/mock/repo2")]
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    
+
     repos = service._get_repositories()
     assert repos == [Path("/mock/repo1"), Path("/mock/repo2")]
 
@@ -152,10 +155,10 @@ def test_get_repositories_not_a_dir(mock_print_error, mock_find, base_scan_kwarg
     """Test get_repositories exits gracefully on InvalidDirectoryError."""
     mock_find.side_effect = InvalidDirectoryError("Invalid path")
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    
+
     with pytest.raises(typer.Exit) as exc_info:
         service._get_repositories()
-    
+
     assert exc_info.value.exit_code == 1
     mock_print_error.assert_called_once_with("Invalid path")
 
@@ -165,9 +168,9 @@ def test_filter_results(base_scan_kwargs):
     dirty_repo = MagicMock(is_dirty=True, has_staged_files=False)
     staged_repo = MagicMock(is_dirty=True, has_staged_files=True)
     clean_repo = MagicMock(is_dirty=False, has_staged_files=False)
-    
+
     statuses = [dirty_repo, staged_repo, clean_repo]
-    
+
     # Test dirty filter
     kwargs_dirty = {**base_scan_kwargs, "dirty": True}
     service_dirty = ScanService(ScanOptions(**kwargs_dirty))
@@ -187,10 +190,10 @@ def test_filter_results(base_scan_kwargs):
 def test_analyze_repositories(mock_analyze_single, base_scan_kwargs):
     """Test concurrent analysis of multiple repositories."""
     mock_analyze_single.side_effect = ["status1", "status2"]
-    
+
     service = ScanService(ScanOptions(**base_scan_kwargs))
     statuses = service._analyze_repositories([Path("/path1"), Path("/path2")])
-    
+
     assert set(statuses) == {"status1", "status2"}
     assert mock_analyze_single.call_count == 2
 
@@ -202,7 +205,7 @@ def test_execute_no_repos(mock_display, mock_get_repos, base_scan_kwargs):
     mock_get_repos.return_value = []
     service = ScanService(ScanOptions(**base_scan_kwargs))
     service.execute()
-    
+
     mock_display.assert_called_once_with([])
 
 
@@ -217,10 +220,10 @@ def test_execute_full_flow(
     mock_get_repos.return_value = ["/path1"]
     mock_analyze.return_value = ["raw_status"]
     mock_filter.return_value = ["filtered_status"]
-    
+
     service = ScanService(ScanOptions(**base_scan_kwargs))
     service.execute()
-    
+
     mock_get_repos.assert_called_once()
     mock_analyze.assert_called_once_with(["/path1"])
     mock_filter.assert_called_once_with(["raw_status"])
@@ -233,16 +236,21 @@ def test_execute_full_flow(
 @patch("chegi.services.scanner.scan_service.display_results_table")
 @patch("chegi.services.scanner.scan_service.console.print")
 def test_execute_filtered_out_all(
-    mock_print, mock_display, mock_filter, mock_analyze, mock_get_repos, base_scan_kwargs
+    mock_print,
+    mock_display,
+    mock_filter,
+    mock_analyze,
+    mock_get_repos,
+    base_scan_kwargs,
 ):
     """Test execute method when all found repositories are filtered out."""
     mock_get_repos.return_value = ["/path1"]
     mock_analyze.return_value = ["raw_status"]
     mock_filter.return_value = []
-    
+
     service = ScanService(ScanOptions(**base_scan_kwargs))
     service.execute()
-    
+
     mock_display.assert_not_called()
     mock_print.assert_any_call(
         "\n[bold yellow]No repositories matched your filters.[/bold yellow]"
@@ -254,68 +262,98 @@ def mock_subprocess_run():
     with patch("subprocess.run") as mock_run:
         yield mock_run
 
-def test_analyze_single_repo_synced(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+
+def test_analyze_single_repo_synced(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    
+
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = "origin\n"
-        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
-        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = "origin\n"
+        elif "rev-parse" in cmd:
+            res.stdout = "origin/main\n"
+        elif "rev-list" in cmd:
+            res.stdout = "0 0\n"
         return res
-        
+
     mock_subprocess_run.side_effect = side_effect
     status = service._analyze_single_repo(tmp_path)
     assert status.status == "Clean | Synced"
 
-def test_analyze_single_repo_ahead(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+
+def test_analyze_single_repo_ahead(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    
+
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = "origin\n"
-        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
-        elif "rev-list" in cmd: res.stdout = "2 0\n"  # Ahead 2
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = "origin\n"
+        elif "rev-parse" in cmd:
+            res.stdout = "origin/main\n"
+        elif "rev-list" in cmd:
+            res.stdout = "2 0\n"  # Ahead 2
         return res
-        
+
     mock_subprocess_run.side_effect = side_effect
     status = service._analyze_single_repo(tmp_path)
     assert status.status == "Clean | Ahead (2)"
 
-def test_analyze_single_repo_behind(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+
+def test_analyze_single_repo_behind(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    
+
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = "origin\n"
-        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
-        elif "rev-list" in cmd: res.stdout = "0 3\n"  # Behind 3
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = "origin\n"
+        elif "rev-parse" in cmd:
+            res.stdout = "origin/main\n"
+        elif "rev-list" in cmd:
+            res.stdout = "0 3\n"  # Behind 3
         return res
-        
+
     mock_subprocess_run.side_effect = side_effect
     status = service._analyze_single_repo(tmp_path)
     assert status.status == "Clean | Behind (3)"
 
-def test_analyze_single_repo_no_origin(tmp_path: Path, base_scan_kwargs, mock_subprocess_run):
+
+def test_analyze_single_repo_no_origin(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
     service = ScanService(ScanOptions(**base_scan_kwargs))
-    
+
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = ""  # No remote
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = ""  # No remote
         return res
-        
+
     mock_subprocess_run.side_effect = side_effect
     status = service._analyze_single_repo(tmp_path)
     assert status.status == "Clean | No Remote"
@@ -330,11 +368,16 @@ def test_analyze_single_repo_with_security_scanner_safe(
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = "origin\n"
-        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
-        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = "origin\n"
+        elif "rev-parse" in cmd:
+            res.stdout = "origin/main\n"
+        elif "rev-list" in cmd:
+            res.stdout = "0 0\n"
         return res
 
     mock_subprocess_run.side_effect = side_effect
@@ -355,11 +398,16 @@ def test_analyze_single_repo_with_security_scanner_unsafe(
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = "origin\n"
-        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
-        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = "origin\n"
+        elif "rev-parse" in cmd:
+            res.stdout = "origin/main\n"
+        elif "rev-list" in cmd:
+            res.stdout = "0 0\n"
         return res
 
     mock_subprocess_run.side_effect = side_effect
@@ -380,11 +428,16 @@ def test_analyze_single_repo_with_security_scanner_error(
     def side_effect(cmd, **kwargs):
         res = MagicMock()
         res.returncode = 0
-        if "branch" in cmd: res.stdout = "main\n"
-        elif "status" in cmd: res.stdout = ""
-        elif "remote" in cmd: res.stdout = "origin\n"
-        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
-        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        if "branch" in cmd:
+            res.stdout = "main\n"
+        elif "status" in cmd:
+            res.stdout = ""
+        elif "remote" in cmd:
+            res.stdout = "origin\n"
+        elif "rev-parse" in cmd:
+            res.stdout = "origin/main\n"
+        elif "rev-list" in cmd:
+            res.stdout = "0 0\n"
         return res
 
     mock_subprocess_run.side_effect = side_effect
