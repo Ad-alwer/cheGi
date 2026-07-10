@@ -111,13 +111,10 @@ def config_exclude_remove(
     """
     config = ChegiConfig(base_path=path)
 
-    try:
-        config.remove_exclude(folder)
-        config.save()
-        console.print(f"[green]Removed '{folder}' from the exclude list.[/green]")
-    except ValueError as e:
-        TerminalUI.print_error(str(e))
+    if not config.remove_exclude(folder):
+        TerminalUI.print_error(f"'{folder}' is not in the exclusion list.")
         raise typer.Exit(code=1)
+    console.print(f"[green]Removed '{folder}' from the exclude list.[/green]")
 
 
 @app.command("mirror-add")
