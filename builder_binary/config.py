@@ -1,5 +1,3 @@
-import os
-
 APP_NAME = "chegi"
 ENTRY_POINT = "src/chegi/cli/main.py"
 RELEASES_DIR = "releases"

@@ -1,18 +1,19 @@
 import os
-import shutil
-import zipfile
 import subprocess
-from builder.config import APP_NAME, RELEASES_DIR, DIST_DIR, AUTHOR_NAME
-from builder.utils import build_base_binary
+import zipfile
+
+from builder_binary.config import APP_NAME, AUTHOR_NAME, DIST_DIR, RELEASES_DIR
+from builder_binary.utils import build_base_binary
+
 
 def build_all_windows(version):
     build_base_binary()
     exe_path = os.path.join(DIST_DIR, f"{APP_NAME}.exe")
-    
+
     # 1. Portable .zip
     zip_name = f"{APP_NAME}_{version}_windows_amd64.zip"
     zip_path = os.path.join(RELEASES_DIR, zip_name)
-    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         zipf.write(exe_path, arcname=f"{APP_NAME}.exe")
     print(f"Created {zip_name}")
 
@@ -43,7 +44,7 @@ def build_all_windows(version):
         </Fragment>
     </Wix>
     """
-    
+
     wxs_path = os.path.join(DIST_DIR, f"{APP_NAME}.wxs")
     wixobj_path = os.path.join(DIST_DIR, f"{APP_NAME}.wixobj")
     msi_path = os.path.join(RELEASES_DIR, f"{APP_NAME}_{version}_windows_amd64.msi")
@@ -53,8 +54,16 @@ def build_all_windows(version):
 
     try:
         # candle compiles XML to wixobj, light links wixobj to msi
-        subprocess.run(["candle", "-ext", "WixUIExtension", wxs_path, "-out", wixobj_path], check=True)
-        subprocess.run(["light", "-ext", "WixUIExtension", wixobj_path, "-out", msi_path], check=True)
+        subprocess.run(
+            ["candle", "-ext", "WixUIExtension", wxs_path, "-out", wixobj_path],
+            check=True,
+        )
+        subprocess.run(
+            ["light", "-ext", "WixUIExtension", wixobj_path, "-out", msi_path],
+            check=True,
+        )
         print(f"Created MSI installer: {msi_path}")
     except FileNotFoundError:
-        print("WiX toolset (candle/light) not found. Skipping MSI creation. (This will run fine on GitHub Actions).")
+        print(
+            "WiX toolset (candle/light) not found. Skipping MSI creation. (This will run fine on GitHub Actions)."
+        )

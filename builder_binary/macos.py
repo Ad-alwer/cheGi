@@ -1,13 +1,15 @@
 import os
 import tarfile
-from builder.config import APP_NAME, RELEASES_DIR, DIST_DIR
-from builder.utils import build_base_binary
+
+from builder_binary.config import APP_NAME, DIST_DIR, RELEASES_DIR
+from builder_binary.utils import build_base_binary
+
 
 def build_all_macos(version):
     """Build macOS specific packages."""
     build_base_binary()
     binary_path = os.path.join(DIST_DIR, APP_NAME)
-    
+
     # 1. Portable .tar.gz (Standard for macOS CLI tools)
     tar_name = f"{APP_NAME}_{version}_macos_x64.tar.gz"
     tar_path = os.path.join(RELEASES_DIR, tar_name)

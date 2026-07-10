@@ -2,8 +2,17 @@ import os
 import shutil
 import subprocess
 import tarfile
-from builder.config import APP_NAME, RELEASES_DIR, DIST_DIR, AUTHOR_NAME, AUTHOR_EMAIL, DESCRIPTION
-from builder.utils import build_base_binary
+
+from builder_binary.config import (
+    APP_NAME,
+    AUTHOR_EMAIL,
+    AUTHOR_NAME,
+    DESCRIPTION,
+    DIST_DIR,
+    RELEASES_DIR,
+)
+from builder_binary.utils import build_base_binary
+
 
 def build_tar_gz(version, binary_path):
     """Create a standard portable .tar.gz archive."""
@@ -12,6 +21,7 @@ def build_tar_gz(version, binary_path):
     with tarfile.open(tar_path, "w:gz") as tar:
         tar.add(binary_path, arcname=APP_NAME)
     print(f"Created {tar_name}")
+
 
 def build_all_linux(version):
     build_base_binary()
@@ -39,7 +49,9 @@ Description: {DESCRIPTION}
         f.write(control_content)
 
     subprocess.run(["dpkg-deb", "--build", deb_dir], check=True)
-    shutil.move(f"{deb_dir}.deb", os.path.join(RELEASES_DIR, f"{APP_NAME}_{version}_amd64.deb"))
+    shutil.move(
+        f"{deb_dir}.deb", os.path.join(RELEASES_DIR, f"{APP_NAME}_{version}_amd64.deb")
+    )
     shutil.rmtree(deb_dir)
 
     # 3. RPM (.rpm) - Requires rpmbuild to be installed
