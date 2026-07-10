@@ -40,7 +40,7 @@ class ScanService:
         """
         self.options = options
         self.base_path = Path(self.options.path).resolve()
-        
+
         self.config = self._init_config()
 
     def _init_config(self) -> ChegiConfig:
@@ -123,7 +123,9 @@ class ScanService:
             # Yield if it's a git repo
             if (root_path / ".git").is_dir():
                 yield root_path
-                dirs[:] = []  # Stop traversing inside the repository (ignores submodules)
+                dirs[
+                    :
+                ] = []  # Stop traversing inside the repository (ignores submodules)
 
     def _get_repositories(self) -> List[Path]:
         """Finds all git repositories in the base path.
@@ -140,7 +142,11 @@ class ScanService:
             TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
 
-    def _analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], GuardScanResult]] = None) -> GitStatus:
+    def _analyze_single_repo(
+        self,
+        repo_path: Path,
+        security_scanner: Optional[Callable[[Path], GuardScanResult]] = None,
+    ) -> GitStatus:
         """Extracts the git status for a single repository.
 
         Args:
@@ -154,7 +160,10 @@ class ScanService:
         git_client = GitClient(repo_path)
         try:
             # 1. Branch Name
-            branch = git_client.run_command(["git", "branch", "--show-current"]) or "No Commits"
+            branch = (
+                git_client.run_command(["git", "branch", "--show-current"])
+                or "No Commits"
+            )
 
             # 2. Local Status (Dirty / Staged / Clean)
             status_output = git_client.run_command(["git", "status", "--porcelain"])
@@ -167,7 +176,9 @@ class ScanService:
                         has_staged_files = True
                         break
 
-            local_status = "Staged" if has_staged_files else ("Dirty" if is_dirty else "Clean")
+            local_status = (
+                "Staged" if has_staged_files else ("Dirty" if is_dirty else "Clean")
+            )
 
             # 3. Remote Status
             remote_output = git_client.run_command(["git", "remote"])
@@ -185,7 +196,13 @@ class ScanService:
                     # Check ahead and behind counts
                     try:
                         rev_list = git_client.run_command(
-                            ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"]
+                            [
+                                "git",
+                                "rev-list",
+                                "--left-right",
+                                "--count",
+                                "HEAD...@{u}",
+                            ]
                         )
                         counts = rev_list.split()
                         if len(counts) == 2:
@@ -261,7 +278,9 @@ class ScanService:
             console=console,
             transient=True,
         ) as progress:
-            task = progress.add_task("[cyan]⚡ Analyzing repositories...", total=len(repo_paths))
+            task = progress.add_task(
+                "[cyan]⚡ Analyzing repositories...", total=len(repo_paths)
+            )
 
             with ThreadPoolExecutor(max_workers=self.options.workers) as executor:
                 future_to_path = {

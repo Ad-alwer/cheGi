@@ -24,7 +24,7 @@ app.add_typer(sync.app, name="sync")
 app.add_typer(scan.app, name="scan")
 app.add_typer(reword.app, name="reword")
 app.add_typer(guard.app, name="guard")
-app.add_typer(gitignore.app, name="gitignore") 
+app.add_typer(gitignore.app, name="gitignore")
 
 
 @app.callback()

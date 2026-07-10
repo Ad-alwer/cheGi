@@ -26,7 +26,6 @@ def config_list(
     """
     config = ChegiConfig(base_path=path)
 
-
     console.print("[bold]Current Configuration:[/bold]")
     console.print(f"  Max Depth: {config.max_depth}")
     console.print(f"  MCTS: {getattr(config, 'mcts', 10)}")
@@ -67,7 +66,6 @@ def config_set(
         typer.Exit: If the provided value is invalid.
     """
     config = ChegiConfig(base_path=path)
-
 
     try:
         config.update_setting(key, value)
@@ -113,7 +111,6 @@ def config_exclude_remove(
     """
     config = ChegiConfig(base_path=path)
 
-
     try:
         config.remove_exclude(folder)
         config.save()
@@ -140,7 +137,6 @@ def config_mirror_add(
         typer.Exit: If the package manager is not supported or URL is invalid.
     """
     config = ChegiConfig(base_path=path)
-
 
     try:
         config.set_mirror(pm_name, url)
@@ -176,7 +172,6 @@ def config_mirror_remove(
     """
     config = ChegiConfig(base_path=path)
 
-
     pm_name = pm_name.lower()
 
     if not hasattr(config, "mirrors") or pm_name not in config.mirrors:
@@ -190,12 +185,18 @@ def config_mirror_remove(
         if url:
             TerminalUI.print_success(f"Removed mirror URL '{url}' for '{pm_name}'.")
         else:
-            TerminalUI.print_success(f"Removed all mirror configurations for '{pm_name}'.")
+            TerminalUI.print_success(
+                f"Removed all mirror configurations for '{pm_name}'."
+            )
     else:
         if url:
-            TerminalUI.print_error(f"URL '{url}' not found in saved mirrors for '{pm_name}'.")
+            TerminalUI.print_error(
+                f"URL '{url}' not found in saved mirrors for '{pm_name}'."
+            )
         else:
-            TerminalUI.print_error(f"Failed to remove mirror configuration for '{pm_name}'.")
+            TerminalUI.print_error(
+                f"Failed to remove mirror configuration for '{pm_name}'."
+            )
         raise typer.Exit(code=1)
 
 
@@ -217,7 +218,6 @@ def config_mirror_set_all(
         typer.Exit: If the JSON is malformed or validation fails.
     """
     config = ChegiConfig(base_path=path)
-
 
     try:
         # Parse incoming JSON payload
@@ -267,7 +267,6 @@ def config_mirror_clear(
         path (str): Base directory for the configuration file.
     """
     config = ChegiConfig(base_path=path)
-
 
     if hasattr(config, "mirrors") and config.mirrors:
         config.update_setting("mirrors", {})

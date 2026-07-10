@@ -25,19 +25,19 @@ def setup_environment(
     ),
 ) -> None:
     """Sets up the development environment or installs a standalone tool.
-    
-    This command acts as the CLI entry point and delegates the core logic 
+
+    This command acts as the CLI entry point and delegates the core logic
     to the `SetupService`.
-    
+
     Args:
-        environment (str): The programming language or toolset to setup 
+        environment (str): The programming language or toolset to setup
             (e.g., 'python', 'ruby', 'postman').
-        auto_yes (bool, optional): Automatically answer yes to all installation 
+        auto_yes (bool, optional): Automatically answer yes to all installation
             prompts. Defaults to False.
-            
+
     Returns:
         None
     """
-    
+
     service = SetupService(environment=environment, auto_yes=auto_yes)
     service.execute()

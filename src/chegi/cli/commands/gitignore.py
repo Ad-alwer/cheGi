@@ -36,7 +36,7 @@ def gitignore(
         typer.Exit: If the operation is cancelled, aborted, or encounters an error.
     """
     env_manager = EnvManager()
-    
+
     # Initialize GitClient with the target path
     target_path = Path(path).expanduser().resolve()
     git_client = GitClient(target_path)
@@ -45,7 +45,9 @@ def gitignore(
 
     envs_with_gitignore = env_manager.get_envs_with_gitignore()
     if not envs_with_gitignore:
-        TerminalUI.print_error("No gitignore templates found in the environments database.")
+        TerminalUI.print_error(
+            "No gitignore templates found in the environments database."
+        )
         raise typer.Exit(1)
 
     choices = [env.capitalize() for env in sorted(envs_with_gitignore)]
@@ -90,10 +92,10 @@ def gitignore(
             try:
                 console.print("[dim]Adding and committing .gitignore...[/dim]")
                 commit_msg = GITIGNORE_COMMIT_MESSAGE
-                
+
                 # Using the generic commit_file method
                 git_client.commit_file(".gitignore", commit_msg)
-                
+
                 console.print(
                     f"[bold green]✨ Committed with message:[/bold green] [cyan]{commit_msg}[/cyan]"
                 )

@@ -6,6 +6,7 @@ from chegi.cli.core.preflight import PreflightOrchestrator, run_preflight_checks
 
 class DummyCheck(PreflightCheck):
     """A concrete mock implementation of PreflightCheck for testing the orchestrator."""
+
     def __init__(self):
         self.executed = False
 

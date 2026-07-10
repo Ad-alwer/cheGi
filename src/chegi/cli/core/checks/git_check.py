@@ -22,10 +22,7 @@ class GitRequirementCheck(PreflightCheck):
 
         try:
             result = subprocess.run(
-                ["git", "--version"],
-                capture_output=True,
-                text=True,
-                check=True
+                ["git", "--version"], capture_output=True, text=True, check=True
             )
             return True, f"Git is ready ({result.stdout.strip()})."
         except Exception as e:
@@ -35,7 +32,7 @@ class GitRequirementCheck(PreflightCheck):
         """Executes the Git environment check.
 
         Raises:
-            typer.Exit: If Git is missing and the user aborts installation, 
+            typer.Exit: If Git is missing and the user aborts installation,
                 or if the installation fails.
         """
         is_valid, message = self._check_git_globally()
@@ -64,7 +61,7 @@ class GitRequirementCheck(PreflightCheck):
             typer.Exit: With code 0 on success, or code 1 on failure.
         """
         console.print("\n[bold cyan]Starting installation process...[/bold cyan]")
-        
+
         success = SystemInstaller.install_package("git")
 
         if success:

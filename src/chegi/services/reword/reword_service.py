@@ -6,9 +6,10 @@ from chegi.services.git.exceptions import GitCommandError
 
 GIT_HASH_PATTERN = re.compile(r"^(HEAD|[0-9a-f]{7,40})$")
 
+
 class RewordService:
     """Service layer for handling git commit rewording logic.
-    
+
     Attributes:
         git_client (GitClient): The core Git client for executing commands.
     """
@@ -33,7 +34,7 @@ class RewordService:
 
         Returns:
             Tuple[int, int]: A tuple containing (skip, limit).
-            
+
         Raises:
             ValueError: If start index is greater than or equal to end index.
         """
@@ -41,15 +42,15 @@ class RewordService:
             if start >= end:
                 raise ValueError("--start must be less than --end.")
             return start, end - start
-            
+
         if start is not None:
             return start, 10
-            
+
         if end is not None:
             # Ensure skip doesn't go below zero
             skip = max(0, end - 10)
             return skip, end - skip
-            
+
         # Default behavior: fallback to 'last' or default 10 commits
         return 0, last if last else 10
 
@@ -65,7 +66,13 @@ class RewordService:
         """
         try:
             output = self.git_client.run_command(
-                ["git", "log", f"--max-count={limit}", f"--skip={skip}", "--format=%h %s"]
+                [
+                    "git",
+                    "log",
+                    f"--max-count={limit}",
+                    f"--skip={skip}",
+                    "--format=%h %s",
+                ]
             )
             # Filter out empty lines
             return [line for line in output.split("\n") if line]
@@ -96,7 +103,9 @@ class RewordService:
         """
         self._validate_hash(target_hash)
         try:
-            head_hash = self.git_client.run_command(["git", "rev-parse", "--short", "HEAD"])
+            head_hash = self.git_client.run_command(
+                ["git", "rev-parse", "--short", "HEAD"]
+            )
             return target_hash == head_hash
         except Exception as e:
             raise GitCommandError(f"Failed to resolve HEAD: {e}")
@@ -112,9 +121,13 @@ class RewordService:
         """
         self._validate_hash(commit_hash)
         try:
-            return self.git_client.run_command(["git", "log", "--format=%B", "-n", "1", commit_hash])
+            return self.git_client.run_command(
+                ["git", "log", "--format=%B", "-n", "1", commit_hash]
+            )
         except Exception as e:
-            raise GitCommandError(f"Failed to fetch commit message for {commit_hash}: {e}")
+            raise GitCommandError(
+                f"Failed to fetch commit message for {commit_hash}: {e}"
+            )
 
     def amend_head(self, new_message: str) -> None:
         """Modifies the message of the most recent commit (HEAD).
@@ -137,9 +150,13 @@ class RewordService:
         self._validate_hash(target_hash)
         try:
             # Use sed as the sequence editor to automatically change 'pick' to 'reword'
-            env = {"GIT_SEQUENCE_EDITOR": f"sed -i -e 's/^pick {target_hash}/reword {target_hash}/'"}
-            
-            self.git_client.run_command(["git", "rebase", "-i", f"{target_hash}~1"], env=env)
+            env = {
+                "GIT_SEQUENCE_EDITOR": f"sed -i -e 's/^pick {target_hash}/reword {target_hash}/'"
+            }
+
+            self.git_client.run_command(
+                ["git", "rebase", "-i", f"{target_hash}~1"], env=env
+            )
             self.git_client.run_command(["git", "commit", "--amend", "-m", new_message])
             self.git_client.run_command(["git", "rebase", "--continue"])
         except Exception as e:

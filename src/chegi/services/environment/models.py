@@ -8,6 +8,7 @@ class ToolConfig:
     args: List[str]
     description: Optional[str] = None
 
+
 @dataclass
 class EnvironmentPreset:
     name: str

@@ -23,14 +23,14 @@ class ChegiConfig:
                 configuration file is located. Defaults to ".".
         """
         self.config_file: Path = Path(base_path) / ".chegi.json"
-        
+
         # Core state is managed by the data class model
         self._state = ChegiConfigModel()
-        
+
         self.load()
 
     # --- Properties for Backward Compatibility ---
-    
+
     @property
     def exclude_dirs(self) -> Set[str]:
         """Set[str]: A set of directory names to exclude from operations."""
@@ -85,7 +85,9 @@ class ChegiConfig:
                                 if isinstance(urls, str):
                                     self._state.mirrors[pm] = [urls]
                                 elif isinstance(urls, list):
-                                    self._state.mirrors[pm] = [str(u) for u in urls if u]
+                                    self._state.mirrors[pm] = [
+                                        str(u) for u in urls if u
+                                    ]
             except json.JSONDecodeError:
                 pass
 

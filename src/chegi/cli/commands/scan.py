@@ -47,7 +47,6 @@ def scan_command(
         dirty=dirty,
         staged=staged,
     )
-    
+
     service = ScanService(options=options)
     service.execute()
-

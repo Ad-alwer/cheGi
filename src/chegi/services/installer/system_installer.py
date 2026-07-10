@@ -294,18 +294,14 @@ class SystemInstaller:
                 result = subprocess.run(["sudo", "apt", "update"])
                 if result.returncode != 0:
                     return False
-                result = subprocess.run(
-                    ["sudo", "apt", "install", "-y", package_name]
-                )
+                result = subprocess.run(["sudo", "apt", "install", "-y", package_name])
                 return result.returncode == 0
 
             elif shutil.which("dnf"):
                 typer.secho(
                     f"Using 'dnf' to install {package_name}...", fg=typer.colors.CYAN
                 )
-                result = subprocess.run(
-                    ["sudo", "dnf", "install", "-y", package_name]
-                )
+                result = subprocess.run(["sudo", "dnf", "install", "-y", package_name])
                 return result.returncode == 0
 
             elif shutil.which("pacman"):

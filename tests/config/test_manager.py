@@ -162,6 +162,7 @@ def test_update_setting_mirrors(tmp_path: Path) -> None:
     config.update_setting("mirrors", "cargo=https://cargo.local")
     assert "https://cargo.local" in config.get_mirror("cargo")
 
+
 def test_load_legacy_mirror_format(tmp_path: Path) -> None:
     """Tests if load() correctly handles old JSON formats where a mirror URL is a string, not a list."""
     config_file = tmp_path / ".chegi.json"
@@ -176,7 +177,7 @@ def test_load_legacy_mirror_format(tmp_path: Path) -> None:
 def test_update_setting_with_list_types(tmp_path: Path) -> None:
     """Tests update_setting with actual list objects instead of strings."""
     config = ChegiConfig(base_path=str(tmp_path))
-    
+
     # Test exclude_dirs with a list/set
     config.update_setting("exclude_dirs", ["node_modules", "venv"])
     assert "node_modules" in config.exclude_dirs
@@ -190,11 +191,11 @@ def test_update_setting_with_list_types(tmp_path: Path) -> None:
 def test_add_mirrors_from_string_empty_and_spaces(tmp_path: Path) -> None:
     """Tests handling of empty strings and trailing commas in mirror strings."""
     config = ChegiConfig(base_path=str(tmp_path))
-    
+
     # Should not raise any error, just return safely
     config.add_mirrors_from_string("")
     config.add_mirrors_from_string("   ")
-    
+
     # String with empty parts (trailing comma)
     config.add_mirrors_from_string("pip=https://pypi.org,  ,  npm=https://npm.js  ")
     assert "https://pypi.org" in config.get_mirror("pip")

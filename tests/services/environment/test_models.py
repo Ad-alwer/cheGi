@@ -3,7 +3,9 @@ from chegi.services.environment.models import EnvironmentPreset, ToolConfig
 
 def test_tool_config_creation_with_all_fields():
     """Test ToolConfig initialization with all provided fields."""
-    tool = ToolConfig(command="python", args=["-m", "venv"], description="Creates virtual env")
+    tool = ToolConfig(
+        command="python", args=["-m", "venv"], description="Creates virtual env"
+    )
     assert tool.command == "python"
     assert tool.args == ["-m", "venv"]
     assert tool.description == "Creates virtual env"
@@ -24,7 +26,7 @@ def test_environment_preset_with_list_gitignore():
         name="python",
         description="Python development environment",
         tools={"pip": tool},
-        gitignore=["*.pyc", "__pycache__/"]
+        gitignore=["*.pyc", "__pycache__/"],
     )
     assert preset.name == "python"
     assert preset.description == "Python development environment"
@@ -40,7 +42,7 @@ def test_environment_preset_with_string_gitignore():
         name="node",
         description="Node.js environment",
         tools={},
-        gitignore="node_modules/\n.env"
+        gitignore="node_modules/\n.env",
     )
     assert preset.name == "node"
     assert isinstance(preset.gitignore, str)

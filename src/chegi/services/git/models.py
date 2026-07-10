@@ -17,6 +17,7 @@ class GitStatus:
         has_staged_files (bool): True if there are changes staged in the index. Defaults to False.
         security_status (Optional[str]): Findings from security scans, if any. Defaults to None.
     """
+
     path: Path
     repo_name: str
     branch: str

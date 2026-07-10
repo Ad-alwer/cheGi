@@ -8,6 +8,7 @@ from chegi.config import GITIGNORE_COMMIT_MESSAGE
 
 runner = CliRunner()
 
+
 @pytest.fixture(autouse=True)
 def mock_preflight():
     """Automatically mocks the preflight checks to pass for all tests."""
@@ -25,7 +26,7 @@ def test_gitignore_success_without_commit(
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.get_envs_with_gitignore.return_value = ["python", "node"]
     mock_env_instance.has_existing_gitignore.return_value = False
-    
+
     mock_git_instance = mock_git_client.return_value
     mock_git_instance.is_valid_repo.return_value = True
 
@@ -49,7 +50,7 @@ def test_gitignore_success_with_commit(
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.get_envs_with_gitignore.return_value = ["python"]
     mock_env_instance.has_existing_gitignore.return_value = False
-    
+
     mock_git_instance = mock_git_client.return_value
     mock_git_instance.is_valid_repo.return_value = True
 
@@ -59,7 +60,9 @@ def test_gitignore_success_with_commit(
 
     assert result.exit_code == 0
     assert "Committed with message:" in result.stdout
-    mock_git_instance.commit_file.assert_called_once_with(".gitignore", GITIGNORE_COMMIT_MESSAGE)
+    mock_git_instance.commit_file.assert_called_once_with(
+        ".gitignore", GITIGNORE_COMMIT_MESSAGE
+    )
 
 
 @patch("chegi.cli.commands.gitignore.EnvManager")
@@ -143,7 +146,7 @@ def test_gitignore_not_a_git_repo(
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.get_envs_with_gitignore.return_value = ["python"]
     mock_env_instance.has_existing_gitignore.return_value = False
-    
+
     mock_git_instance = mock_git_client.return_value
     mock_git_instance.is_valid_repo.return_value = False
 

@@ -37,7 +37,10 @@ def test_get_staged_files_failure(mock_run):
     assert files == []
 
 
-@patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env", "*.pem", "secret.*"])
+@patch(
+    "chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS",
+    [".env", "*.pem", "secret.*"],
+)
 def test_find_sensitive_files_found():
     """Test detection of files matching the sensitive patterns."""
     files_to_check = ["main.py", ".env", "utils.py", "key.pem", "secret.txt"]
@@ -85,7 +88,7 @@ def test_unstage_files_empty_list(mock_run):
 def test_unstage_files_failure(mock_run):
     """Test that a subprocess failure during unstage returns False."""
     mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
-    
+
     result = SecurityGuard.unstage_files([".env"], TEST_REPO_PATH)
 
     assert result is False
@@ -96,7 +99,7 @@ def test_unstage_files_failure(mock_run):
 def test_scan_repo_no_staged_files(mock_get_staged, mock_find_sensitive):
     """Test repository scan when no files are staged (returns safe)."""
     mock_get_staged.return_value = []
-    
+
     result = SecurityGuard.scan_repo(TEST_REPO_PATH)
 
     assert result.is_safe is True
@@ -110,7 +113,7 @@ def test_scan_repo_staged_but_clean(mock_get_staged, mock_find_sensitive):
     """Test repository scan when staged files exist but none are sensitive (returns safe)."""
     mock_get_staged.return_value = ["main.py"]
     mock_find_sensitive.return_value = []
-    
+
     result = SecurityGuard.scan_repo(TEST_REPO_PATH)
 
     assert result.is_safe is True
@@ -123,7 +126,7 @@ def test_scan_repo_staged_and_sensitive(mock_get_staged, mock_find_sensitive):
     """Test repository scan when staged files contain sensitive data (returns unsafe)."""
     mock_get_staged.return_value = ["main.py", ".env"]
     mock_find_sensitive.return_value = [".env"]
-    
+
     result = SecurityGuard.scan_repo(TEST_REPO_PATH)
 
     assert result.is_safe is False

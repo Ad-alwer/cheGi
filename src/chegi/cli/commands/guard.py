@@ -8,7 +8,9 @@ from chegi.services.git.client import GitClient
 from chegi.services.guard import SecurityGuard
 from chegi.ui import TerminalUI, console
 
-app = typer.Typer(help="Checks staged files for sensitive data to prevent accidental commits.")
+app = typer.Typer(
+    help="Checks staged files for sensitive data to prevent accidental commits."
+)
 
 
 @app.callback(invoke_without_command=True)
@@ -42,16 +44,16 @@ def guard(
     # Check if we are inside a valid git repository
     git_client = GitClient(Path.cwd())
     if not git_client.is_valid_repo():
-        TerminalUI.print_error("fatal: not a git repository (or any of the parent directories): .git")
+        TerminalUI.print_error(
+            "fatal: not a git repository (or any of the parent directories): .git"
+        )
         raise typer.Exit(code=1)
 
     console.print("[dim]🔒 Running Security Guard...[/dim]")
 
     staged_files = SecurityGuard.get_staged_files()
     if not staged_files:
-        console.print(
-            "[bold blue]No staged files found. Nothing to check.[/bold blue]"
-        )
+        console.print("[bold blue]No staged files found. Nothing to check.[/bold blue]")
         raise typer.Exit()
 
     sensitive_files = SecurityGuard.find_sensitive_files(staged_files)

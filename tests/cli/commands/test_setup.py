@@ -77,7 +77,9 @@ DUMMY_ENV_DATA_MIRROR = EnvironmentPreset(
 # ==========================================
 
 
-def _build_simple_preset(name: str, tool_name: str, tool_data: dict) -> EnvironmentPreset:
+def _build_simple_preset(
+    name: str, tool_name: str, tool_data: dict
+) -> EnvironmentPreset:
     """Helper to build a standalone EnvironmentPreset for inline test data."""
     return EnvironmentPreset(
         name=name,
@@ -113,7 +115,9 @@ def test_setup_installation_keyboard_interrupt(
     """Simulate user pressing Ctrl+C gracefully exiting without ugly tracebacks."""
     mock_env_manager.return_value.get_available_envs.return_value = ["python"]
     mock_env_manager.return_value.find_setup_target.return_value = _build_simple_preset(
-        "Python", "python", {"check_cmd": "python --version", "cmd": "apt install python3"}
+        "Python",
+        "python",
+        {"check_cmd": "python --version", "cmd": "apt install python3"},
     )
 
     mock_installer.get_os_package_manager.return_value = "apt"
@@ -151,12 +155,14 @@ def test_setup_dependency_missing_skip(
 
     def mock_get_install_cmd(tool_data, package_manager, **kwargs):
         return tool_data.get("install", {}).get("default", "dummy_cmd")
+
     mock_installer.get_install_command.side_effect = mock_get_install_cmd
 
     def run_command_side_effect(*args, **kwargs):
         if "install b" in str(args) + str(kwargs):
             return False
         return True
+
     mock_installer.run_custom_command.side_effect = run_command_side_effect
 
     result = runner.invoke(app, ["setup", "--yes", "python"])
@@ -180,7 +186,9 @@ def test_setup_interactive_mirror_accepted(
 
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.find_setup_target.return_value = _build_simple_preset(
-        "Requests", "requests", {"check_cmd": "pip show requests", "cmd": "pip install requests"}
+        "Requests",
+        "requests",
+        {"check_cmd": "pip show requests", "cmd": "pip install requests"},
     )
     mock_env_instance.get_available_envs.return_value = ["requests"]
     mock_env_instance.get_required_package_managers.return_value = {"pip"}
@@ -191,7 +199,12 @@ def test_setup_interactive_mirror_accepted(
     mock_installer.run_custom_command.return_value = True
 
     mock_questionary.checkbox.return_value.ask.return_value = [
-        {"name": "requests", "level": "Standalone App", "cmd": "pip install requests", "requires": []}
+        {
+            "name": "requests",
+            "level": "Standalone App",
+            "cmd": "pip install requests",
+            "requires": [],
+        }
     ]
     mock_questionary.confirm.return_value.ask.return_value = True
     mock_questionary.select.return_value.ask.return_value = "https://test.mirror"
@@ -217,7 +230,9 @@ def test_setup_interactive_mirror_declined(
 
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.find_setup_target.return_value = _build_simple_preset(
-        "Requests", "requests", {"check_cmd": "pip show requests", "cmd": "pip install requests"}
+        "Requests",
+        "requests",
+        {"check_cmd": "pip show requests", "cmd": "pip install requests"},
     )
     mock_env_instance.get_available_envs.return_value = ["requests"]
     mock_env_instance.get_required_package_managers.return_value = {"pip"}
@@ -231,7 +246,12 @@ def test_setup_interactive_mirror_declined(
     mock_config.get_mirror.return_value = ["https://dummy.mirror.com"]
 
     mock_questionary.checkbox.return_value.ask.return_value = [
-        {"name": "requests", "level": "Standalone App", "cmd": "pip install requests", "requires": []}
+        {
+            "name": "requests",
+            "level": "Standalone App",
+            "cmd": "pip install requests",
+            "requires": [],
+        }
     ]
     mock_questionary.confirm.return_value.ask.return_value = False
     mock_questionary.select.return_value.ask.return_value = "none"
@@ -291,7 +311,9 @@ def test_setup_interactive_select_from_multiple_mirrors(
 
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.find_setup_target.return_value = _build_simple_preset(
-        "Requests", "requests", {"check_cmd": "pip show requests", "cmd": "pip install requests"}
+        "Requests",
+        "requests",
+        {"check_cmd": "pip show requests", "cmd": "pip install requests"},
     )
     mock_env_instance.get_available_envs.return_value = ["requests"]
     mock_env_instance.get_required_package_managers.return_value = {"pip"}
@@ -305,7 +327,12 @@ def test_setup_interactive_select_from_multiple_mirrors(
     mock_config.get_mirror.return_value = ["https://mirror1.com", "https://mirror2.com"]
 
     mock_questionary.checkbox.return_value.ask.return_value = [
-        {"name": "requests", "level": "Standalone App", "cmd": "pip install requests", "requires": []}
+        {
+            "name": "requests",
+            "level": "Standalone App",
+            "cmd": "pip install requests",
+            "requires": [],
+        }
     ]
     mock_questionary.confirm.return_value.ask.return_value = True
     mock_questionary.select.return_value.ask.return_value = "https://mirror2.com"
@@ -331,7 +358,9 @@ def test_setup_interactive_select_new_mirror(
 
     mock_env_instance = mock_env_manager.return_value
     mock_env_instance.find_setup_target.return_value = _build_simple_preset(
-        "Requests", "requests", {"check_cmd": "pip show requests", "cmd": "pip install requests"}
+        "Requests",
+        "requests",
+        {"check_cmd": "pip show requests", "cmd": "pip install requests"},
     )
     mock_env_instance.get_available_envs.return_value = ["requests"]
     mock_env_instance.get_required_package_managers.return_value = {"pip"}
@@ -345,7 +374,12 @@ def test_setup_interactive_select_new_mirror(
     mock_config.get_mirror.return_value = ["https://old-mirror"]
 
     mock_questionary.checkbox.return_value.ask.return_value = [
-        {"name": "requests", "level": "Standalone App", "cmd": "pip install requests", "requires": []}
+        {
+            "name": "requests",
+            "level": "Standalone App",
+            "cmd": "pip install requests",
+            "requires": [],
+        }
     ]
     mock_questionary.confirm.return_value.ask.return_value = True
     mock_questionary.select.return_value.ask.return_value = "new"

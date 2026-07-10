@@ -11,6 +11,7 @@ from chegi.cli.main import app
 
 runner = CliRunner()
 
+
 def test_config_list(tmp_path: Path):
     """Tests listing configuration settings."""
     result = runner.invoke(app, ["config", "list", "--path", str(tmp_path)])
@@ -41,6 +42,7 @@ def test_config_exclude_add_remove(tmp_path: Path):
 # Configuration Mirror Command Tests
 # ==========================================
 
+
 def test_config_mirror_add(tmp_path: Path):
     """Tests adding a mirror to a specific package manager."""
     result = runner.invoke(
@@ -64,11 +66,11 @@ def test_config_mirror_add(tmp_path: Path):
 def test_config_mirror_remove_specific(mock_config_cls, tmp_path: Path):
     """Tests removing a specific mirror from configuration."""
     mock_config = mock_config_cls.return_value
-    
+
     # Mock the 'mirrors' property so the CLI doesn't exit with "No mirror configuration found"
     mock_config.mirrors = {"pip": ["https://mirror1"]}
     mock_config.remove_mirror.return_value = True
-    
+
     result = runner.invoke(
         app,
         ["config", "mirror-remove", "pip", "https://mirror1", "--path", str(tmp_path)],
@@ -83,7 +85,7 @@ def test_config_mirror_remove_all(mock_config_cls, tmp_path: Path):
     mock_config = mock_config_cls.return_value
     mock_config.mirrors = {"pip": ["https://mirror1"]}
     mock_config.remove_mirror.return_value = True
-    
+
     # Using catch_exceptions=False to expose the real error if the command fails.
     result = runner.invoke(
         app,

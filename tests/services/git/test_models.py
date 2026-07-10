@@ -10,15 +10,14 @@ def test_git_status_creation_with_required_fields():
         repo_name="myrepo",
         branch="main",
         is_dirty=False,
-        has_remote=True
+        has_remote=True,
     )
-    
+
     assert status.path == Path("/fake/path/myrepo")
     assert status.repo_name == "myrepo"
     assert status.branch == "main"
     assert status.is_dirty is False
     assert status.has_remote is True
-    
 
     assert status.error == ""
     assert status.has_staged_files is False
@@ -35,9 +34,9 @@ def test_git_status_creation_with_all_fields():
         has_remote=False,
         error="Detached HEAD",
         has_staged_files=True,
-        security_status="Pass"
+        security_status="Pass",
     )
-    
+
     assert status.path == Path("/another/path/project")
     assert status.repo_name == "project"
     assert status.branch == "feature/test"

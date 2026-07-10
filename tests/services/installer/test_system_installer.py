@@ -14,6 +14,7 @@ MODULE_PATH = "chegi.services.installer.system_installer"
 
 # Installation Routing Tests
 
+
 def test_install_unsupported_package():
     """Test that installing a package not in SUPPORTED_PACKAGES raises an error."""
     with pytest.raises(TargetNotSupportedError, match="not supported"):
@@ -24,7 +25,7 @@ def test_install_unsupported_package():
 def test_install_unsupported_os(mock_system):
     """Test that running the installer on an unknown OS raises an error."""
     mock_system.return_value = "FreeBSD"
-    
+
     with pytest.raises(TargetNotSupportedError, match="is not supported"):
         SystemInstaller.install_package("git")
 
@@ -43,6 +44,7 @@ def test_install_routing_linux(mock_linux_installer, mock_system):
 
 
 # OS Specific Installers Tests
+
 
 @patch(f"{MODULE_PATH}.shutil.which")
 @patch(f"{MODULE_PATH}.subprocess.run")
@@ -127,7 +129,7 @@ def test_mac_brew_success(mock_run, mock_which):
 @patch(f"{MODULE_PATH}.subprocess.run")
 def test_mac_xcode_fallback_success(mock_run, mock_which):
     """Test macOS fallback to xcode-select when Homebrew is missing for Git."""
-    mock_which.return_value = None 
+    mock_which.return_value = None
     mock_run.return_value.returncode = 0
 
     result = SystemInstaller._install_package_mac("git")
@@ -148,6 +150,7 @@ def test_mac_aborted(mock_run, mock_which):
 
 
 # Detection and Check Tests
+
 
 @patch(f"{MODULE_PATH}.platform.system")
 @patch(f"{MODULE_PATH}.shutil.which")
@@ -184,7 +187,9 @@ def test_is_tool_installed_gui_success(mock_run, mock_which):
     """Test GUI tool check bypasses subprocess to prevent opening the app."""
     mock_which.return_value = "/usr/bin/postman"
 
-    is_installed, output = SystemInstaller.is_tool_installed("postman --version", is_gui=True)
+    is_installed, output = SystemInstaller.is_tool_installed(
+        "postman --version", is_gui=True
+    )
 
     assert is_installed is True
     assert output == "Installed (GUI Tool)"
@@ -219,6 +224,7 @@ def test_is_tool_installed_empty_command_fails(mock_run):
 
 # Custom Command Execution Tests
 
+
 @patch(f"{MODULE_PATH}.subprocess.run")
 def test_run_custom_command_success(mock_run):
     """Test successful execution of a custom shell command."""
@@ -235,9 +241,7 @@ def test_run_custom_command_quoted_args(mock_run):
     """Test custom command execution with quoted arguments."""
     mock_run.return_value.returncode = 0
 
-    result = SystemInstaller.run_custom_command(
-        'pip install "package>=1.0"'
-    )
+    result = SystemInstaller.run_custom_command('pip install "package>=1.0"')
 
     assert result is True
     mock_run.assert_called_once_with(["pip", "install", "package>=1.0"])
@@ -266,8 +270,10 @@ def test_build_command_with_mirror_pip():
     """Test injecting the index-url flag correctly into a pip command."""
     base_cmd = "pip install requests"
     expected = "pip install --index-url https://mirror requests"
-    
-    result = SystemInstaller._build_command_with_mirror(base_cmd, "pip", "https://mirror")
+
+    result = SystemInstaller._build_command_with_mirror(
+        base_cmd, "pip", "https://mirror"
+    )
     assert result == expected
 
 
@@ -275,18 +281,25 @@ def test_build_command_with_mirror_npm():
     """Test appending the registry flag correctly to an npm command."""
     base_cmd = "npm install express"
     expected = "npm install express --registry https://mirror"
-    
-    result = SystemInstaller._build_command_with_mirror(base_cmd, "npm", "https://mirror")
+
+    result = SystemInstaller._build_command_with_mirror(
+        base_cmd, "npm", "https://mirror"
+    )
     assert result == expected
 
 
 def test_get_install_command_resolution():
     """Test command resolution using different JSON structure keys."""
     tool_info_simple = {"install": {"apt": "apt install x"}}
-    assert SystemInstaller.get_install_command(tool_info_simple, "apt") == "apt install x"
+    assert (
+        SystemInstaller.get_install_command(tool_info_simple, "apt") == "apt install x"
+    )
 
     tool_info_fallback = {"install_cmd": "pip install y"}
-    assert SystemInstaller.get_install_command(tool_info_fallback, "pip") == "pip install y"
-    
+    assert (
+        SystemInstaller.get_install_command(tool_info_fallback, "pip")
+        == "pip install y"
+    )
+
     tool_info_missing = {"name": "tool"}
     assert SystemInstaller.get_install_command(tool_info_missing, "apt") is None

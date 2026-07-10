@@ -14,7 +14,11 @@ def git_check() -> GitRequirementCheck:
 
 @patch("chegi.cli.core.checks.git_check.shutil.which")
 @patch("chegi.cli.core.checks.git_check.SystemInstaller")
-def test_git_already_installed(mock_installer_class: MagicMock, mock_which: MagicMock, git_check: GitRequirementCheck):
+def test_git_already_installed(
+    mock_installer_class: MagicMock,
+    mock_which: MagicMock,
+    git_check: GitRequirementCheck,
+):
     """Tests behavior when Git is already installed."""
     mock_which.return_value = "/usr/bin/git"
 
@@ -28,10 +32,10 @@ def test_git_already_installed(mock_installer_class: MagicMock, mock_which: Magi
 @patch("chegi.cli.core.checks.git_check.shutil.which")
 @patch("chegi.cli.core.checks.git_check.SystemInstaller")
 def test_git_not_installed_but_install_succeeds(
-    mock_installer_class: MagicMock, 
-    mock_which: MagicMock, 
-    mock_confirm: MagicMock, 
-    git_check: GitRequirementCheck
+    mock_installer_class: MagicMock,
+    mock_which: MagicMock,
+    mock_confirm: MagicMock,
+    git_check: GitRequirementCheck,
 ):
     """Tests behavior when Git is missing but the auto-installer succeeds."""
     mock_which.return_value = None
@@ -51,10 +55,10 @@ def test_git_not_installed_but_install_succeeds(
 @patch("chegi.cli.core.checks.git_check.shutil.which")
 @patch("chegi.cli.core.checks.git_check.SystemInstaller")
 def test_git_not_installed_and_install_fails(
-    mock_installer_class: MagicMock, 
-    mock_which: MagicMock, 
-    mock_confirm: MagicMock, 
-    git_check: GitRequirementCheck
+    mock_installer_class: MagicMock,
+    mock_which: MagicMock,
+    mock_confirm: MagicMock,
+    git_check: GitRequirementCheck,
 ):
     """Tests that typer.Exit(1) is raised if Git is missing and installation fails."""
     mock_which.return_value = None

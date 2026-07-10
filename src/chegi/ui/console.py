@@ -14,7 +14,7 @@ class TerminalUI:
 
         Args:
             text (str): The message string to print.
-            msg_type (MessageType, optional): The type of message determining 
+            msg_type (MessageType, optional): The type of message determining
                 color and style. Defaults to MessageType.NEUTRAL.
         """
         # Using the universal closing tag '[/]' for Rich

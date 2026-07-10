@@ -12,11 +12,11 @@ def display_results_table(results: List[Any], theme: TableTheme = None) -> None:
 
     Args:
         results (List[Any]): A list of objects containing table data.
-        theme (TableTheme, optional): The theme configuration for styling 
+        theme (TableTheme, optional): The theme configuration for styling
             the table. Defaults to None (uses default TableTheme).
 
     Raises:
-        TableRenderingError: If the results argument is not a list or if 
+        TableRenderingError: If the results argument is not a list or if
             there is an error parsing row data.
     """
     if theme is None:
@@ -33,7 +33,7 @@ def display_results_table(results: List[Any], theme: TableTheme = None) -> None:
         show_header=True,
         header_style=theme.header_style,
         border_style=theme.border_style,
-        show_lines=theme.show_lines
+        show_lines=theme.show_lines,
     )
 
     table.add_column("Repository", justify="left")
@@ -43,9 +43,9 @@ def display_results_table(results: List[Any], theme: TableTheme = None) -> None:
     try:
         for item in results:
             table.add_row(
-                str(getattr(item, 'path', 'N/A')),
-                str(getattr(item, 'branch', 'N/A')),
-                str(getattr(item, 'status', 'N/A'))
+                str(getattr(item, "path", "N/A")),
+                str(getattr(item, "branch", "N/A")),
+                str(getattr(item, "status", "N/A")),
             )
     except Exception as e:
         # Wrap arbitrary object parsing errors into a domain-specific UI error

@@ -102,7 +102,7 @@ class GitClient:
 
         Returns:
             str: The commit message used.
-            
+
         Raises:
             GitCommandError: If the git add or commit commands fail.
         """

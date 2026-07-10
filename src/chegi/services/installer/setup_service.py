@@ -41,11 +41,11 @@ class SetupService:
         """
         self.environment = environment.lower()
         self.auto_yes = auto_yes
-        
+
         # Initialize core components
         self.env_manager = EnvManager()
         self.config = ChegiConfig()
-        
+
         # State variables
         self.env_data: Optional[EnvironmentPreset] = None
         self.display_name: str = ""
@@ -55,8 +55,8 @@ class SetupService:
     def execute(self) -> None:
         """Runs the complete setup workflow.
 
-        Executes the 7-step process: resolving target, normalizing data, 
-        checking status, sorting dependencies, asking user for selection, 
+        Executes the 7-step process: resolving target, normalizing data,
+        checking status, sorting dependencies, asking user for selection,
         configuring mirrors, and executing the installation.
 
         Raises:
@@ -64,8 +64,12 @@ class SetupService:
         """
         # 1. Resolve Target
         self._resolve_target()
-        TerminalUI.print_info(f"Analyzing environment for: [bold yellow]{self.display_name}[/bold yellow]")
-        console.print(f"Detected Package Manager: [bold cyan]{self.pkg_manager}[/bold cyan]\n")
+        TerminalUI.print_info(
+            f"Analyzing environment for: [bold yellow]{self.display_name}[/bold yellow]"
+        )
+        console.print(
+            f"Detected Package Manager: [bold cyan]{self.pkg_manager}[/bold cyan]\n"
+        )
 
         # 2. Normalize Data
         levels, levels_info, tools_data = self._normalize_data()
@@ -74,7 +78,9 @@ class SetupService:
         tools_to_install = self._check_installed_tools(levels, levels_info, tools_data)
 
         if not tools_to_install:
-            TerminalUI.print_success(f"All critical tools for {self.display_name} are already installed! 🎉")
+            TerminalUI.print_success(
+                f"All critical tools for {self.display_name} are already installed! 🎉"
+            )
             raise typer.Exit()
 
         # 4. Sort Dependencies
@@ -100,13 +106,17 @@ class SetupService:
         if not preset:
             available_envs = self.env_manager.get_available_envs()
             TerminalUI.print_error(f"Target '{self.environment}' is not supported.")
-            TerminalUI.print_info(f"Available environments: {', '.join(available_envs)}")
+            TerminalUI.print_info(
+                f"Available environments: {', '.join(available_envs)}"
+            )
             raise typer.Exit(code=1)
-        
+
         self.env_data = preset
         self.display_name = preset.name or self.environment.capitalize()
 
-    def _normalize_data(self) -> Tuple[Dict[str, List[str]], Dict[str, str], Dict[str, Any]]:
+    def _normalize_data(
+        self,
+    ) -> Tuple[Dict[str, List[str]], Dict[str, str], Dict[str, Any]]:
         """Normalizes data for both standalone tools and full environments.
 
         Returns:
@@ -134,7 +144,9 @@ class SetupService:
 
         return levels, levels_info, tools_data
 
-    def _check_installed_tools(self, levels: Dict, levels_info: Dict, tools_data: Dict) -> List[Dict[str, Any]]:
+    def _check_installed_tools(
+        self, levels: Dict, levels_info: Dict, tools_data: Dict
+    ) -> List[Dict[str, Any]]:
         """Checks the status of required tools and prints a status table.
 
         Args:
@@ -143,10 +155,14 @@ class SetupService:
             tools_data (Dict): Data and configurations for each tool.
 
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries representing tools 
+            List[Dict[str, Any]]: A list of dictionaries representing tools
             that need to be installed.
         """
-        table = Table(title=f"{self.display_name} Status", show_header=True, header_style="bold magenta")
+        table = Table(
+            title=f"{self.display_name} Status",
+            show_header=True,
+            header_style="bold magenta",
+        )
         table.add_column("Tool", style="cyan", no_wrap=True)
         table.add_column("Requires", style="dim")
         table.add_column("Level", style="blue")
@@ -155,7 +171,9 @@ class SetupService:
 
         tools_to_install = []
 
-        with console.status("[bold green]Checking installed tools...[/bold green]", spinner="dots"):
+        with console.status(
+            "[bold green]Checking installed tools...[/bold green]", spinner="dots"
+        ):
             for level_id, tool_names in levels.items():
                 level_name = levels_info.get(level_id, f"Level {level_id}")
 
@@ -164,12 +182,18 @@ class SetupService:
                     if not tool_info:
                         continue
 
-                    check_cmd = tool_info.get("check_command") or tool_info.get("check_cmd") or f"{t_name} --version"
+                    check_cmd = (
+                        tool_info.get("check_command")
+                        or tool_info.get("check_cmd")
+                        or f"{t_name} --version"
+                    )
                     requires_list = tool_info.get("requires", [])
                     requires_str = ", ".join(requires_list) if requires_list else "-"
                     is_gui_app = bool(tool_info.get("is_gui", False))
-                    
-                    is_installed, info = SystemInstaller.is_tool_installed(check_cmd, is_gui=is_gui_app)
+
+                    is_installed, info = SystemInstaller.is_tool_installed(
+                        check_cmd, is_gui=is_gui_app
+                    )
 
                     if is_installed:
                         self.installed_tools.add(t_name)
@@ -178,15 +202,19 @@ class SetupService:
                             info = "GUI Tool"
                     else:
                         status_str = "[bold red]✖ Missing[/bold red]"
-                        cmd_to_run = SystemInstaller.get_install_command(tool_info, self.pkg_manager)
+                        cmd_to_run = SystemInstaller.get_install_command(
+                            tool_info, self.pkg_manager
+                        )
 
                         if cmd_to_run:
-                            tools_to_install.append({
-                                "name": t_name,
-                                "level": level_name,
-                                "cmd": cmd_to_run,
-                                "requires": requires_list,
-                            })
+                            tools_to_install.append(
+                                {
+                                    "name": t_name,
+                                    "level": level_name,
+                                    "cmd": cmd_to_run,
+                                    "requires": requires_list,
+                                }
+                            )
                         else:
                             status_str = "[bold yellow]⚠ Manual[/bold yellow]"
 
@@ -196,7 +224,9 @@ class SetupService:
         console.print("\n")
         return tools_to_install
 
-    def _sort_dependencies(self, tools_to_install: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _sort_dependencies(
+        self, tools_to_install: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Sorts tools based on their dependencies.
 
         Ensures that dependencies are installed before the tools that require them.
@@ -213,7 +243,11 @@ class SetupService:
         while remaining:
             progress = False
             for tool in remaining:
-                pending_deps = [dep for dep in tool.get("requires", []) if any(t["name"] == dep for t in remaining)]
+                pending_deps = [
+                    dep
+                    for dep in tool.get("requires", [])
+                    if any(t["name"] == dep for t in remaining)
+                ]
                 if not pending_deps:
                     sorted_tools.append(tool)
                     remaining.remove(tool)
@@ -223,10 +257,12 @@ class SetupService:
             if not progress:
                 sorted_tools.extend(remaining)
                 break
-                
+
         return sorted_tools
 
-    def _prompt_user_selection(self, tools_to_install: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _prompt_user_selection(
+        self, tools_to_install: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Prompts the user to select which tools to install.
 
         Args:
@@ -241,20 +277,27 @@ class SetupService:
         if self.auto_yes or not tools_to_install:
             return tools_to_install
 
-        is_single_standalone = len(tools_to_install) == 1 and tools_to_install[0]["level"] == "Standalone App"
+        is_single_standalone = (
+            len(tools_to_install) == 1
+            and tools_to_install[0]["level"] == "Standalone App"
+        )
 
         if is_single_standalone:
-            if not typer.confirm(f"Do you want to install '{tools_to_install[0]['name']}'?"):
+            if not typer.confirm(
+                f"Do you want to install '{tools_to_install[0]['name']}'?"
+            ):
                 TerminalUI.print_info("Setup aborted by user. No changes were made.")
                 raise typer.Exit()
             return tools_to_install
-            
+
         choices = [
             questionary.Choice(
-                title=f"{t['name']} ({t['level']})" + (f" [Requires: {', '.join(t['requires'])}]" if t["requires"] else ""),
+                title=f"{t['name']} ({t['level']})"
+                + (f" [Requires: {', '.join(t['requires'])}]" if t["requires"] else ""),
                 value=t,
                 checked=True,
-            ) for t in tools_to_install
+            )
+            for t in tools_to_install
         ]
 
         selected = questionary.checkbox(
@@ -268,7 +311,9 @@ class SetupService:
 
         return selected
 
-    def _configure_mirrors(self, tools_to_install: List[Dict[str, Any]]) -> Dict[str, str]:
+    def _configure_mirrors(
+        self, tools_to_install: List[Dict[str, Any]]
+    ) -> Dict[str, str]:
         """Configures optional package manager mirrors.
 
         Args:
@@ -279,50 +324,77 @@ class SetupService:
         """
         session_mirrors = {}
         active_pms = {tool["cmd"].split()[0].lower() for tool in tools_to_install}
-        
+
         if self.environment in self.env_manager.get_available_envs():
-            required_pms = self.env_manager.get_required_package_managers([self.environment])
+            required_pms = self.env_manager.get_required_package_managers(
+                [self.environment]
+            )
         else:
             required_pms = active_pms.copy()
 
         pms_to_ask = required_pms.intersection(SUPPORTED_PMS).intersection(active_pms)
-        
+
         if not pms_to_ask:
             return session_mirrors
 
-        console.print("\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]")
+        console.print(
+            "\n[bold cyan]🪞 Mirror / Registry Configuration (Optional)[/bold cyan]"
+        )
         console.print("[dim]Useful if you are behind a restricted network.[/dim]")
 
         for pm in list(pms_to_ask):
-            saved_mirrors = self.config.get_mirror(pm) if hasattr(self.config, "get_mirror") else None
+            saved_mirrors = (
+                self.config.get_mirror(pm)
+                if hasattr(self.config, "get_mirror")
+                else None
+            )
 
             if saved_mirrors:
-                mirror_list = saved_mirrors if isinstance(saved_mirrors, list) else [saved_mirrors]
+                mirror_list = (
+                    saved_mirrors
+                    if isinstance(saved_mirrors, list)
+                    else [saved_mirrors]
+                )
                 if self.auto_yes:
                     session_mirrors[pm] = mirror_list[0]
-                    console.print(f"[dim]Auto-using primary mirror for {pm}: {mirror_list[0]}[/dim]")
+                    console.print(
+                        f"[dim]Auto-using primary mirror for {pm}: {mirror_list[0]}[/dim]"
+                    )
                     continue
 
-                choices = [questionary.Choice(f"✅ Use: {url}", value=url) for url in mirror_list]
-                choices.extend([
-                    questionary.Choice("✏️  Use a different mirror", value="new"),
-                    questionary.Choice("❌ Do NOT use a mirror", value="none"),
-                ])
+                choices = [
+                    questionary.Choice(f"✅ Use: {url}", value=url)
+                    for url in mirror_list
+                ]
+                choices.extend(
+                    [
+                        questionary.Choice("✏️  Use a different mirror", value="new"),
+                        questionary.Choice("❌ Do NOT use a mirror", value="none"),
+                    ]
+                )
 
-                choice = questionary.select(f"Configured mirror(s) for '{pm}'. Select one:", choices=choices).ask()
+                choice = questionary.select(
+                    f"Configured mirror(s) for '{pm}'. Select one:", choices=choices
+                ).ask()
                 if choice is None:
                     raise typer.Exit(code=1)
                 elif choice == "new":
-                    new_url = questionary.text(f"Enter new mirror URL for {pm}:", default=mirror_list[0]).ask()
+                    new_url = questionary.text(
+                        f"Enter new mirror URL for {pm}:", default=mirror_list[0]
+                    ).ask()
                     if new_url and new_url.strip():
                         session_mirrors[pm] = new_url.strip()
-                        if new_url.strip() not in mirror_list and typer.confirm(f"Save URL permanently for {pm}?", default=False):
+                        if new_url.strip() not in mirror_list and typer.confirm(
+                            f"Save URL permanently for {pm}?", default=False
+                        ):
                             self.config.set_mirror(pm, session_mirrors[pm])
                             self.config.save()
                 elif choice != "none":
                     session_mirrors[pm] = choice
             else:
-                if not self.auto_yes and typer.confirm(f"Use a mirror for '{pm}'?", default=False):
+                if not self.auto_yes and typer.confirm(
+                    f"Use a mirror for '{pm}'?", default=False
+                ):
                     mirror_url = questionary.text(f"Enter mirror URL for {pm}:").ask()
                     if mirror_url and mirror_url.strip():
                         session_mirrors[pm] = mirror_url.strip()
@@ -332,7 +404,9 @@ class SetupService:
 
         return session_mirrors
 
-    def _execute_installations(self, tools_to_install: List[Dict[str, Any]], session_mirrors: Dict[str, str]) -> None:
+    def _execute_installations(
+        self, tools_to_install: List[Dict[str, Any]], session_mirrors: Dict[str, str]
+    ) -> None:
         """Executes the installation commands for selected tools.
 
         Args:
@@ -347,36 +421,58 @@ class SetupService:
 
         try:
             for tool in tools_to_install:
-                missing_deps = [dep for dep in tool.get("requires", []) if dep not in self.installed_tools]
+                missing_deps = [
+                    dep
+                    for dep in tool.get("requires", [])
+                    if dep not in self.installed_tools
+                ]
                 if missing_deps:
-                    TerminalUI.print_warning(f"⏭️  Skipping {tool['name']}: Missing prerequisites ({', '.join(missing_deps)})")
+                    TerminalUI.print_warning(
+                        f"⏭️  Skipping {tool['name']}: Missing prerequisites ({', '.join(missing_deps)})"
+                    )
                     skipped_count += 1
                     continue
 
-                console.print(f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]")
+                console.print(
+                    f"\n[bold blue]▶ Installing {tool['name']} ({tool['level']})...[/bold blue]"
+                )
                 pm_name = tool["cmd"].split()[0].lower()
                 mirror_url = session_mirrors.get(pm_name)
 
-                success = SystemInstaller.run_custom_command(tool["cmd"], pm_name=pm_name if mirror_url else None, mirror_url=mirror_url)
+                success = SystemInstaller.run_custom_command(
+                    tool["cmd"],
+                    pm_name=pm_name if mirror_url else None,
+                    mirror_url=mirror_url,
+                )
 
                 if success:
                     if len(tools_to_install) > 1:
-                        console.print(f"[bold green]✅ {tool['name']} installed successfully.[/bold green]")
+                        console.print(
+                            f"[bold green]✅ {tool['name']} installed successfully.[/bold green]"
+                        )
                     self.installed_tools.add(tool["name"])
                     success_count += 1
                 else:
                     TerminalUI.print_error(f"❌ Failed to install {tool['name']}.")
 
         except (KeyboardInterrupt, UserAbortedSetupError):
-            console.print("\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]")
+            console.print(
+                "\n[bold red]❌ Installation interrupted by user (Ctrl+C).[/bold red]"
+            )
             raise typer.Exit(code=1)
 
         # Final Output
         console.print("\n")
         if success_count == len(tools_to_install) and success_count > 0:
             if len(tools_to_install) == 1:
-                TerminalUI.print_success(f"✨ {tools_to_install[0]['name']} installed successfully! ✨")
+                TerminalUI.print_success(
+                    f"✨ {tools_to_install[0]['name']} installed successfully! ✨"
+                )
             else:
-                TerminalUI.print_success(f"✨ Setup for {self.display_name} completed successfully! ✨")
+                TerminalUI.print_success(
+                    f"✨ Setup for {self.display_name} completed successfully! ✨"
+                )
         else:
-            TerminalUI.print_info(f"Setup finished. Installed: {success_count}, Skipped: {skipped_count}, Failed/Canceled: {len(tools_to_install) - success_count - skipped_count}.")
+            TerminalUI.print_info(
+                f"Setup finished. Installed: {success_count}, Skipped: {skipped_count}, Failed/Canceled: {len(tools_to_install) - success_count - skipped_count}."
+            )

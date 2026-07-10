@@ -54,7 +54,9 @@ class SecurityGuard:
         return detected_files
 
     @staticmethod
-    def unstage_files(files_to_unstage: List[str], repo_path: Optional[Path] = None) -> bool:
+    def unstage_files(
+        files_to_unstage: List[str], repo_path: Optional[Path] = None
+    ) -> bool:
         """Unstages the specified files using git rm --cached.
 
         Args:

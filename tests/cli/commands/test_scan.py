@@ -8,8 +8,6 @@ from chegi.cli.main import app
 runner = CliRunner()
 
 
-
-
 @patch("chegi.cli.commands.scan.ScanService")
 def test_scan_invalid_path(mock_scan_service_class: MagicMock):
     """Tests the CLI behavior when an invalid directory path is provided."""
@@ -17,10 +15,12 @@ def test_scan_invalid_path(mock_scan_service_class: MagicMock):
     mock_instance.execute.side_effect = ValueError("Directory does not exist")
 
     result = runner.invoke(app, ["scan", "/non/existent/mock/path/12345"])
-    
+
     assert result.exit_code == 1
     # Check if the error message was outputted or caught correctly
-    assert "does not exist" in result.stdout.lower() or isinstance(result.exception, ValueError)
+    assert "does not exist" in result.stdout.lower() or isinstance(
+        result.exception, ValueError
+    )
 
 
 @patch("chegi.cli.commands.scan.ScanService")

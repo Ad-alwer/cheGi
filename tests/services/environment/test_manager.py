@@ -19,7 +19,7 @@ def dummy_json_data():
             "pip": {
                 "command": "python",
                 "args": ["-m", "ensurepip"],
-                "description": "Python package installer"
+                "description": "Python package installer",
             }
         },
     }
@@ -59,7 +59,11 @@ def test_load_environments_preserves_levels_and_raw_tools(mock_files):
         "tools": {
             "go": {"command": "go", "args": ["version"], "description": "Go compiler"},
             "gofmt": {"command": "gofmt", "args": [], "description": "Go formatter"},
-            "golangci-lint": {"command": "golangci-lint", "args": ["run"], "description": "Go linter"},
+            "golangci-lint": {
+                "command": "golangci-lint",
+                "args": ["run"],
+                "description": "Go linter",
+            },
         },
         "gitignore": ["*.exe"],
     }
@@ -120,12 +124,12 @@ def test_get_language(mock_load, dummy_json_data):
         name=dummy_json_data["name"],
         description=dummy_json_data["description"],
         gitignore=dummy_json_data["gitignore"],
-        tools={"pip": ToolConfig(**dummy_json_data["tools"]["pip"])}
+        tools={"pip": ToolConfig(**dummy_json_data["tools"]["pip"])},
     )
     manager.db = {"python": preset}
 
     result = manager.get_language("Python")
-    
+
     assert isinstance(result, EnvironmentPreset)
     assert result.name == "Python"
     assert manager.get_language("PYTHON").name == "Python"
@@ -140,12 +144,12 @@ def test_get_tool(mock_load, dummy_json_data):
         name=dummy_json_data["name"],
         description=dummy_json_data["description"],
         gitignore=[],
-        tools={"pip": ToolConfig(**dummy_json_data["tools"]["pip"])}
+        tools={"pip": ToolConfig(**dummy_json_data["tools"]["pip"])},
     )
     manager.db = {"python": preset}
 
     tool = manager.get_tool("pip")
-    
+
     assert isinstance(tool, ToolConfig)
     assert tool.command == "python"
     assert manager.get_tool("gem") is None
@@ -156,7 +160,7 @@ def test_get_available_envs(mock_load):
     """Tests retrieving the sorted list of available environment names."""
     manager = EnvManager()
     manager.db = {"python": MagicMock(), "ruby": MagicMock(), "node": MagicMock()}
-    
+
     assert sorted(manager.get_available_envs()) == ["node", "python", "ruby"]
 
 
@@ -165,9 +169,13 @@ def test_get_envs_with_gitignore(mock_load):
     """Tests filtering environments that actually define a gitignore array."""
     manager = EnvManager()
     manager.db = {
-        "python": EnvironmentPreset(name="Python", description="", tools={}, gitignore=["*.pyc"]),
+        "python": EnvironmentPreset(
+            name="Python", description="", tools={}, gitignore=["*.pyc"]
+        ),
         "ruby": EnvironmentPreset(name="Ruby", description="", tools={}, gitignore=[]),
-        "node": EnvironmentPreset(name="Node", description="", tools={}, gitignore=["node_modules/"]),
+        "node": EnvironmentPreset(
+            name="Node", description="", tools={}, gitignore=["node_modules/"]
+        ),
     }
 
     assert sorted(manager.get_envs_with_gitignore()) == ["node", "python"]
@@ -178,7 +186,7 @@ def test_get_envs_with_gitignore(mock_load):
 def test_has_existing_gitignore(mock_exists, mock_load):
     """Tests checking for existing .gitignore files using pathlib."""
     manager = EnvManager()
-    
+
     mock_exists.return_value = True
     assert manager.has_existing_gitignore(Path("/fake/dir")) is True
 
@@ -200,8 +208,12 @@ def test_generate_gitignore_success(mock_write_text, mock_load):
     """Tests generating, deduplicating, and writing gitignore content."""
     manager = EnvManager()
     manager.db = {
-        "python": EnvironmentPreset(name="Python", description="", tools={}, gitignore=["*.pyc", ".env"]),
-        "node": EnvironmentPreset(name="Node", description="", tools={}, gitignore=["node_modules/", ".env"]),
+        "python": EnvironmentPreset(
+            name="Python", description="", tools={}, gitignore=["*.pyc", ".env"]
+        ),
+        "node": EnvironmentPreset(
+            name="Node", description="", tools={}, gitignore=["node_modules/", ".env"]
+        ),
     }
 
     manager.generate_gitignore(["python", "node"], Path("/fake/dir"))
@@ -219,14 +231,24 @@ def test_get_required_package_managers(mock_load):
     """Tests extracting unique tools across requested environments."""
     manager = EnvManager()
     manager.db = {
-        "python": EnvironmentPreset(name="Py", description="", gitignore=[], tools={
-            "pip": ToolConfig(command="pip", args=[]), 
-            "poetry": ToolConfig(command="poetry", args=[])
-        }),
-        "node": EnvironmentPreset(name="Node", description="", gitignore=[], tools={
-            "npm": ToolConfig(command="npm", args=[]), 
-            "yarn": ToolConfig(command="yarn", args=[])
-        }),
+        "python": EnvironmentPreset(
+            name="Py",
+            description="",
+            gitignore=[],
+            tools={
+                "pip": ToolConfig(command="pip", args=[]),
+                "poetry": ToolConfig(command="poetry", args=[]),
+            },
+        ),
+        "node": EnvironmentPreset(
+            name="Node",
+            description="",
+            gitignore=[],
+            tools={
+                "npm": ToolConfig(command="npm", args=[]),
+                "yarn": ToolConfig(command="yarn", args=[]),
+            },
+        ),
     }
 
     pms = manager.get_required_package_managers(["python", "node"])
@@ -238,13 +260,15 @@ def test_find_setup_target_as_environment(mock_load):
     """Tests finding a target that is a full environment."""
     manager = EnvManager()
     python_env = EnvironmentPreset(
-        name="Python", description="", gitignore=[], 
-        tools={"pip": ToolConfig(command="pip", args=[])}
+        name="Python",
+        description="",
+        gitignore=[],
+        tools={"pip": ToolConfig(command="pip", args=[])},
     )
     manager.db = {"python": python_env}
 
     result = manager.find_setup_target("python")
-    
+
     assert result is python_env
     assert isinstance(result, EnvironmentPreset)
 
@@ -253,11 +277,14 @@ def test_find_setup_target_as_environment(mock_load):
 def test_find_setup_target_as_standalone_tool(mock_load):
     """Tests finding a tool and dynamically wrapping it in an EnvironmentPreset."""
     manager = EnvManager()
-    postman_tool = ToolConfig(command="snap", args=["install", "postman"], description="Postman API")
-    manager.db = {"apps": EnvironmentPreset(
-        name="Apps", description="", gitignore=[], 
-        tools={"postman": postman_tool}
-    )}
+    postman_tool = ToolConfig(
+        command="snap", args=["install", "postman"], description="Postman API"
+    )
+    manager.db = {
+        "apps": EnvironmentPreset(
+            name="Apps", description="", gitignore=[], tools={"postman": postman_tool}
+        )
+    }
 
     result = manager.find_setup_target("postman")
 
@@ -271,9 +298,13 @@ def test_find_setup_target_as_standalone_tool(mock_load):
 def test_find_setup_target_not_found(mock_load):
     """Tests returning None for unknown targets."""
     manager = EnvManager()
-    manager.db = {"python": EnvironmentPreset(
-        name="Python", description="", gitignore=[], 
-        tools={"pip": ToolConfig(command="pip", args=[])}
-    )}
+    manager.db = {
+        "python": EnvironmentPreset(
+            name="Python",
+            description="",
+            gitignore=[],
+            tools={"pip": ToolConfig(command="pip", args=[])},
+        )
+    }
 
     assert manager.find_setup_target("unknown_target") is None
