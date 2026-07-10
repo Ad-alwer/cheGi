@@ -1,5 +1,6 @@
 """Core Git client for executing Git commands securely."""
 
+import os
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -58,7 +59,7 @@ class GitClient:
                 capture_output=True,
                 text=True,
                 check=check,
-                env=env,
+                env={**os.environ.copy(), **(env or {})},
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:

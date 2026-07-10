@@ -110,10 +110,13 @@ class ScanService:
         for root, dirs, _ in os.walk(start_path_obj):
             root_path = Path(root)
 
-            # Check max depth
+            # Check max depth using relative path to handle trailing slashes,
+            # symlinks, and mixed absolute/relative paths correctly
             if self.config.max_depth is not None:
-                current_level = len(root_path.parts)
-                if current_level - start_level >= self.config.max_depth:
+                relative = root_path.relative_to(start_path_obj)
+                if relative != Path("."):
+                    current_level = len(relative.parts)
+                    if current_level >= self.config.max_depth:
                     dirs[:] = []  # Stop traversing deeper
                     continue
 

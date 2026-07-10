@@ -1,3 +1,6 @@
+"""Core Git client tests."""
+
+import os
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -24,14 +27,15 @@ def test_run_command_success(mock_run, git_client):
     output = git_client.run_command(["git", "status"])
 
     assert output == "mocked output"
-    mock_run.assert_called_once_with(
-        ["git", "status"],
-        cwd=Path("/fake/repo"),
-        capture_output=True,
-        text=True,
-        check=True,
-        env=None,
-    )
+    mock_run.assert_called_once()
+    call_args, call_kwargs = mock_run.call_args
+    assert call_args[0] == ["git", "status"]
+    assert call_kwargs["cwd"] == Path("/fake/repo")
+    assert call_kwargs["capture_output"] is True
+    assert call_kwargs["text"] is True
+    assert call_kwargs["check"] is True
+    assert call_kwargs["env"] is not None
+    assert "PATH" in call_kwargs["env"]
 
 
 @patch("subprocess.run")
