@@ -29,9 +29,6 @@ jobs:
     name: Build and Publish to PyPI
     needs: [test]
     runs-on: ubuntu-latest
-    environment:
-      name: pypi
-      url: https://pypi.org/p/chegi
     permissions:
       id-token: write
       contents: read
