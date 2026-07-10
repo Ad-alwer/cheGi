@@ -16,6 +16,7 @@ from rich.progress import (
 from chegi.config import ChegiConfig
 from chegi.services.git.models import GitStatus
 from chegi.services.guard import SecurityGuard
+from chegi.services.guard.models import GuardScanResult
 from chegi.services.scanner.exceptions import InvalidDirectoryError
 from chegi.services.scanner.models import ScanOptions
 from chegi.ui import TerminalUI, console, display_results_table
@@ -139,7 +140,7 @@ class ScanService:
             TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
 
-    def _analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], str]] = None) -> GitStatus:
+    def _analyze_single_repo(self, repo_path: Path, security_scanner: Optional[Callable[[Path], GuardScanResult]] = None) -> GitStatus:
         """Extracts the git status for a single repository.
 
         Args:
@@ -210,7 +211,12 @@ class ScanService:
             sec_status = None
             if security_scanner:
                 try:
-                    sec_status = security_scanner(repo_path)
+                    scan_result = security_scanner(repo_path)
+                    if not scan_result.is_safe:
+                        sensitive = ", ".join(scan_result.sensitive_files)
+                        sec_status = f"Sensitive: {sensitive}"
+                    else:
+                        sec_status = "Safe"
                 except Exception:
                     sec_status = "Scan Failed"
 

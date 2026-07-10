@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import typer
 
+from chegi.services.guard.models import GuardScanResult
 from chegi.services.scanner.exceptions import InvalidDirectoryError
 from chegi.services.scanner.models import ScanOptions
 from chegi.services.scanner.scan_service import ScanService
@@ -317,3 +318,78 @@ def test_analyze_single_repo_no_origin(tmp_path: Path, base_scan_kwargs, mock_su
     mock_subprocess_run.side_effect = side_effect
     status = service._analyze_single_repo(tmp_path)
     assert status.status == "Clean | No Remote"
+
+
+def test_analyze_single_repo_with_security_scanner_safe(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
+    """Test _analyze_single_repo with a security scanner that returns safe."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = "origin\n"
+        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
+        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        return res
+
+    mock_subprocess_run.side_effect = side_effect
+
+    def fake_scanner(path):
+        return GuardScanResult(is_safe=True, sensitive_files=[])
+
+    status = service._analyze_single_repo(tmp_path, security_scanner=fake_scanner)
+    assert status.security_status == "Safe"
+
+
+def test_analyze_single_repo_with_security_scanner_unsafe(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
+    """Test _analyze_single_repo with a security scanner that detects threats."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = "origin\n"
+        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
+        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        return res
+
+    mock_subprocess_run.side_effect = side_effect
+
+    def fake_scanner(path):
+        return GuardScanResult(is_safe=False, sensitive_files=[".env", "key.pem"])
+
+    status = service._analyze_single_repo(tmp_path, security_scanner=fake_scanner)
+    assert status.security_status == "Sensitive: .env, key.pem"
+
+
+def test_analyze_single_repo_with_security_scanner_error(
+    tmp_path: Path, base_scan_kwargs, mock_subprocess_run
+):
+    """Test _analyze_single_repo handles a failing security scanner gracefully."""
+    service = ScanService(ScanOptions(**base_scan_kwargs))
+
+    def side_effect(cmd, **kwargs):
+        res = MagicMock()
+        res.returncode = 0
+        if "branch" in cmd: res.stdout = "main\n"
+        elif "status" in cmd: res.stdout = ""
+        elif "remote" in cmd: res.stdout = "origin\n"
+        elif "rev-parse" in cmd: res.stdout = "origin/main\n"
+        elif "rev-list" in cmd: res.stdout = "0 0\n"
+        return res
+
+    mock_subprocess_run.side_effect = side_effect
+
+    def fake_scanner(path):
+        raise RuntimeError("oops")
+
+    status = service._analyze_single_repo(tmp_path, security_scanner=fake_scanner)
+    assert status.security_status == "Scan Failed"
