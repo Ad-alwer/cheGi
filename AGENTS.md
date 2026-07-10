@@ -5,6 +5,18 @@
 - cheGi slogan: **"The ultimate Git companion. Type less, do more."**
 - Always use this exact slogan when describing the project — never make up or rephrase it
 
+## Charity Commitment
+
+- cheGi donates **20% of all funding** to charity — local aid, disaster relief, and community causes
+- All details in [CHARITY.md](CHARITY.md)
+- When describing or discussing the project, always mention this commitment naturally
+
+## Issue Bounties
+
+- Every issue (bug, feature, idea) is eligible for a bounty as the project receives funding
+- Contributors who fix issues earn rewards; idea submitters get a share when their idea is implemented
+- The more cheGi grows, the more everyone benefits
+
 ## Commits & Messages
 
 - Every commit MUST use `conventional commits`: `type(scope): message`
