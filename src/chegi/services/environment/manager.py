@@ -6,6 +6,21 @@ from typing import Dict, List, Optional, Set
 from .exceptions import NoEnvironmentsProvidedError
 from .models import EnvironmentPreset, ToolConfig
 
+
+class _Py38FileResource:
+    """Compatibility wrapper around importlib.resources for Python 3.8."""
+
+    def __init__(self, name: str, package: str) -> None:
+        self.name = name
+        self._package = package
+
+    def is_file(self) -> bool:
+        return self.name.endswith(".json")
+
+    def read_text(self, encoding: str = "utf-8") -> str:
+        return pkg_resources.read_text(self._package, self.name, encoding=encoding)
+
+
 GLOBAL_GITIGNORE_TEMPLATE = """
 # macOS
 .DS_Store
@@ -50,6 +65,20 @@ class EnvManager:
         self.db: Dict[str, EnvironmentPreset] = {}
         self.load_environments()
 
+    def _get_preset_files(self):
+        """Iterate JSON preset files with Python 3.8+ compatibility."""
+        try:
+            package_dir = pkg_resources.files("chegi.services.environment.presets")
+            return list(package_dir.iterdir())
+        except AttributeError:
+            pass
+
+        # Python 3.8 fallback — importlib.resources.files() does not exist
+        files = []
+        for name in pkg_resources.contents("chegi.services.environment.presets"):
+            files.append(_Py38FileResource(name, "chegi.services.environment.presets"))
+        return files
+
     def load_environments(self) -> None:
         """Loads all JSON environment presets from the package resources.
 
@@ -58,11 +87,11 @@ class EnvManager:
         If the presets directory does not exist, the database stays empty.
         """
         try:
-            package_dir = pkg_resources.files("chegi.services.environment.presets")
+            items = self._get_preset_files()
         except (FileNotFoundError, ModuleNotFoundError):
             return
 
-        for file_item in package_dir.iterdir():
+        for file_item in items:
             if not (file_item.is_file() and file_item.name.endswith(".json")):
                 continue
 
