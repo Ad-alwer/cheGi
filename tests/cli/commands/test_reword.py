@@ -20,7 +20,6 @@ def test_reword_head_direct_message(mock_git_client_class, mock_reword_service_c
     """
     Test rewording the HEAD commit directly without the interactive menu.
     """
-    mock_git_instance = mock_git_client_class.return_value
     mock_reword_instance = mock_reword_service_class.return_value
 
     mock_reword_instance.is_head.return_value = True

@@ -105,8 +105,6 @@ class ScanService:
         if not start_path_obj.is_dir():
             raise InvalidDirectoryError(f"The directory '{start_path}' does not exist.")
 
-        start_level = len(start_path_obj.parts)
-
         for root, dirs, _ in os.walk(start_path_obj):
             root_path = Path(root)
 

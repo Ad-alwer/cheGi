@@ -1,6 +1,7 @@
-from typing import Annotated, Optional
+from typing import Optional
 
 import typer
+from typing_extensions import Annotated
 
 from chegi.services.scanner.models import ScanOptions
 from chegi.services.scanner.scan_service import ScanService

@@ -1,7 +1,6 @@
 """Core Git client for executing Git commands securely."""
 
 import os
-import re
 import subprocess
 from pathlib import Path
 from typing import List, Optional

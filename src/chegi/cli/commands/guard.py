@@ -1,8 +1,8 @@
 import shlex
 from pathlib import Path
-from typing import Annotated
 
 import typer
+from typing_extensions import Annotated
 
 from chegi.services.git.client import GitClient
 from chegi.services.guard import SecurityGuard
