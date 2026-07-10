@@ -30,7 +30,8 @@ def test_init_config_override(mock_config_cls, base_scan_kwargs):
     service = ScanService(ScanOptions(**kwargs))
     
     assert service.config.max_depth == 5
-    mock_config_cls.return_value.load.assert_called_once()
+    mock_config_cls.assert_called_once()
+    mock_config_cls.return_value.load.assert_not_called()
 
 
 # Finder Logic Tests

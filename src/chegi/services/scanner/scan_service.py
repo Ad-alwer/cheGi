@@ -53,7 +53,6 @@ class ScanService:
             ChegiConfig: The initialized and loaded configuration object.
         """
         config = ChegiConfig(base_path=str(self.base_path))
-        config.load()
         if self.options.max_depth is not None:
             config.max_depth = self.options.max_depth
         return config

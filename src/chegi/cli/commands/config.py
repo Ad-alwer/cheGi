@@ -25,7 +25,7 @@ def config_list(
         path (str): Base directory for the configuration file.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     console.print("[bold]Current Configuration:[/bold]")
     console.print(f"  Max Depth: {config.max_depth}")
@@ -67,7 +67,7 @@ def config_set(
         typer.Exit: If the provided value is invalid.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     try:
         config.update_setting(key, value)
@@ -112,7 +112,7 @@ def config_exclude_remove(
         typer.Exit: If the folder does not exist in the exclusion list.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     try:
         config.remove_exclude(folder)
@@ -140,7 +140,7 @@ def config_mirror_add(
         typer.Exit: If the package manager is not supported or URL is invalid.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     try:
         config.set_mirror(pm_name, url)
@@ -175,7 +175,7 @@ def config_mirror_remove(
         typer.Exit: If the mirror or package manager is not found.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     pm_name = pm_name.lower()
 
@@ -217,7 +217,7 @@ def config_mirror_set_all(
         typer.Exit: If the JSON is malformed or validation fails.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     try:
         # Parse incoming JSON payload
@@ -267,7 +267,7 @@ def config_mirror_clear(
         path (str): Base directory for the configuration file.
     """
     config = ChegiConfig(base_path=path)
-    config.load()
+
 
     if hasattr(config, "mirrors") and config.mirrors:
         config.update_setting("mirrors", {})

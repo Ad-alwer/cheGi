@@ -45,7 +45,6 @@ class SetupService:
         # Initialize core components
         self.env_manager = EnvManager()
         self.config = ChegiConfig()
-        self.config.load()
         
         # State variables
         self.env_data: Optional[EnvironmentPreset] = None
