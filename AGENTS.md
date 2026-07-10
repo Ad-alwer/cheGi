@@ -22,8 +22,26 @@
 - Every commit MUST use `conventional commits`: `type(scope): message`
 - Types: `feat` (new feature), `fix` (bug fix), `refactor` (rewrite), `chore` (chores), `docs` (documentation), `test` (tests), `ci` (CI/CD), `style` (formatting)
 - Scopes: `scan`, `guard`, `sync`, `reword`, `setup`, `gitignore`, `config`, `build`
-- Example: `fix(guard): escape file names in displayed command`
 - Keep commits small and focused — one concern per commit
+- Commit message format (multi-line):
+
+```
+type(scope): short description
+
+- Start each body bullet with a capital letter
+- Explain what and why, not how
+- Use backticks for code references
+```
+
+Example:
+```
+ci(release): add GitHub Actions workflow for automated builds
+
+- Configure matrix strategy to run builds on ubuntu-latest, windows-latest, and macos-latest
+- Automate execution of custom build.py orchestrator on version tag pushes (v*)
+- Add step to install necessary system dependencies (rpm for linux)
+- Integrate action-gh-release to automatically upload artifacts from releases/ to GitHub Releases
+```
 
 ## Documentation Updates
 
