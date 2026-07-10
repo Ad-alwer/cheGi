@@ -1,0 +1,78 @@
+site_name: cheGi
+site_description: The ultimate Git companion. Type less, do more.
+site_url: https://ad-alwer.github.io/cheGi/
+repo_url: https://github.com/Ad-alwer/cheGi
+repo_name: Ad-alwer/cheGi
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  icon:
+    repo: fontawesome/brands/github
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Guides:
+      - Configuration: configuration.md
+      - Security: security.md
+  - Commands:
+      - scan: commands/scan.md
+      - guard: commands/guard.md
+      - sync: commands/sync.md
+      - reword: commands/reword.md
+      - setup: commands/setup.md
+      - gitignore: commands/gitignore.md
+      - config: commands/config.md
+  - Project:
+      - Contributing: https://github.com/Ad-alwer/cheGi/blob/main/CONTRIBUTING.md
+      - Changelog: https://github.com/Ad-alwer/cheGi/blob/main/CHANGELOG.md
+      - Security Policy: https://github.com/Ad-alwer/cheGi/blob/main/SECURITY.md
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/Ad-alwer/cheGi
+    - icon: fontawesome/brands/python
+      link: https://pypi.org/project/chegi/
+
+copyright: Copyright &copy; 2026 Ali

@@ -1,0 +1,20 @@
+{
+    "exclude_dirs": [
+        "env",
+        ".git",
+        ".vscode",
+        ".tox",
+        "node_modules",
+        ".idea",
+        "venv",
+        ".venv",
+        "__pycache__"
+    ],
+    "max_depth": 5,
+    "mcts": 10,
+    "mirrors": {
+        "pip": [
+            "https://mirror-pypi.runflare.com/simple/"
+        ]
+    }
+}

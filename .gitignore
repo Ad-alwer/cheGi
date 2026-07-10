@@ -53,8 +53,8 @@ Thumbs.db
 nosetests.xml
 coverage.xml
 
-# cheGi specific configuration
-.chegi.json
+# MkDocs build output
+site/
 
 # Build and Release artifacts
 build/
