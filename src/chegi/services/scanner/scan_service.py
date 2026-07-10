@@ -1,5 +1,4 @@
 import os
-import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Callable, Iterator, List, Optional
@@ -14,6 +13,8 @@ from rich.progress import (
 )
 
 from chegi.config import ChegiConfig
+from chegi.services.git.client import GitClient
+from chegi.services.git.exceptions import GitCommandError
 from chegi.services.git.models import GitStatus
 from chegi.services.guard import SecurityGuard
 from chegi.services.guard.models import GuardScanResult
@@ -145,20 +146,19 @@ class ScanService:
 
         Args:
             repo_path (Path): The path to the git repository to analyze.
-            security_scanner (Optional[Callable[[Path], str]]): A function to perform security scans.
+            security_scanner (Optional[Callable[[Path], GuardScanResult]]): A function to perform security scans.
 
         Returns:
             GitStatus: An object containing the extracted status of the repository.
         """
         repo_name = repo_path.name
+        git_client = GitClient(repo_path)
         try:
             # 1. Branch Name
-            branch_result = subprocess.run(["git", "branch", "--show-current"], cwd=repo_path, capture_output=True, text=True)
-            branch = branch_result.stdout.strip() or "No Commits"
+            branch = git_client.run_command(["git", "branch", "--show-current"]) or "No Commits"
 
             # 2. Local Status (Dirty / Staged / Clean)
-            status_result = subprocess.run(["git", "status", "--porcelain"], cwd=repo_path, capture_output=True, text=True)
-            status_output = status_result.stdout.strip()
+            status_output = git_client.run_command(["git", "status", "--porcelain"])
             is_dirty = len(status_output) > 0
 
             has_staged_files = False
@@ -171,26 +171,24 @@ class ScanService:
             local_status = "Staged" if has_staged_files else ("Dirty" if is_dirty else "Clean")
 
             # 3. Remote Status
-            remote_result = subprocess.run(["git", "remote"], cwd=repo_path, capture_output=True, text=True)
-            has_remote = len(remote_result.stdout.strip()) > 0
-            
+            remote_output = git_client.run_command(["git", "remote"])
+            has_remote = len(remote_output) > 0
+
             remote_status = "No Remote"
             if has_remote and branch != "No Commits":
                 # Check if there is an upstream branch configured
-                upstream_res = subprocess.run(
-                    ["git", "rev-parse", "--abbrev-ref", "@{u}"], 
-                    cwd=repo_path, capture_output=True, text=True
-                )
-                if upstream_res.returncode != 0:
+                try:
+                    git_client.run_command(["git", "rev-parse", "--abbrev-ref", "@{u}"])
+                except GitCommandError:
                     remote_status = "Local Only"
-                else:
+
+                if remote_status != "Local Only":
                     # Check ahead and behind counts
-                    rev_list_res = subprocess.run(
-                        ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"],
-                        cwd=repo_path, capture_output=True, text=True
-                    )
-                    if rev_list_res.returncode == 0:
-                        counts = rev_list_res.stdout.strip().split()
+                    try:
+                        rev_list = git_client.run_command(
+                            ["git", "rev-list", "--left-right", "--count", "HEAD...@{u}"]
+                        )
+                        counts = rev_list.split()
                         if len(counts) == 2:
                             ahead, behind = int(counts[0]), int(counts[1])
                             if ahead > 0 and behind > 0:
@@ -203,6 +201,8 @@ class ScanService:
                                 remote_status = "Synced"
                         else:
                             remote_status = "Unknown"
+                    except GitCommandError:
+                        remote_status = "Unknown"
 
             # Combine local and remote statuses
             final_status = f"{local_status} | {remote_status}"
