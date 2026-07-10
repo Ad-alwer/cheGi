@@ -73,6 +73,8 @@ ci(release): add GitHub Actions workflow for automated builds
 
 - Every change in `services/` needs new/updated tests
 - Every CLI change needs `CliRunner` tests
+- Tests must be added wherever new functionality or bug fixes are introduced
+- Test coverage must remain high — don't leave untested paths
 - Before commit: `pytest -v` (all pass)
 - Before commit: `ruff check src tests` (no errors)
 - Before commit: `ruff format src tests` (no issues)
@@ -92,10 +94,15 @@ ci(release): add GitHub Actions workflow for automated builds
 - File names must always be quoted with `shlex.quote()`
 - Never `except Exception: pass` — catch specific exceptions
 
+## Docstrings
+
+- Every file MUST have a short one-line docstring at the top describing its purpose
+- Functions MUST have [Google-style docstrings](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) (one-line is acceptable only for trivial getters/setters)
+- Test functions MUST have one-line docstrings describing the scenario being tested
+
 ## Code Style
 
 - Type hints for all parameters and return values
-- One-line docstrings for functions
 - Double quotes (matching `pyproject.toml` config)
 - Max line length: 88
 - Variables/functions: `snake_case`

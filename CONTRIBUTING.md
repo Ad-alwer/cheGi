@@ -52,6 +52,8 @@ Run a specific test file:
 pytest tests/cli/commands/test_scan.py -v
 ```
 
+Every new feature or bug fix must include tests. Aim to keep coverage high — don't leave untested paths. All tests must pass before committing.
+
 ## Code Style
 
 This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting:
@@ -66,7 +68,11 @@ Guidelines:
 - Match existing patterns in the module you are editing
 - Keep CLI logic thin — put business logic in `services/`
 - Add or update tests for behavior changes
-- Use type hints where the surrounding code already does
+- Use type hints for all parameters and return values
+- Use [Google-style docstrings](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) for all functions (one-line for trivial getters/setters)
+- Add a short one-line docstring at the top of every file describing its purpose
+- Test functions must have one-line docstrings describing the scenario
+- Keep commits small and focused with clear commit messages
 
 ## Pull Requests
 
