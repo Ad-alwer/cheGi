@@ -1,6 +1,9 @@
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from chegi.ui.console import TerminalUI, console
+
 
 @pytest.mark.parametrize("method, expected_prefix, expected_color", [
     ("print_success", "✔", "bold green"),

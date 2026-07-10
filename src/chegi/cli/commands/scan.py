@@ -1,9 +1,9 @@
 from typing import Annotated, Optional
+
 import typer
 
-from chegi.services.scanner.scan_service import ScanService
 from chegi.services.scanner.models import ScanOptions
-
+from chegi.services.scanner.scan_service import ScanService
 
 app = typer.Typer()
 

@@ -3,7 +3,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from chegi.services.guard.security import SecurityGuard
-from chegi.services.guard.models import GuardScanResult
 
 # Dummy path for testing
 TEST_REPO_PATH = Path("/fake/repo")

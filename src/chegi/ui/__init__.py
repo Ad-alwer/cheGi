@@ -3,10 +3,10 @@ UI Module for cheGi.
 Handles all terminal presentation, styling, and complex component rendering (e.g., tables).
 """
 
-from .console import console, TerminalUI
-from .tables import display_results_table
+from .console import TerminalUI, console
+from .exceptions import TableRenderingError, ThemeConfigurationError, UIError
 from .models import MessageType, TableTheme
-from .exceptions import UIError, TableRenderingError, ThemeConfigurationError
+from .tables import display_results_table
 
 __all__ = [
     "console",

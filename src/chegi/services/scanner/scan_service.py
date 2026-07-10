@@ -14,11 +14,11 @@ from rich.progress import (
 )
 
 from chegi.config import ChegiConfig
-from chegi.services.guard import SecurityGuard
-from chegi.ui import TerminalUI, console, display_results_table
 from chegi.services.git.models import GitStatus
+from chegi.services.guard import SecurityGuard
 from chegi.services.scanner.exceptions import InvalidDirectoryError
 from chegi.services.scanner.models import ScanOptions
+from chegi.ui import TerminalUI, console, display_results_table
 
 
 class ScanService:

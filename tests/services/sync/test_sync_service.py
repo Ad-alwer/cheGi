@@ -1,10 +1,12 @@
 """Unit tests for Git synchronization operations and error handling in SyncService."""
 
-import pytest
 from unittest.mock import MagicMock
 
-from chegi.services.sync.sync_service import SyncService
+import pytest
+
 from chegi.services.sync.exceptions import SyncError
+from chegi.services.sync.sync_service import SyncService
+
 
 @pytest.fixture
 def mock_git_client():

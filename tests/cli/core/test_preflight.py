@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
-from chegi.cli.core.preflight import PreflightOrchestrator, run_preflight_checks
 from chegi.cli.core.checks import PreflightCheck
+from chegi.cli.core.preflight import PreflightOrchestrator, run_preflight_checks
 
 
 class DummyCheck(PreflightCheck):

@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
 
+
 class GitClient:
     """Client for running Git commands in a specified repository.
 

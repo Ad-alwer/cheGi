@@ -1,4 +1,5 @@
 import platform
+import shlex
 import shutil
 import subprocess
 from typing import List, Optional, Tuple, Union
@@ -109,8 +110,7 @@ class SystemInstaller:
         # --- Handle CLI Tools ---
         try:
             result = subprocess.run(
-                check_cmd,
-                shell=True,
+                shlex.split(check_cmd),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -200,7 +200,7 @@ class SystemInstaller:
 
         typer.secho(f"Executing: {final_cmd}", fg=typer.colors.CYAN)
         try:
-            result = subprocess.run(final_cmd, shell=True)
+            result = subprocess.run(shlex.split(final_cmd))
             if result.returncode == 130 or result.returncode < 0:
                 raise KeyboardInterrupt
             return result.returncode == 0
@@ -291,24 +291,30 @@ class SystemInstaller:
                 typer.secho(
                     f"Using 'apt' to install {package_name}...", fg=typer.colors.CYAN
                 )
-                cmd = f"sudo apt update && sudo apt install -y {package_name}"
-                result = subprocess.run(cmd, shell=True)
+                result = subprocess.run(["sudo", "apt", "update"])
+                if result.returncode != 0:
+                    return False
+                result = subprocess.run(
+                    ["sudo", "apt", "install", "-y", package_name]
+                )
                 return result.returncode == 0
 
             elif shutil.which("dnf"):
                 typer.secho(
                     f"Using 'dnf' to install {package_name}...", fg=typer.colors.CYAN
                 )
-                cmd = f"sudo dnf install -y {package_name}"
-                result = subprocess.run(cmd, shell=True)
+                result = subprocess.run(
+                    ["sudo", "dnf", "install", "-y", package_name]
+                )
                 return result.returncode == 0
 
             elif shutil.which("pacman"):
                 typer.secho(
                     f"Using 'pacman' to install {package_name}...", fg=typer.colors.CYAN
                 )
-                cmd = f"sudo pacman -Sy --noconfirm {package_name}"
-                result = subprocess.run(cmd, shell=True)
+                result = subprocess.run(
+                    ["sudo", "pacman", "-Sy", "--noconfirm", package_name]
+                )
                 return result.returncode == 0
 
             typer.secho("Error: Unsupported Linux distribution.", fg=typer.colors.RED)

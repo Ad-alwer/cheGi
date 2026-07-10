@@ -1,9 +1,10 @@
 from typing import Any, List
+
 from rich.table import Table
 
 from .console import console
-from .models import TableTheme
 from .exceptions import TableRenderingError
+from .models import TableTheme
 
 
 def display_results_table(results: List[Any], theme: TableTheme = None) -> None:

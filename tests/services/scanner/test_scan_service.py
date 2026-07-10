@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 import typer
 
-from chegi.services.scanner.scan_service import ScanService
-from chegi.services.scanner.models import ScanOptions
 from chegi.services.scanner.exceptions import InvalidDirectoryError
+from chegi.services.scanner.models import ScanOptions
+from chegi.services.scanner.scan_service import ScanService
 
 
 @pytest.fixture

@@ -3,6 +3,7 @@
 from chegi.services.git.client import GitClient
 from chegi.services.sync.exceptions import SyncError
 
+
 class SyncService:
     """Service to handle automated syncing of the Git repository.
 

@@ -1,10 +1,11 @@
-import typer
-from typing import Annotated
 from pathlib import Path
+from typing import Annotated
 
-from chegi.ui import TerminalUI, console
-from chegi.services.guard import SecurityGuard
+import typer
+
 from chegi.services.git.client import GitClient
+from chegi.services.guard import SecurityGuard
+from chegi.ui import TerminalUI, console
 
 app = typer.Typer(help="Checks staged files for sensitive data to prevent accidental commits.")
 

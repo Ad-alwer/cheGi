@@ -5,6 +5,7 @@ Note: The core logic has been delegated to `SetupService` for cleaner architectu
 """
 
 import typer
+
 from chegi.services.installer.setup_service import SetupService
 
 app = typer.Typer()

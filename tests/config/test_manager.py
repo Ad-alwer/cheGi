@@ -8,8 +8,8 @@ from chegi.config import (
     DEFAULT_MAX_DEPTH,
     DEFAULT_MCTS,
     ChegiConfig,
-    UnsupportedPackageManagerError,
     InvalidMirrorFormatError,
+    UnsupportedPackageManagerError,
 )
 
 

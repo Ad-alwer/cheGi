@@ -4,9 +4,7 @@ import pytest
 from typer.testing import CliRunner
 
 from chegi.cli.main import app
-
 from chegi.config import GITIGNORE_COMMIT_MESSAGE
-
 
 runner = CliRunner()
 

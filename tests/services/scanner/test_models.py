@@ -1,5 +1,6 @@
 from chegi.services.scanner.models import ScanOptions
 
+
 def test_scan_options_defaults():
     """Test that ScanOptions initializes with correct default values."""
     options = ScanOptions(path="/tmp/test")

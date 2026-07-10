@@ -1,7 +1,8 @@
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 import typer
+
 from chegi.cli.core.checks.git_check import GitRequirementCheck
 
 

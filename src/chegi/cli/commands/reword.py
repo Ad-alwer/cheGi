@@ -1,12 +1,13 @@
 from pathlib import Path
 from typing import Optional
+
 import questionary
 import typer
 from rich.console import Console
 
 from chegi.services.git.client import GitClient
-from chegi.services.reword.reword_service import RewordService
 from chegi.services.git.exceptions import GitCoreError
+from chegi.services.reword.reword_service import RewordService
 
 console = Console()
 app = typer.Typer(help="Reword a specific commit message.")

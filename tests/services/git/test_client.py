@@ -1,10 +1,12 @@
 import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+
 import pytest
 
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
+
 
 @pytest.fixture
 def git_client():

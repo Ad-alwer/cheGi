@@ -1,9 +1,11 @@
-import pytest
 from unittest.mock import MagicMock
 
-from chegi.services.reword.reword_service import RewordService
+import pytest
+
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError
+from chegi.services.reword.reword_service import RewordService
+
 
 @pytest.fixture
 def mock_git_client():

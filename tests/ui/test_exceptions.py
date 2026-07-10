@@ -1,5 +1,7 @@
 import pytest
-from chegi.ui.exceptions import UIError, TableRenderingError, ThemeConfigurationError
+
+from chegi.ui.exceptions import TableRenderingError, ThemeConfigurationError, UIError
+
 
 def test_ui_exceptions_inheritance():
     """Verify custom exceptions correctly inherit from the base UIError."""

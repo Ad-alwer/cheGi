@@ -1,6 +1,6 @@
-import pytest
-from typer.testing import CliRunner
 from unittest.mock import patch
+
+from typer.testing import CliRunner
 
 from chegi.cli.main import app, global_setup
 

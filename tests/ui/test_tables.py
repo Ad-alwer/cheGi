@@ -1,6 +1,7 @@
-import pytest
 from unittest.mock import patch
+
 from chegi.ui.tables import display_results_table
+
 
 def test_display_results_table_empty():
     """Ensure rendering does not crash when provided with an empty dataset."""

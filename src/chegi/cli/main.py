@@ -1,7 +1,8 @@
 import typer
 
 # Import command modules
-from chegi.cli.commands import config, sync, scan, guard, reword, setup,gitignore
+from chegi.cli.commands import config, gitignore, guard, reword, scan, setup, sync
+
 # Import the preflight orchestrator
 from chegi.cli.core.preflight import run_preflight_checks
 

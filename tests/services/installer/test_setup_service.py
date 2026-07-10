@@ -1,10 +1,11 @@
-import pytest
-import typer
 from unittest.mock import patch
 
+import pytest
+import typer
+
 from chegi.services.environment.models import EnvironmentPreset
-from chegi.services.installer.setup_service import SetupService
 from chegi.services.installer.exceptions import UserAbortedSetupError
+from chegi.services.installer.setup_service import SetupService
 
 # Fixtures
 

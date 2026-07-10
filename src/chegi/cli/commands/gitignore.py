@@ -1,15 +1,14 @@
 from pathlib import Path
 from typing import Optional
 
-import typer
 import questionary
+import typer
 from rich.prompt import Confirm
 
+from chegi.config import GITIGNORE_COMMIT_MESSAGE
 from chegi.services.environment import EnvManager
 from chegi.services.git.client import GitClient
 from chegi.ui.console import TerminalUI, console
-
-from chegi.config import GITIGNORE_COMMIT_MESSAGE
 
 app = typer.Typer(help="Generate a .gitignore file interactively.")
 

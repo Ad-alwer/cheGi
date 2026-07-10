@@ -1,8 +1,12 @@
-import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
+import pytest
+
+from chegi.services.installer.exceptions import (
+    TargetNotSupportedError,
+    UserAbortedSetupError,
+)
 from chegi.services.installer.system_installer import SystemInstaller
-from chegi.services.installer.exceptions import TargetNotSupportedError, UserAbortedSetupError
 
 # To keep the patch decorators clean and short
 MODULE_PATH = "chegi.services.installer.system_installer"
@@ -74,7 +78,11 @@ def test_linux_apt_success(mock_run, mock_which):
     result = SystemInstaller._install_package_linux("git")
 
     assert result is True
-    assert "apt install" in mock_run.call_args[0][0]
+    assert len(mock_run.call_args_list) == 2
+    apt_update_call = mock_run.call_args_list[0]
+    assert apt_update_call.args[0] == ["sudo", "apt", "update"]
+    apt_install_call = mock_run.call_args_list[-1]
+    assert apt_install_call.args[0] == ["sudo", "apt", "install", "-y", "git"]
 
 
 @patch(f"{MODULE_PATH}.shutil.which")
@@ -87,7 +95,8 @@ def test_linux_dnf_success(mock_run, mock_which):
     result = SystemInstaller._install_package_linux("git")
 
     assert result is True
-    assert "dnf install" in mock_run.call_args[0][0]
+    dnf_install_call = mock_run.call_args_list[-1]
+    assert dnf_install_call.args[0] == ["sudo", "dnf", "install", "-y", "git"]
 
 
 @patch(f"{MODULE_PATH}.shutil.which")
@@ -182,6 +191,32 @@ def test_is_tool_installed_gui_success(mock_run, mock_which):
     mock_run.assert_not_called()
 
 
+@patch(f"{MODULE_PATH}.subprocess.run")
+def test_is_tool_installed_quoted_command(mock_run):
+    """Test CLI tool check with a command containing quoted arguments."""
+    mock_run.return_value.returncode = 0
+    mock_run.return_value.stdout = "ok\n"
+
+    is_installed, output = SystemInstaller.is_tool_installed(
+        'python -c "import sys; print(sys.version)"'
+    )
+
+    assert is_installed is True
+    cmd_arg = mock_run.call_args[0][0]
+    assert cmd_arg == ["python", "-c", "import sys; print(sys.version)"]
+
+
+@patch(f"{MODULE_PATH}.subprocess.run")
+def test_is_tool_installed_empty_command_fails(mock_run):
+    """Test CLI tool check with an empty command string."""
+    mock_run.side_effect = FileNotFoundError("command not found")
+
+    is_installed, output = SystemInstaller.is_tool_installed("")
+
+    assert is_installed is False
+    assert "not found" in output
+
+
 # Custom Command Execution Tests
 
 @patch(f"{MODULE_PATH}.subprocess.run")
@@ -192,7 +227,30 @@ def test_run_custom_command_success(mock_run):
     result = SystemInstaller.run_custom_command("pip install pytest")
 
     assert result is True
-    mock_run.assert_called_once_with("pip install pytest", shell=True)
+    mock_run.assert_called_once_with(["pip", "install", "pytest"])
+
+
+@patch(f"{MODULE_PATH}.subprocess.run")
+def test_run_custom_command_quoted_args(mock_run):
+    """Test custom command execution with quoted arguments."""
+    mock_run.return_value.returncode = 0
+
+    result = SystemInstaller.run_custom_command(
+        'pip install "package>=1.0"'
+    )
+
+    assert result is True
+    mock_run.assert_called_once_with(["pip", "install", "package>=1.0"])
+
+
+@patch(f"{MODULE_PATH}.subprocess.run")
+def test_run_custom_command_empty_fails(mock_run):
+    """Test custom command with empty string."""
+    mock_run.side_effect = FileNotFoundError()
+
+    result = SystemInstaller.run_custom_command("")
+
+    assert result is False
 
 
 @patch(f"{MODULE_PATH}.subprocess.run")

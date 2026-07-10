@@ -1,5 +1,5 @@
-import pytest
 from chegi.ui.models import MessageType, TableTheme
+
 
 def test_message_type_values():
     """Ensure Enum values match their Rich text styles."""

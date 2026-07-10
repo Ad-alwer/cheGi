@@ -3,8 +3,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from .constants import SUPPORTED_PMS
-from .models import ChegiConfigModel
 from .exceptions import InvalidMirrorFormatError, UnsupportedPackageManagerError
+from .models import ChegiConfigModel
 
 
 class ChegiConfig:

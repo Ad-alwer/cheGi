@@ -7,7 +7,6 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-
 from chegi.cli.main import app
 
 runner = CliRunner()

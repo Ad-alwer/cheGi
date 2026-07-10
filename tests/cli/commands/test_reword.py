@@ -4,10 +4,9 @@ This module contains unit tests to ensure the correct behavior of the 'reword' c
 including interactive prompts, pagination, and error handling.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from typer.testing import CliRunner
+from unittest.mock import MagicMock, patch
 
+from typer.testing import CliRunner
 
 from chegi.cli.main import app
 from chegi.services.git.exceptions import GitCoreError

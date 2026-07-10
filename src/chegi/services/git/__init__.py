@@ -1,7 +1,7 @@
 from .client import GitClient
-from .models import GitStatus
-from .exceptions import GitCoreError, GitCommandError, GitNotInstalledError
 from .constants import MIN_GIT_VERSION
+from .exceptions import GitCommandError, GitCoreError, GitNotInstalledError
+from .models import GitStatus
 
 __all__ = [
     "GitClient",
