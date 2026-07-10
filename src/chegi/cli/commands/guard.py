@@ -1,3 +1,4 @@
+import shlex
 from pathlib import Path
 from typing import Annotated
 
@@ -62,7 +63,7 @@ def guard(
         for f in sensitive_files:
             console.print(f"  [red]- {f}[/red]")
 
-        files_str = " ".join(sensitive_files)
+        files_str = " ".join(shlex.quote(f) for f in sensitive_files)
         exact_command = f"git rm --cached {files_str}"
         console.print(
             f"\n[bold yellow]To fix this manually, run:[/bold yellow] [cyan]{exact_command}[/cyan]\n"

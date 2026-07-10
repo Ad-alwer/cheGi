@@ -81,3 +81,23 @@ def test_guard_failure_secrets_found_with_fix_flag(
     assert result.exit_code == 1
     assert "WARNING: Sensitive files detected" in result.stdout
     assert "automatically (via --fix)" in result.stdout
+
+
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+@patch("chegi.cli.commands.guard.SecurityGuard.find_sensitive_files")
+@patch("chegi.cli.commands.guard.SecurityGuard.get_staged_files")
+def test_guard_display_command_quotes_filenames(
+    mock_get: MagicMock,
+    mock_find: MagicMock,
+    mock_is_valid_repo: MagicMock,
+):
+    # Tests that the displayed `git rm --cached` command quotes filenames safely.
+    mock_is_valid_repo.return_value = True
+    mock_get.return_value = [".env", "file; rm -rf /", "$(whoami).txt"]
+    mock_find.return_value = [".env", "file; rm -rf /", "$(whoami).txt"]
+
+    result = runner.invoke(app, ["guard"])
+
+    assert result.exit_code == 1
+    assert "WARNING: Sensitive files detected" in result.stdout
+    assert "git rm --cached .env 'file; rm -rf /' '$(whoami).txt'" in result.stdout
