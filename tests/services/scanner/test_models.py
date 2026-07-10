@@ -1,3 +1,7 @@
+"""Tests for scanner data models."""
+
+import os
+
 from chegi.services.scanner.models import ScanOptions
 
 
@@ -7,7 +11,7 @@ def test_scan_options_defaults():
 
     assert options.path == "/tmp/test"
     assert options.max_depth is None
-    assert options.workers == 2
+    assert options.workers == (os.cpu_count() or 1)
     assert options.security is False
     assert options.dirty is False
     assert options.staged is False

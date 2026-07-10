@@ -1,3 +1,6 @@
+"""Data models for the scanner service."""
+
+import os
 from dataclasses import dataclass
 from typing import Optional
 
@@ -8,7 +11,7 @@ class ScanOptions:
 
     path: str
     max_depth: Optional[int] = None
-    workers: int = 2
+    workers: int = os.cpu_count() or 1
     security: bool = False
     dirty: bool = False
     staged: bool = False
