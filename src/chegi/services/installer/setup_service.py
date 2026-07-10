@@ -3,7 +3,7 @@
 Encapsulates the business logic for setting up environments and installing tools.
 """
 
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import questionary
 import typer
@@ -11,6 +11,7 @@ from rich.table import Table
 
 from chegi.config import SUPPORTED_PMS, ChegiConfig
 from chegi.services.environment import EnvManager
+from chegi.services.environment.models import EnvironmentPreset
 from chegi.ui import TerminalUI, console
 
 from .exceptions import UserAbortedSetupError
@@ -47,7 +48,7 @@ class SetupService:
         self.config.load()
         
         # State variables
-        self.env_data: Dict[str, Any] = {}
+        self.env_data: Optional[EnvironmentPreset] = None
         self.display_name: str = ""
         self.pkg_manager: str = SystemInstaller.get_os_package_manager()
         self.installed_tools: Set[str] = set()
@@ -96,36 +97,41 @@ class SetupService:
         Raises:
             typer.Exit: If the target environment cannot be found.
         """
-        self.env_data = self.env_manager.find_setup_target(self.environment)
-        if not self.env_data:
+        preset = self.env_manager.find_setup_target(self.environment)
+        if not preset:
             available_envs = self.env_manager.get_available_envs()
             TerminalUI.print_error(f"Target '{self.environment}' is not supported.")
             TerminalUI.print_info(f"Available environments: {', '.join(available_envs)}")
             raise typer.Exit(code=1)
         
-        self.display_name = self.env_data.get("name", self.environment.capitalize())
+        self.env_data = preset
+        self.display_name = preset.name or self.environment.capitalize()
 
-    def _normalize_data(self) -> Tuple[Dict[str, Any], Dict[str, str], Dict[str, Any]]:
+    def _normalize_data(self) -> Tuple[Dict[str, List[str]], Dict[str, str], Dict[str, Any]]:
         """Normalizes data for both standalone tools and full environments.
 
         Returns:
-            Tuple[Dict[str, Any], Dict[str, str], Dict[str, Any]]: A tuple containing:
+            Tuple[Dict[str, List[str]], Dict[str, str], Dict[str, Any]]: A tuple containing:
                 - levels: Dictionary grouping tools by their installation levels.
                 - levels_info: Dictionary providing names/descriptions for each level.
                 - tools_data: Dictionary mapping tool names to their properties.
         """
-        levels = self.env_data.get("levels", {})
-        levels_info = self.env_data.get("levels_info", {})
-        tools_data = self.env_data.get("tools", {})
+        if self.env_data is None:
+            return {}, {}, {}
 
-        if not levels or not tools_data:
+        levels = self.env_data.levels
+        levels_info = self.env_data.levels_info
+        raw_tools = self.env_data.raw_tools
+
+        if not levels or not raw_tools:
             levels = {"standalone": [self.environment]}
             levels_info = {"standalone": "Standalone App"}
-
-            if "tools" in self.env_data and isinstance(self.env_data["tools"], dict) and self.environment in self.env_data["tools"]:
-                tools_data = {self.environment: self.env_data["tools"][self.environment]}
+            if raw_tools:
+                tools_data = dict(raw_tools)
             else:
-                tools_data = {self.environment: self.env_data}
+                tools_data = {self.environment: {}}
+        else:
+            tools_data = dict(raw_tools)
 
         return levels, levels_info, tools_data
 

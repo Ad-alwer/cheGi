@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Union
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
 
 @dataclass
 class ToolConfig:
@@ -13,3 +13,6 @@ class EnvironmentPreset:
     description: str
     tools: Dict[str, ToolConfig]
     gitignore: Union[List[str], str]
+    levels: Dict[str, List[str]] = field(default_factory=dict)
+    levels_info: Dict[str, str] = field(default_factory=dict)
+    raw_tools: Dict[str, Dict[str, Any]] = field(default_factory=dict)

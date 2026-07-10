@@ -49,6 +49,40 @@ def test_load_environments_success(mock_files, dummy_json_data):
 
 
 @patch("chegi.services.environment.manager.pkg_resources.files")
+def test_load_environments_preserves_levels_and_raw_tools(mock_files):
+    """Tests that levels, levels_info, and raw_tools are preserved from JSON."""
+    data = {
+        "name": "Go",
+        "description": "Go dev environment",
+        "levels": {"1": ["go", "gofmt"], "2": ["golangci-lint"]},
+        "levels_info": {"1": "Essential", "2": "Recommended"},
+        "tools": {
+            "go": {"command": "go", "args": ["version"], "description": "Go compiler"},
+            "gofmt": {"command": "gofmt", "args": [], "description": "Go formatter"},
+            "golangci-lint": {"command": "golangci-lint", "args": ["run"], "description": "Go linter"},
+        },
+        "gitignore": ["*.exe"],
+    }
+    mock_file = MagicMock()
+    mock_file.is_file.return_value = True
+    mock_file.name = "go.json"
+    mock_file.read_text.return_value = json.dumps(data)
+    mock_dir = MagicMock()
+    mock_dir.iterdir.return_value = [mock_file]
+    mock_files.return_value = mock_dir
+
+    manager = EnvManager()
+    preset = manager.db.get("go")
+
+    assert preset is not None
+    assert preset.levels == {"1": ["go", "gofmt"], "2": ["golangci-lint"]}
+    assert preset.levels_info == {"1": "Essential", "2": "Recommended"}
+    assert "go" in preset.raw_tools
+    assert preset.raw_tools["go"]["command"] == "go"
+    assert isinstance(preset.tools["go"], ToolConfig)
+
+
+@patch("chegi.services.environment.manager.pkg_resources.files")
 def test_load_environments_exception_handling(mock_files):
     """Tests that exceptions during loading (e.g., bad JSON) are silently handled."""
     mock_files.side_effect = Exception("Simulated parsing error")

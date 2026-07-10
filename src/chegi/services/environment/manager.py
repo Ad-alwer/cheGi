@@ -66,21 +66,25 @@ class EnvManager:
 
                     lang_name = data.get("name")
                     if lang_name:
-                        tools_dict = {
-                            t_name: ToolConfig(
-                                command=t_data.get("command", ""),
-                                args=t_data.get("args", []),
-                                description=t_data.get("description")
-                            )
-                            for t_name, t_data in data.get("tools", {}).items()
-                        }
-
-                        self.db[lang_name.lower()] = EnvironmentPreset(
-                            name=lang_name,
-                            description=data.get("description", ""),
-                            tools=tools_dict,
-                            gitignore=data.get("gitignore", [])
+                        raw_tools = data.get("tools", {})
+                    tools_dict = {
+                        t_name: ToolConfig(
+                            command=t_data.get("command", ""),
+                            args=t_data.get("args", []),
+                            description=t_data.get("description")
                         )
+                        for t_name, t_data in raw_tools.items()
+                    }
+
+                    self.db[lang_name.lower()] = EnvironmentPreset(
+                        name=lang_name,
+                        description=data.get("description", ""),
+                        tools=tools_dict,
+                        gitignore=data.get("gitignore", []),
+                        levels=data.get("levels", {}),
+                        levels_info=data.get("levels_info", {}),
+                        raw_tools=raw_tools,
+                    )
 
         except Exception:
             pass
@@ -234,11 +238,19 @@ class EnvManager:
 
         tool_data = self.get_tool(target_name)
         if tool_data:
+            raw = {}
+            for p in self.db.values():
+                if target_name.lower() in p.raw_tools:
+                    raw = p.raw_tools[target_name.lower()]
+                    break
+            if not raw:
+                raw = {"command": tool_data.command}
             return EnvironmentPreset(
                 name=tool_data.description or target_name.capitalize(),
                 description=f"Standalone tool: {target_name.capitalize()}",
                 tools={target_name.lower(): tool_data},
-                gitignore=[]
+                gitignore=[],
+                raw_tools={target_name.lower(): raw},
             )
 
         return None

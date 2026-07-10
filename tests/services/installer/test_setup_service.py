@@ -2,6 +2,7 @@ import pytest
 import typer
 from unittest.mock import patch
 
+from chegi.services.environment.models import EnvironmentPreset
 from chegi.services.installer.setup_service import SetupService
 from chegi.services.installer.exceptions import UserAbortedSetupError
 
@@ -26,10 +27,12 @@ def setup_service(mock_installer_class, mock_env_manager_class, mock_config_clas
 
 def test_resolve_target_success(setup_service):
     """Test successful resolution of a target environment."""
-    setup_service.mock_env_manager.find_setup_target.return_value = {
-        "name": "PythonEnv",
-        "tools": {}
-    }
+    setup_service.mock_env_manager.find_setup_target.return_value = EnvironmentPreset(
+        name="PythonEnv",
+        description="Test environment",
+        tools={},
+        gitignore=[],
+    )
     
     setup_service._resolve_target()
     
@@ -52,14 +55,44 @@ def test_resolve_target_unsupported_exits(mock_ui, setup_service):
 
 def test_normalize_data_standalone_app(setup_service):
     """Test data normalization for a standalone app (no 'levels' defined)."""
-    setup_service.env_data = {"check_cmd": "python --version", "cmd": "apt install python"}
+    setup_service.env_data = EnvironmentPreset(
+        name="python",
+        description="Test standalone tool",
+        tools={},
+        gitignore=[],
+    )
     setup_service.environment = "python"
     
     levels, levels_info, tools_data = setup_service._normalize_data()
     
     assert "standalone" in levels
     assert levels["standalone"] == ["python"]
-    assert tools_data["python"] == setup_service.env_data
+
+
+def test_normalize_data_full_environment(setup_service):
+    """Test data normalization for a full environment with levels and tools."""
+    setup_service.env_data = EnvironmentPreset(
+        name="python",
+        description="Full Python environment",
+        tools={},
+        gitignore=[],
+        levels={"1": ["python", "pip"], "2": ["black"]},
+        levels_info={"1": "Essential", "2": "Recommended"},
+        raw_tools={
+            "python": {"check_cmd": "python --version", "install": {"apt": "apt install python"}},
+            "pip": {"check_cmd": "pip --version", "install": {"default": "pip install --upgrade pip"}},
+            "black": {"check_cmd": "black --version", "install": {"default": "pip install black"}},
+        },
+    )
+    setup_service.environment = "python"
+    
+    levels, levels_info, tools_data = setup_service._normalize_data()
+    
+    assert levels == {"1": ["python", "pip"], "2": ["black"]}
+    assert levels_info == {"1": "Essential", "2": "Recommended"}
+    assert set(tools_data.keys()) == {"python", "pip", "black"}
+    assert tools_data["python"]["check_cmd"] == "python --version"
+    assert tools_data["black"]["install"]["default"] == "pip install black"
 
 
 def test_sort_dependencies(setup_service):
