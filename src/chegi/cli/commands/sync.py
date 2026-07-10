@@ -3,13 +3,12 @@
 from pathlib import Path
 
 import typer
-from rich.console import Console
 
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCoreError
 from chegi.services.sync.sync_service import SyncService
+from chegi.ui.console import console
 
-console = Console()
 app = typer.Typer(help="Sync the current Git repository.")
 
 @app.callback(invoke_without_command=True)
