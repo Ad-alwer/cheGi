@@ -1,6 +1,7 @@
 """Core Git client for executing Git commands securely."""
 
 import os
+import re
 import subprocess
 from pathlib import Path
 from typing import List, Optional
@@ -106,7 +107,12 @@ class GitClient:
 
         Raises:
             GitCommandError: If the git add or commit commands fail.
+            ValueError: If the file_path or commit_msg contain dangerous patterns.
         """
+        if file_path.startswith("-"):
+            raise ValueError(f"File path must not start with '-': {file_path}")
+        if "\n" in commit_msg:
+            raise ValueError("Commit message must not contain newlines")
         self.run_command(["git", "add", file_path])
         self.run_command(["git", "commit", "-m", commit_msg])
         return commit_msg

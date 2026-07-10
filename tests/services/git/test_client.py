@@ -114,3 +114,28 @@ def test_is_valid_repo_false_git_not_installed(mock_run_command, git_client):
     # Missing git executable also means not a valid repo context
     mock_run_command.side_effect = GitNotInstalledError("Git executable not found")
     assert git_client.is_valid_repo() is False
+
+
+@patch.object(GitClient, "run_command")
+def test_commit_file_success(mock_run_command, git_client):
+    """Test successful commit of a file with valid arguments."""
+    mock_run_command.return_value = ""
+    result = git_client.commit_file("test.py", "Add test file")
+    assert result == "Add test file"
+    assert mock_run_command.call_count == 2
+    mock_run_command.assert_any_call(["git", "add", "test.py"])
+    mock_run_command.assert_any_call(["git", "commit", "-m", "Add test file"])
+
+
+@patch.object(GitClient, "run_command")
+def test_commit_file_rejects_flag_injection(mock_run_command, git_client):
+    """Test that file_path starting with '-' is rejected."""
+    with pytest.raises(ValueError, match="must not start with"):
+        git_client.commit_file("--all", "bad flag")
+
+
+@patch.object(GitClient, "run_command")
+def test_commit_file_rejects_newline_in_message(mock_run_command, git_client):
+    """Test that commit_msg containing newline is rejected."""
+    with pytest.raises(ValueError, match="must not contain newlines"):
+        git_client.commit_file("test.py", "msg\ninjection")
