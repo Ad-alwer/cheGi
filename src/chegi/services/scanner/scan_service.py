@@ -114,9 +114,8 @@ class ScanService:
             # symlinks, and mixed absolute/relative paths correctly
             if self.config.max_depth is not None:
                 relative = root_path.relative_to(start_path_obj)
-                if relative != Path("."):
-                    current_level = len(relative.parts)
-                    if current_level >= self.config.max_depth:
+                current_level = len(relative.parts) if relative != Path(".") else 0
+                if current_level >= self.config.max_depth:
                     dirs[:] = []  # Stop traversing deeper
                     continue
 
