@@ -84,10 +84,32 @@ def test_load_environments_preserves_levels_and_raw_tools(mock_files):
 
 @patch("chegi.services.environment.manager.pkg_resources.files")
 def test_load_environments_exception_handling(mock_files):
-    """Tests that exceptions during loading (e.g., bad JSON) are silently handled."""
-    mock_files.side_effect = Exception("Simulated parsing error")
+    """Tests that a missing presets directory results in an empty database."""
+    mock_files.side_effect = FileNotFoundError("Presets directory not found")
     manager = EnvManager()
     assert manager.db == {}
+
+
+@patch("chegi.services.environment.manager.pkg_resources.files")
+def test_load_environments_bad_json_skipped(mock_files, tmp_path):
+    """Tests that a corrupted JSON file is skipped without breaking the whole load."""
+    preset_dir = tmp_path / "presets"
+    preset_dir.mkdir()
+    (preset_dir / "good.json").write_text('{"name": "Python", "tools": {}}')
+    (preset_dir / "bad.json").write_text("this is not json")
+
+    mock_files.return_value = preset_dir
+    manager = EnvManager()
+    assert "python" in manager.db
+    assert len(manager.db) == 1
+
+
+@patch("chegi.services.environment.manager.pkg_resources.files")
+def test_load_environments_unexpected_error_propagates(mock_files):
+    """Tests that an unexpected error during loading propagates instead of being swallowed."""
+    mock_files.side_effect = RuntimeError("Something unexpected broke")
+    with pytest.raises(RuntimeError, match="Something unexpected broke"):
+        EnvManager()
 
 
 @patch("chegi.services.environment.manager.EnvManager.load_environments")

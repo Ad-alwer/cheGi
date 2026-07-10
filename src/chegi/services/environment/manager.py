@@ -54,40 +54,47 @@ class EnvManager:
         """Loads all JSON environment presets from the package resources.
 
         Reads `.json` files from the presets directory and populates the database.
-        Fails silently if the directory or files are unreadable.
+        Skips unreadable or malformed files without failing the whole load.
+        If the presets directory does not exist, the database stays empty.
         """
         try:
             package_dir = pkg_resources.files("chegi.services.environment.presets")
+        except (FileNotFoundError, ModuleNotFoundError):
+            return
 
-            for file_item in package_dir.iterdir():
-                if file_item.is_file() and file_item.name.endswith(".json"):
-                    content = file_item.read_text(encoding="utf-8")
-                    data = json.loads(content)
+        for file_item in package_dir.iterdir():
+            if not (file_item.is_file() and file_item.name.endswith(".json")):
+                continue
 
-                    lang_name = data.get("name")
-                    if lang_name:
-                        raw_tools = data.get("tools", {})
-                    tools_dict = {
-                        t_name: ToolConfig(
-                            command=t_data.get("command", ""),
-                            args=t_data.get("args", []),
-                            description=t_data.get("description")
-                        )
-                        for t_name, t_data in raw_tools.items()
-                    }
+            try:
+                content = file_item.read_text(encoding="utf-8")
+                data = json.loads(content)
 
-                    self.db[lang_name.lower()] = EnvironmentPreset(
-                        name=lang_name,
-                        description=data.get("description", ""),
-                        tools=tools_dict,
-                        gitignore=data.get("gitignore", []),
-                        levels=data.get("levels", {}),
-                        levels_info=data.get("levels_info", {}),
-                        raw_tools=raw_tools,
+                lang_name = data.get("name")
+                if not lang_name:
+                    continue
+
+                raw_tools = data.get("tools", {})
+                tools_dict = {
+                    t_name: ToolConfig(
+                        command=t_data.get("command", ""),
+                        args=t_data.get("args", []),
+                        description=t_data.get("description")
                     )
+                    for t_name, t_data in raw_tools.items()
+                }
 
-        except Exception:
-            pass
+                self.db[lang_name.lower()] = EnvironmentPreset(
+                    name=lang_name,
+                    description=data.get("description", ""),
+                    tools=tools_dict,
+                    gitignore=data.get("gitignore", []),
+                    levels=data.get("levels", {}),
+                    levels_info=data.get("levels_info", {}),
+                    raw_tools=raw_tools,
+                )
+            except (json.JSONDecodeError, OSError):
+                continue
 
     def get_language(self, lang_name: str) -> Optional[EnvironmentPreset]:
         """Retrieves the configuration preset for a specific language.
