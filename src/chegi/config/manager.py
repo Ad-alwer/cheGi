@@ -73,6 +73,7 @@ class ChegiConfig:
                     data = json.load(f)
 
                     if "exclude_dirs" in data:
+                        self._state.exclude_dirs.clear()
                         self._state.exclude_dirs.update(data["exclude_dirs"])
 
                     self._state.max_depth = data.get("max_depth", self._state.max_depth)
