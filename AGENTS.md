@@ -44,6 +44,7 @@
 - Never commit, push, or create PRs unless explicitly asked by the user
 - Present changes for review before committing
 - After approval, stage and commit only when told to
+- After fixing a GitHub issue: comment with the fix summary + closing commit hash, then close the issue
 
 ## Changelog
 
