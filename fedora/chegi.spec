@@ -21,6 +21,9 @@ BuildArch:      noarch
 BuildRequires:  python3-devel >= 3.9
 BuildRequires:  pyproject-rpm-macros
 BuildRequires:  python3-pip
+%if 0%{?fedora} < 45
+BuildRequires:  python3-questionary
+%endif
 
 %description
 cheGi is a Git companion that makes common Git operations faster and
