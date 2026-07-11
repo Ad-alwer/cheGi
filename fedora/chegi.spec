@@ -7,7 +7,7 @@ Summary:        The ultimate Git companion. Type less, do more.
 
 License:        MIT
 URL:            https://github.com/Ad-alwer/cheGi
-Source:         https://github.com/Ad-alwer/cheGi/archive/v%{version}.tar.gz
+Source0:        chegi-%{version}.tar.gz
 
 BuildArch:      noarch
 

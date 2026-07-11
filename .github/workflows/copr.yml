@@ -17,8 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install copr-cli
-        run: pip install copr-cli
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq rpm-build
+          pip install copr-cli
 
       - name: Setup COPR config
         run: |
@@ -34,10 +37,22 @@ jobs:
             echo "tag=v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)" >> $GITHUB_OUTPUT
           fi
 
-      - name: Trigger COPR build
+      - name: Build SRPM and submit to COPR
         run: |
           TAG="${{ steps.version.outputs.tag }}"
+          VER="${TAG#v}"
           CHROOTS=$(echo "${{ github.event.inputs.chroots || 'fedora-44-x86_64,rawhide-x86_64' }}" | tr ',' '\n' | sed 's/^/--chroot /' | tr '\n' ' ')
-          eval copr-cli build --nowait $CHROOTS \
-            alwer/cheGi \
-            https://raw.githubusercontent.com/${{ github.repository }}/$TAG/fedora/chegi.spec
+
+          curl -sL "https://github.com/Ad-alwer/cheGi/archive/$TAG.tar.gz" -o "/tmp/chegi-$VER.tar.gz"
+
+          rpmdev-setuptree 2>/dev/null || true
+          mkdir -p ~/rpmbuild/SOURCES
+          cp "/tmp/chegi-$VER.tar.gz" ~/rpmbuild/SOURCES/
+          cp fedora/chegi.spec ~/rpmbuild/SPECS/
+
+          sed -i "s/^Version:.*/Version: $VER/" ~/rpmbuild/SPECS/chegi.spec
+          sed -i "s|^Source0:.*|Source0: chegi-$VER.tar.gz|" ~/rpmbuild/SPECS/chegi.spec
+
+          rpmbuild -bs ~/rpmbuild/SPECS/chegi.spec --define "_sourcedir ~/rpmbuild/SOURCES" --define "_srcrpmdir /tmp"
+
+          eval copr-cli build --nowait $CHROOTS alwer/cheGi /tmp/python-chegi-$VER-1.src.rpm
