@@ -71,7 +71,7 @@ jobs:
             InstallerType: msi
             InstallerUrl: https://github.com/Ad-alwer/cheGi/releases/download/v$VER/chegi_${VER}_windows_amd64.msi
             InstallerSha256: $SHA
-            ProductCode: $PC
+            ProductCode: "$PC"
           ManifestType: installer
           ManifestVersion: 1.6.0
           EOF
