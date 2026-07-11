@@ -3,9 +3,13 @@
 **The ultimate Git companion. Type less, do more.**
 
 [![PyPI version](https://img.shields.io/pypi/v/chegi)](https://pypi.org/project/chegi/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/chegi)](https://pypi.org/project/chegi/)
 [![Python](https://img.shields.io/pypi/pyversions/chegi)](https://pypi.org/project/chegi/)
 [![Documentation](https://img.shields.io/badge/docs-ad--alwer.github.io%2FcheGi-blue)](https://ad-alwer.github.io/cheGi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/alwer/cheGi/package/python-chegi/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/alwer/cheGi/package/python-chegi/)
+[![Docker pulls](https://img.shields.io/docker/pulls/adalwer/chegi)](https://hub.docker.com/r/adalwer/chegi)
+[![Docker image](https://img.shields.io/docker/v/adalwer/chegi)](https://hub.docker.com/r/adalwer/chegi)
 
 cheGi is a fast, developer-friendly CLI for managing Git across your entire workspace. Scan multiple repositories at once, catch secrets before they ship, sync branches safely, and automate the repetitive parts of your daily Git workflow — all from a single tool with a beautiful terminal UI.
 
@@ -28,21 +32,19 @@ cheGi donates **20% of all funding** to charity — local aid, disaster relief, 
 
 ## Installation
 
-### From PyPI
+### All methods
 
-```bash
-pip install chegi
-```
+| Method | Command |
+|--------|---------|
+| **pip** (PyPI) | `pip install chegi` |
+| **Homebrew** (macOS) | `brew tap Ad-alwer/chegi && brew install chegi` |
+| **Docker** | `docker pull adalwer/chegi` |
+| **PPA** (Ubuntu/Debian) | `sudo add-apt-repository ppa:ad-alwer/chegi && sudo apt update && sudo apt install chegi` |
+| **COPR** (Fedora) | `sudo dnf copr enable alwer/cheGi && sudo dnf install python3-chegi` |
+| **AUR** (Arch Linux) | `yay -S chegi` *(pending submission)* |
+| **Source** | `pip install git+https://github.com/Ad-alwer/cheGi.git` |
 
-### From PPA (Ubuntu/Debian)
-
-```bash
-sudo add-apt-repository ppa:ad-alwer/chegi
-sudo apt update
-sudo apt install chegi
-```
-
-### From source
+### From source (development)
 
 ```bash
 git clone https://github.com/Ad-alwer/cheGi.git

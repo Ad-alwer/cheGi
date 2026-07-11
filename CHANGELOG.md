@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.3.1] - 2026-07-11
+
 ### Added
 
-- Project documentation foundation (`README`, `CONTRIBUTING`, `SECURITY`, `CHANGELOG`)
-- Command reference in `docs/commands/` for all CLI commands
-- Configuration guide (`docs/configuration.md`) and security guide (`docs/security.md`)
-- MkDocs site with GitHub Pages deployment (`.github/workflows/docs.yml`)
+- Docker image published to Docker Hub (`adalwer/chegi`) with automated build workflow
+- Homebrew formula in `Ad-alwer/homebrew-chegi` repo with auto-update workflow
+- COPR and Docker badges in README
+- Comprehensive installation table in README (pip, Homebrew, Docker, PPA, COPR, AUR, source)
 
 ## [0.3.0] - 2026-05-29
 
@@ -43,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment presets for Python, JavaScript, Go, Rust, C++, C#, Ruby, and apps
 - Preflight checks for Git installation
 
-[Unreleased]: https://github.com/Ad-alwer/cheGi/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/Ad-alwer/cheGi/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/Ad-alwer/cheGi/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Ad-alwer/cheGi/releases/tag/v0.3.0
 [0.2.1]: https://github.com/Ad-alwer/cheGi/releases/tag/v0.2.1
