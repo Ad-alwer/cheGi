@@ -92,21 +92,26 @@ jobs:
         run: |
           VER="${{ steps.release.outputs.version }}"
 
-          gh repo fork microsoft/winget-pkgs --clone --default-branch-only
-
-          mkdir -p winget-pkgs/manifests/a/Ad-alwer/cheGi/$VER
-          cp -r manifests/a/Ad-alwer/cheGi/$VER/* winget-pkgs/manifests/a/Ad-alwer/cheGi/$VER/
-
+          gh repo fork microsoft/winget-pkgs --clone --default-branch-only 2>/dev/null || true
           cd winget-pkgs
+
+          git remote add upstream https://github.com/microsoft/winget-pkgs.git 2>/dev/null || true
+          git fetch upstream master
+          git checkout upstream/master -b chegi-$VER
+
+          mkdir -p manifests/a/Ad-alwer/cheGi/$VER
+          cp -r ../manifests/a/Ad-alwer/cheGi/$VER/* manifests/a/Ad-alwer/cheGi/$VER/
+
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git checkout -b chegi-$VER
           git add manifests/a/Ad-alwer/cheGi/$VER
           git commit -m "New package: Ad-alwer.cheGi version $VER"
-          git push -u origin chegi-$VER
+          git push origin chegi-$VER --force
 
           gh pr create \
             --repo microsoft/winget-pkgs \
             --head Ad-alwer:chegi-$VER \
             --title "New package: Ad-alwer.cheGi version $VER" \
-            --body "Submitting cheGi v$VER to winget-pkgs.\n\nPackage: https://github.com/Ad-alwer/cheGi"
+            --body "Submitting cheGi v$VER to winget-pkgs.
+
+          Package: https://github.com/Ad-alwer/cheGi" || true
