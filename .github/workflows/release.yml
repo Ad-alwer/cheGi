@@ -67,10 +67,15 @@ jobs:
 
       - name: Import GPG key
         run: |
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
           echo "${{ secrets.LAUNCHPAD_GPG_KEY }}" > /tmp/gpg.key
-          gpg --batch --import /tmp/gpg.key
+          gpg --batch --import /tmp/gpg.key || {
+            rc=$?
+            if [ "$rc" -ne 2 ]; then exit $rc; fi
+          }
           # Cache the passphrase in gpg-agent for non-interactive signing
-          gpg_agent=$(gpg-agent --daemon --allow-loopback-pinentry 2>/dev/null)
+          gpg_agent=$(gpg-agent --daemon --allow-loopback-pinentry 2>/dev/null || true)
           KEYGRIP=$(gpg --with-keygrip --list-secret-keys \
             8DDFD98A5CEFC81AE71845B661FF935FEADAD1CE 2>/dev/null \
             | grep Keygrip | head -1 | awk '{print $2}')
