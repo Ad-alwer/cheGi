@@ -69,26 +69,16 @@ jobs:
         run: |
           mkdir -p ~/.gnupg
           chmod 700 ~/.gnupg
+          echo "allow-loopback-pinentry" > ~/.gnupg/gpg-agent.conf
           echo "${{ secrets.LAUNCHPAD_GPG_KEY }}" > /tmp/gpg.key
-          gpg --batch --import /tmp/gpg.key || {
-            rc=$?
-            if [ "$rc" -ne 2 ]; then exit $rc; fi
-          }
-          # Cache the passphrase in gpg-agent for non-interactive signing
-          gpg_agent=$(gpg-agent --daemon --allow-loopback-pinentry 2>/dev/null || true)
-          KEYGRIP=$(gpg --with-keygrip --list-secret-keys \
-            8DDFD98A5CEFC81AE71845B661FF935FEADAD1CE 2>/dev/null \
-            | grep Keygrip | head -1 | awk '{print $2}')
-          if [ -n "$KEYGRIP" ]; then
-            for prog in /usr/lib/gnupg2/gpg-preset-passphrase \
-                        /usr/libexec/gnupg/gpg-preset-passphrase \
-                        /usr/lib/gnupg/gpg-preset-passphrase; do
-              if [ -x "$prog" ]; then
-                echo "${{ secrets.LAUNCHPAD_GPG_PASSPHRASE }}" | "$prog" --preset "$KEYGRIP"
-                break
-              fi
-            done
-          fi
+          gpg --batch --import /tmp/gpg.key || true
+          gpgconf --reload gpg-agent
+          cat > /tmp/gpg-sign << 'SHEOF'
+          #!/bin/bash
+          exec gpg --batch --no-tty --pinentry-mode loopback \
+            --passphrase "$LAUNCHPAD_GPG_PASSPHRASE" "$@"
+          SHEOF
+          chmod +x /tmp/gpg-sign
 
       - name: Create Debian packaging
         run: |
@@ -126,8 +116,11 @@ jobs:
         run: dpkg-buildpackage -S -d --no-sign
 
       - name: Sign source package
+        env:
+          LAUNCHPAD_GPG_PASSPHRASE: ${{ secrets.LAUNCHPAD_GPG_PASSPHRASE }}
         run: |
           debsign --no-re-sign -k8DDFD98A5CEFC81AE71845B661FF935FEADAD1CE \
+            -p/tmp/gpg-sign \
             ../chegi_${VERSION}-1_source.changes
 
       - name: Upload to Launchpad PPA
