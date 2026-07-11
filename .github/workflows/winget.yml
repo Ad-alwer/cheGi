@@ -94,7 +94,8 @@ jobs:
 
           gh repo fork microsoft/winget-pkgs --clone --default-branch-only
 
-          cp -r manifests winget-pkgs/manifests/a/Ad-alwer/cheGi/$VER
+          mkdir -p winget-pkgs/manifests/a/Ad-alwer/cheGi/$VER
+          cp -r manifests/a/Ad-alwer/cheGi/$VER/* winget-pkgs/manifests/a/Ad-alwer/cheGi/$VER/
 
           cd winget-pkgs
           git config user.name "github-actions"
