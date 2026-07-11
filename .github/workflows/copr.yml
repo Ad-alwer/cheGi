@@ -44,13 +44,11 @@ jobs:
           CHROOTS=$(echo "${{ github.event.inputs.chroots || 'fedora-44-x86_64,fedora-rawhide-x86_64' }}" | tr ',' '\n' | sed 's/^/--chroot /' | tr '\n' ' ')
 
           curl -sL "https://github.com/Ad-alwer/cheGi/archive/$TAG.tar.gz" -o "/tmp/chegi-$VER.tar.gz"
-          curl -sL "https://files.pythonhosted.org/packages/source/q/questionary/questionary-2.1.1.tar.gz" -o "/tmp/questionary-2.1.1.tar.gz"
 
           RPMHOME="$HOME/rpmbuild"
           rm -rf "$RPMHOME"
           mkdir -p "$RPMHOME/SOURCES" "$RPMHOME/SPECS"
           cp "/tmp/chegi-$VER.tar.gz" "$RPMHOME/SOURCES/"
-          cp "/tmp/questionary-2.1.1.tar.gz" "$RPMHOME/SOURCES/"
           cp fedora/chegi.spec "$RPMHOME/SPECS/"
 
           sed -i "s/^Version:.*/Version: $VER/" "$RPMHOME/SPECS/chegi.spec"
