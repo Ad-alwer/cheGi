@@ -34,10 +34,13 @@ jobs:
             echo "tag=v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)" >> $GITHUB_OUTPUT
           fi
 
-      - name: Trigger COPR build
+      - name: Trigger COPR build via buildscm
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           CHROOTS=$(echo "${{ github.event.inputs.chroots || 'fedora-44-x86_64,rawhide-x86_64' }}" | tr ',' '\n' | sed 's/^/--chroot /' | tr '\n' ' ')
-          eval copr-cli build --nowait $CHROOTS \
-            alwer/cheGi \
-            https://github.com/${{ github.repository }}/archive/$TAG.tar.gz
+          eval copr-cli buildscm --nowait $CHROOTS \
+            --clone-url https://github.com/${{ github.repository }}.git \
+            --commit $TAG \
+            --subdirectory fedora \
+            --spec chegi.spec \
+            alwer/cheGi
