@@ -9,7 +9,7 @@
 
 Name:           python-%{srcname}
 Version:        0.3.0
-Release:        4%{?dist}
+Release:        1%{?dist}
 Summary:        The ultimate Git companion. Type less, do more.
 
 License:        MIT
@@ -20,6 +20,8 @@ BuildArch:      noarch
 
 BuildRequires:  python3-devel >= 3.9
 BuildRequires:  pyproject-rpm-macros
+BuildRequires:  python3-setuptools
+BuildRequires:  python3-wheel
 BuildRequires:  python3-pip
 %if 0%{?fedora} < 45
 BuildRequires:  python3-questionary
@@ -39,9 +41,6 @@ easier. Type less, do more.
 %prep
 %autosetup -n cheGi-%{version}
 
-%generate_buildrequires
-%pyproject_buildrequires -N
-
 %build
 %pyproject_wheel
 
@@ -60,15 +59,5 @@ easier. Type less, do more.
 %{_bindir}/chegi
 
 %changelog
-* Sat Jul 11 2026 Ad-alwer <ad-alwer@github.com> - 0.3.0-4
-- Simplify rawhide fix: use %%pyproject_buildrequires -N, exclude auto
-  Requires on F45+, accept that questionary RPM not available on rawhide
-* Sat Jul 11 2026 Ad-alwer <ad-alwer@github.com> - 0.3.0-3
-- Bundle questionary as Source1 for Fedora 45+ (rawhide) where system
-  python3-questionary requires python(abi) 3.14 (unavailable on F45)
-* Sat Jul 11 2026 Ad-alwer <ad-alwer@github.com> - 0.3.0-2
-- Install questionary via pip on Fedora 45+ (rawhide) to handle Python 3.15
-  incompatibility
-- Use %%pyproject_buildrequires -N to skip auto-generated runtime BuildRequires
 * Sat Jul 11 2026 Ad-alwer <ad-alwer@github.com> - 0.3.0-1
 - Initial COPR package
