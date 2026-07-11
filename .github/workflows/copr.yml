@@ -8,7 +8,7 @@ on:
       chroots:
         description: "Chroots (comma-separated)"
         required: false
-        default: "fedora-40-x86_64,fedora-41-x86_64,rawhide-x86_64"
+        default: "fedora-44-x86_64,rawhide-x86_64"
 
 jobs:
   build:
