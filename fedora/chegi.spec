@@ -25,6 +25,8 @@ BuildRequires:  python3-wheel
 BuildRequires:  python3-pip
 %if 0%{?fedora} < 45
 BuildRequires:  python3-questionary
+BuildRequires:  python3-typer
+BuildRequires:  python3-rich
 %endif
 
 %description
