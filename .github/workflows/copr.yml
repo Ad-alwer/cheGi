@@ -3,6 +3,9 @@ name: COPR Build
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       chroots:
@@ -31,7 +34,7 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          if [[ "${{ github.event_name }}" == "release" ]]; then
+          if [[ "${{ github.event_name }}" == "release" ]] || [[ "${{ github.ref_type }}" == "tag" ]]; then
             echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
           else
             echo "tag=v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)" >> $GITHUB_OUTPUT
