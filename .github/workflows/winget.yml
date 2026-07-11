@@ -1,0 +1,37 @@
+name: Submit to Winget
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    environment: winget
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get release info
+        id: release
+        run: |
+          TAG="${GITHUB_REF_NAME#refs/tags/}"
+          VER="${TAG#v}"
+          echo "version=$VER" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Get MSI SHA256
+        id: msi
+        run: |
+          SHA=$(curl -sL "https://github.com/Ad-alwer/cheGi/releases/download/${{ steps.release.outputs.tag }}/chegi_${{ steps.release.outputs.version }}_windows_amd64.msi" | sha256sum | cut -d' ' -f1)
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+
+      - name: Submit manifest to winget-pkgs
+        uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: Ad-alwer.cheGi
+          installers: |
+            - arch: x64
+              url: https://github.com/Ad-alwer/cheGi/releases/download/${{ steps.release.outputs.tag }}/chegi_${{ steps.release.outputs.version }}_windows_amd64.msi
+              sha256: ${{ steps.msi.outputs.sha256 }}
+              installer-type: msi
+          token: ${{ secrets.WINGET_TOKEN }}
