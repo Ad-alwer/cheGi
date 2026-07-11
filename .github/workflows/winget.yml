@@ -58,16 +58,9 @@ jobs:
           cat > manifests/a/Ad-alwer/cheGi/$VER/Ad-alwer.cheGi.yaml << EOF
           PackageIdentifier: Ad-alwer.cheGi
           PackageVersion: $VER
-          PackageName: cheGi
-          Publisher: Alwer
-          ShortDescription: The ultimate Git companion. Type less, do more.
-          License: MIT
-          PackageUrl: https://github.com/Ad-alwer/cheGi
-          Tags:
-          - git
-          - cli
-          - productivity
-          - developer-tools
+          DefaultLocale: en-US
+          ManifestType: version
+          ManifestVersion: 1.6.0
           EOF
 
           cat > manifests/a/Ad-alwer/cheGi/$VER/Ad-alwer.cheGi.installer.yaml << EOF
@@ -88,7 +81,10 @@ jobs:
           PackageVersion: $VER
           PackageLocale: en-US
           Publisher: Alwer
+          PublisherUrl: https://github.com/Ad-alwer
+          PublisherSupportUrl: https://github.com/Ad-alwer/cheGi/issues
           PackageName: cheGi
+          PackageUrl: https://github.com/Ad-alwer/cheGi
           License: MIT
           ShortDescription: The ultimate Git companion. Type less, do more.
           Tags:
