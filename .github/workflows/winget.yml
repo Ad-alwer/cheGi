@@ -35,10 +35,32 @@ jobs:
           SHA=$(curl -sL "https://github.com/Ad-alwer/cheGi/releases/download/${{ steps.release.outputs.tag }}/chegi_${{ steps.release.outputs.version }}_windows_amd64.msi" | sha256sum | cut -d' ' -f1)
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
 
+      - name: Extract ProductCode from MSI
+        id: msi_info
+        run: |
+          echo "Downloading MSI to extract ProductCode..."
+          curl -sL "https://github.com/Ad-alwer/cheGi/releases/download/${{ steps.release.outputs.tag }}/chegi_${{ steps.release.outputs.version }}_windows_amd64.msi" -o /tmp/chegi.msi
+          # Extract ProductCode from MSI
+          PC=$(python3 -c "
+import re
+with open('/tmp/chegi.msi', 'rb') as f:
+    data = f.read()
+text = data.decode('latin-1')
+idx = text.find('ProductCode')
+if idx >= 0:
+    guids = re.findall(r'\{[A-F0-9]{8}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{4}-[A-F0-9]{12}\}', text[idx:idx+200], re.I)
+    if guids:
+        print(guids[0])
+")
+          echo "product_code=$PC" >> $GITHUB_OUTPUT
+          echo "ProductCode: $PC"
+          rm -f /tmp/chegi.msi
+
       - name: Create winget manifest
         run: |
           VER="${{ steps.release.outputs.version }}"
           SHA="${{ steps.msi.outputs.sha256 }}"
+          PC="${{ steps.msi_info.outputs.product_code }}"
           mkdir -p manifests/a/Ad-alwer/cheGi/$VER
 
           cat > manifests/a/Ad-alwer/cheGi/$VER/Ad-alwer.cheGi.yaml << EOF
@@ -64,7 +86,7 @@ jobs:
             InstallerType: msi
             InstallerUrl: https://github.com/Ad-alwer/cheGi/releases/download/v$VER/chegi_${VER}_windows_amd64.msi
             InstallerSha256: $SHA
-
+            ProductCode: $PC
           ManifestType: installer
           ManifestVersion: 1.6.0
           EOF
