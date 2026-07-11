@@ -7,7 +7,7 @@ Summary:        The ultimate Git companion. Type less, do more.
 
 License:        MIT
 URL:            https://github.com/Ad-alwer/cheGi
-Source:         %{url}/archive/v%{version}/%{srcname}-%{version}.tar.gz
+Source:         %{srcname}-%{version}.tar.gz
 
 BuildArch:      noarch
 
@@ -26,7 +26,7 @@ cheGi is a Git companion that makes common Git operations faster and
 easier. Type less, do more.
 
 %prep
-%autosetup -n %{srcname}-%{version} -S git
+%setup -q -n %{srcname}-%{version}
 
 %generate_buildrequires
 %pyproject_buildrequires
