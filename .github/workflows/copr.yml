@@ -1,0 +1,43 @@
+name: COPR Build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      chroots:
+        description: "Chroots (comma-separated)"
+        required: false
+        default: "fedora-40-x86_64,fedora-41-x86_64,rawhide-x86_64"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: copr
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install copr-cli
+        run: pip install copr
+
+      - name: Setup COPR config
+        run: |
+          mkdir -p ~/.config/copr
+          echo "${{ secrets.COPR_API_TOKEN_CONFIG }}" > ~/.config/copr
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            echo "tag=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=v$(grep -m1 '^version' pyproject.toml | cut -d'"' -f2)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger COPR build
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          CHROOTS=$(echo "${{ github.event.inputs.chroots || 'fedora-40-x86_64,fedora-41-x86_64,rawhide-x86_64' }}" | tr ',' '\n' | sed 's/^/--chroot /' | tr '\n' ' ')
+          eval copr-cli build --nowait $CHROOTS \
+            ${{ github.repository_owner }}/chegi \
+            https://github.com/${{ github.repository }}/archive/$TAG.tar.gz
