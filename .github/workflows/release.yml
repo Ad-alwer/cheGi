@@ -21,6 +21,7 @@ jobs:
 
       - name: Extract version from tag
         id: version
+        shell: bash
         run: |
           VER="${GITHUB_REF_NAME#v}"
           echo "VERSION=$VER" >> $GITHUB_ENV
@@ -54,6 +55,7 @@ jobs:
   publish-ppa:
     name: Publish to Launchpad PPA
     runs-on: ubuntu-latest
+    environment: ubuntu
     steps:
       - uses: actions/checkout@v4
 
