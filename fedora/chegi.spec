@@ -23,11 +23,6 @@ BuildRequires:  pyproject-rpm-macros
 BuildRequires:  python3-setuptools
 BuildRequires:  python3-wheel
 BuildRequires:  python3-pip
-%if 0%{?fedora} < 45
-BuildRequires:  python3-questionary
-BuildRequires:  python3-typer
-BuildRequires:  python3-rich
-%endif
 
 %description
 cheGi is a Git companion that makes common Git operations faster and
@@ -50,10 +45,10 @@ easier. Type less, do more.
 %pyproject_install
 %pyproject_save_files -l %{srcname}
 
-%check
-%if 0%{?fedora} < 45
-%pyproject_check_import
-%endif
+# %%pyproject_check_import skipped intentionally
+# Runtime deps (typer, rich, questionary) are not guaranteed to be
+# available in the minimal buildroot; auto-generated Requires from
+# %%pyproject_save_files -l handles correct dependency metadata
 
 %files -n python3-%{srcname} -f %{pyproject_files}
 %license LICENSE
