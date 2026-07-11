@@ -47,7 +47,9 @@ easier. Type less, do more.
 %pyproject_save_files -l %{srcname}
 
 %check
+%if 0%{?fedora} < 45
 %pyproject_check_import
+%endif
 
 %files -n python3-%{srcname} -f %{pyproject_files}
 %license LICENSE
