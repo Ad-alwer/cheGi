@@ -45,14 +45,15 @@ jobs:
 
           curl -sL "https://github.com/Ad-alwer/cheGi/archive/$TAG.tar.gz" -o "/tmp/chegi-$VER.tar.gz"
 
-          rm -rf ~/rpmbuild
-          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
-          cp "/tmp/chegi-$VER.tar.gz" ~/rpmbuild/SOURCES/
-          cp fedora/chegi.spec ~/rpmbuild/SPECS/
+          RPMHOME="$HOME/rpmbuild"
+          rm -rf "$RPMHOME"
+          mkdir -p "$RPMHOME/SOURCES" "$RPMHOME/SPECS"
+          cp "/tmp/chegi-$VER.tar.gz" "$RPMHOME/SOURCES/"
+          cp fedora/chegi.spec "$RPMHOME/SPECS/"
 
-          sed -i "s/^Version:.*/Version: $VER/" ~/rpmbuild/SPECS/chegi.spec
-          sed -i "s|^Source0:.*|Source0: chegi-$VER.tar.gz|" ~/rpmbuild/SPECS/chegi.spec
+          sed -i "s/^Version:.*/Version: $VER/" "$RPMHOME/SPECS/chegi.spec"
+          sed -i "s|^Source0:.*|Source0: chegi-$VER.tar.gz|" "$RPMHOME/SPECS/chegi.spec"
 
-          rpmbuild -bs ~/rpmbuild/SPECS/chegi.spec --define "_sourcedir ~/rpmbuild/SOURCES" --define "_srcrpmdir /tmp"
+          rpmbuild -bs "$RPMHOME/SPECS/chegi.spec" --define "_sourcedir $RPMHOME/SOURCES" --define "_srcrpmdir /tmp"
 
           eval copr-cli build --nowait $CHROOTS alwer/cheGi /tmp/python-chegi-$VER-1.src.rpm
