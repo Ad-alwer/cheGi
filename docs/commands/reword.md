@@ -36,7 +36,7 @@ chegi reword [MESSAGE] [OPTIONS]
 | `--last 5` | Show the 5 most recent commits |
 | `--start 2 --end 12` | Show commits from index 2 to 12 |
 | `--start 5` | Show 10 commits starting at index 5 |
-| `--end 8` | Show up to 10 commits ending at index 8 |
+| `--end 8` | Show commits from index 0 up to 8 (exclusive) |
 
 `--start` must be less than `--end` when both are provided.
 
