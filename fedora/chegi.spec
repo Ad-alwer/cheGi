@@ -44,6 +44,7 @@ easier. Type less, do more.
 %files -n python3-%{srcname} -f %{pyproject_files}
 %license LICENSE
 %doc README.md
+%{_bindir}/chegi
 
 %changelog
 * Sat Jul 11 2026 Ad-alwer <ad-alwer@github.com> - 0.3.0-1
