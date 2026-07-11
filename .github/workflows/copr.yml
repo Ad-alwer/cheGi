@@ -37,7 +37,7 @@ jobs:
       - name: Trigger COPR build
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          CHROOTS=$(echo "${{ github.event.inputs.chroots || 'fedora-40-x86_64,fedora-41-x86_64,rawhide-x86_64' }}" | tr ',' '\n' | sed 's/^/--chroot /' | tr '\n' ' ')
+          CHROOTS=$(echo "${{ github.event.inputs.chroots || 'fedora-44-x86_64,rawhide-x86_64' }}" | tr ',' '\n' | sed 's/^/--chroot /' | tr '\n' ' ')
           eval copr-cli build --nowait $CHROOTS \
-            ${{ github.repository_owner }}/chegi \
+            alwer/cheGi \
             https://github.com/${{ github.repository }}/archive/$TAG.tar.gz
