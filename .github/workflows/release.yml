@@ -80,38 +80,33 @@ jobs:
         run: |
           mkdir -p debian/source
           echo "3.0 (native)" > debian/source/format
-          cat > debian/control << 'CONTROL'
-          Source: chegi
-          Section: utils
-          Priority: optional
-          Maintainer: Alwer <alwer.design@gmail.com>
-          Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools
-          Standards-Version: 4.5.0
 
-          Package: chegi
-          Architecture: any
-          Depends: ${python3:Depends}, ${misc:Depends}, git
-          Description: The ultimate Git companion. Type less, do more.
-           cheGi is a fast, developer-friendly CLI for managing Git across
-           your entire workspace. Scan multiple repositories at once, catch
-           secrets before they ship, sync branches safely, and automate
-           repetitive Git tasks.
-CONTROL
-          cat > debian/rules << 'RULES'
-          #!/usr/bin/make -f
-          export PYBUILD_NAME=chegi
-          %:
-          	dh $@ --with python3
-RULES
+          echo "Source: chegi" > debian/control
+          echo "Section: utils" >> debian/control
+          echo "Priority: optional" >> debian/control
+          echo "Maintainer: Alwer <alwer.design@gmail.com>" >> debian/control
+          echo "Build-Depends: debhelper (>= 9), dh-python, python3-all, python3-setuptools" >> debian/control
+          echo "Standards-Version: 4.5.0" >> debian/control
+          echo "" >> debian/control
+          echo "Package: chegi" >> debian/control
+          echo "Architecture: any" >> debian/control
+          echo "Depends: \${python3:Depends}, \${misc:Depends}, git" >> debian/control
+          echo "Description: The ultimate Git companion. Type less, do more." >> debian/control
+          echo " cheGi is a fast, developer-friendly CLI for managing Git across" >> debian/control
+          echo " your entire workspace. Scan multiple repositories at once, catch" >> debian/control
+          echo " secrets before they ship, sync branches safely, and automate" >> debian/control
+          echo " repetitive Git tasks." >> debian/control
+
+          printf '#!/usr/bin/make -f\nexport PYBUILD_NAME=chegi\n%%:\n\tdh $@ --with python3\n' > debian/rules
           chmod +x debian/rules
-          cat > debian/changelog << EOF
-          chegi ($VERSION-1) unstable; urgency=medium
 
-            * New upstream release
+          echo "chegi ($VERSION-1) unstable; urgency=medium" > debian/changelog
+          echo "" >> debian/changelog
+          echo "  * New upstream release" >> debian/changelog
+          echo "" >> debian/changelog
+          echo " -- Alwer <alwer.design@gmail.com>  $(date -R)" >> debian/changelog
 
-           -- Alwer <alwer.design@gmail.com>  $(date -R)
-EOF
-          cat > debian/compat <<< "9"
+          echo "9" > debian/compat
 
       - name: Build source package
         run: dpkg-buildpackage -S -d --no-sign

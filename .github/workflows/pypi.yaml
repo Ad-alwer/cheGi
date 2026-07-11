@@ -60,5 +60,19 @@ jobs:
       - name: Build sdist and wheel
         run: python -m build
 
+      - name: Check if version already exists on PyPI
+        id: check_pypi
+        run: |
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://pypi.org/pypi/chegi/$VERSION/json")
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Version $VERSION already exists on PyPI — skipping publish"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Version $VERSION not found on PyPI — will publish"
+          fi
+
       - name: Publish to PyPI
+        if: steps.check_pypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
