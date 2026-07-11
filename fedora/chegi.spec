@@ -14,14 +14,13 @@ Summary:        The ultimate Git companion. Type less, do more.
 License:        MIT
 URL:            https://github.com/Ad-alwer/cheGi
 Source0:        chegi-%{version}.tar.gz
-%if 0%{?fedora} >= 45
-Source1:        https://files.pythonhosted.org/packages/source/q/questionary/questionary-2.1.1.tar.gz
-%endif
+Source1:        questionary-2.1.1.tar.gz
 
 BuildArch:      noarch
 
 BuildRequires:  python3-devel >= 3.9
 BuildRequires:  pyproject-rpm-macros
+BuildRequires:  python3-pip
 
 %description
 cheGi is a Git companion that makes common Git operations faster and
