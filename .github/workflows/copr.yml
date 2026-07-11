@@ -45,8 +45,8 @@ jobs:
 
           curl -sL "https://github.com/Ad-alwer/cheGi/archive/$TAG.tar.gz" -o "/tmp/chegi-$VER.tar.gz"
 
-          rpmdev-setuptree 2>/dev/null || true
-          mkdir -p ~/rpmbuild/SOURCES
+          rm -rf ~/rpmbuild
+          mkdir -p ~/rpmbuild/SOURCES ~/rpmbuild/SPECS
           cp "/tmp/chegi-$VER.tar.gz" ~/rpmbuild/SOURCES/
           cp fedora/chegi.spec ~/rpmbuild/SPECS/
 
