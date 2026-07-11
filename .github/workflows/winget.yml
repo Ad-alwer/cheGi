@@ -95,6 +95,7 @@ jobs:
           gh repo fork microsoft/winget-pkgs --clone --default-branch-only 2>/dev/null || true
           cd winget-pkgs
 
+          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/Ad-alwer/winget-pkgs.git
           git remote add upstream https://github.com/microsoft/winget-pkgs.git 2>/dev/null || true
           git fetch upstream master
           git checkout upstream/master -b chegi-$VER
