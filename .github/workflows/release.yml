@@ -104,7 +104,7 @@ jobs:
           printf '#!/usr/bin/make -f\nexport PYBUILD_NAME=chegi\n%%:\n\tdh $@ --with python3\n' > debian/rules
           chmod +x debian/rules
 
-          echo "chegi ($VERSION-1) unstable; urgency=medium" > debian/changelog
+          echo "chegi ($VERSION-1) $(lsb_release -cs); urgency=medium" > debian/changelog
           echo "" >> debian/changelog
           echo "  * New upstream release" >> debian/changelog
           echo "" >> debian/changelog
