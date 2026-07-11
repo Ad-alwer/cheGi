@@ -22,7 +22,7 @@ jobs:
 
       - name: Setup COPR config
         run: |
-          mkdir -p ~/.config/copr
+          mkdir -p ~/.config
           echo "${{ secrets.COPR_API_TOKEN_CONFIG }}" > ~/.config/copr
 
       - name: Determine version
