@@ -56,4 +56,4 @@ jobs:
 
           rpmbuild -bs "$RPMHOME/SPECS/chegi.spec" --define "_sourcedir $RPMHOME/SOURCES" --define "_srcrpmdir /tmp"
 
-          eval copr-cli build --nowait $CHROOTS alwer/cheGi /tmp/python-chegi-$VER-1.src.rpm
+          eval copr-cli build --nowait $CHROOTS alwer/cheGi /tmp/python-chegi-$VER-*.src.rpm
