@@ -35,13 +35,77 @@ jobs:
           SHA=$(curl -sL "https://github.com/Ad-alwer/cheGi/releases/download/${{ steps.release.outputs.tag }}/chegi_${{ steps.release.outputs.version }}_windows_amd64.msi" | sha256sum | cut -d' ' -f1)
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
 
-      - name: Submit manifest to winget-pkgs
-        uses: vedantmgoyal2009/winget-releaser@v2
-        with:
-          identifier: Ad-alwer.cheGi
-          installers: |
-            - arch: x64
-              url: https://github.com/Ad-alwer/cheGi/releases/download/${{ steps.release.outputs.tag }}/chegi_${{ steps.release.outputs.version }}_windows_amd64.msi
-              sha256: ${{ steps.msi.outputs.sha256 }}
-              installer-type: msi
-          token: ${{ secrets.WINGET_TOKEN }}
+      - name: Create winget manifest
+        run: |
+          VER="${{ steps.release.outputs.version }}"
+          SHA="${{ steps.msi.outputs.sha256 }}"
+          mkdir -p manifests/a/Ad-alwer/cheGi/$VER
+
+          cat > manifests/a/Ad-alwer/cheGi/$VER/Ad-alwer.cheGi.yaml << EOF
+          PackageIdentifier: Ad-alwer.cheGi
+          PackageVersion: $VER
+          PackageName: cheGi
+          Publisher: Alwer
+          ShortDescription: The ultimate Git companion. Type less, do more.
+          License: MIT
+          PackageUrl: https://github.com/Ad-alwer/cheGi
+          Tags:
+          - git
+          - cli
+          - productivity
+          - developer-tools
+          EOF
+
+          cat > manifests/a/Ad-alwer/cheGi/$VER/Ad-alwer.cheGi.installer.yaml << EOF
+          PackageIdentifier: Ad-alwer.cheGi
+          PackageVersion: $VER
+          Installers:
+          - Architecture: x64
+            InstallerType: msi
+            InstallerUrl: https://github.com/Ad-alwer/cheGi/releases/download/v$VER/chegi_${VER}_windows_amd64.msi
+            InstallerSha256: $SHA
+
+          ManifestType: installer
+          ManifestVersion: 1.6.0
+          EOF
+
+          cat > manifests/a/Ad-alwer/cheGi/$VER/Ad-alwer.cheGi.locale.en-US.yaml << EOF
+          PackageIdentifier: Ad-alwer.cheGi
+          PackageVersion: $VER
+          PackageLocale: en-US
+          Publisher: Alwer
+          PackageName: cheGi
+          License: MIT
+          ShortDescription: The ultimate Git companion. Type less, do more.
+          Tags:
+          - git
+          - cli
+          - productivity
+          - developer-tools
+          ManifestType: defaultLocale
+          ManifestVersion: 1.6.0
+          EOF
+
+      - name: Create PR to winget-pkgs
+        env:
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          VER="${{ steps.release.outputs.version }}"
+
+          gh repo fork microsoft/winget-pkgs --clone --default-branch-only
+
+          cp -r manifests winget-pkgs/manifests/a/Ad-alwer/cheGi/$VER
+
+          cd winget-pkgs
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git checkout -b chegi-$VER
+          git add manifests/a/Ad-alwer/cheGi/$VER
+          git commit -m "New package: Ad-alwer.cheGi version $VER"
+          git push -u origin chegi-$VER
+
+          gh pr create \
+            --repo microsoft/winget-pkgs \
+            --head Ad-alwer:chegi-$VER \
+            --title "New package: Ad-alwer.cheGi version $VER" \
+            --body "Submitting cheGi v$VER to winget-pkgs.\n\nPackage: https://github.com/Ad-alwer/cheGi"
