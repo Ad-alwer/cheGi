@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
 
 jobs:
   test:
@@ -35,6 +36,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      packages: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -73,6 +75,14 @@ jobs:
             echo "Version $VERSION not found on PyPI — will publish"
           fi
 
-      - name: Publish to PyPI
+      - name: Publish to PyPI (public)
         if: steps.check_pypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish to GitHub Packages (PyPI)
+        if: steps.check_pypi.outputs.exists != 'true'
+        run: |
+          pip install twine
+          twine upload --repository-url https://pypi.pkg.github.com/Ad-alwer/ \
+            -u __token__ -p "${{ secrets.GITHUB_TOKEN }}" \
+            dist/*.tar.gz dist/*.whl
