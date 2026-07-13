@@ -20,9 +20,11 @@ class ChegiConfig:
 
         Args:
             base_path (str, optional): The base directory where the `.chegi.json`
-                configuration file is located. Defaults to ".".
+                or `.chegi/config.json` configuration file is located. Defaults to ".".
         """
-        self.config_file: Path = Path(base_path) / ".chegi.json"
+        self.base_path: Path = Path(base_path).resolve()
+        self.config_file: Path = self.base_path / ".chegi.json"
+        self.project_config_file: Path = self.base_path / ".chegi" / "config.json"
 
         # Core state is managed by the data class model
         self._state = ChegiConfigModel()
@@ -62,35 +64,47 @@ class ChegiConfig:
     # --- Core Methods ---
 
     def load(self) -> None:
-        """Loads configuration from the `.chegi.json` file if it exists.
+        """Loads configuration from `.chegi.json` and/or `.chegi/config.json`.
 
-        Reads the JSON file and updates the internal state (`_state`).
-        Ignores JSON decoding errors if the file is malformed.
+        Reads the JSON files and updates the internal state (`_state`).
+        Values in `.chegi/config.json` take precedence over `.chegi.json`.
+        Ignores JSON decoding errors if a file is malformed.
         """
-        if self.config_file.exists() and self.config_file.is_file():
-            try:
-                with open(self.config_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+        self._load_config_file(self.config_file)
 
-                    if "exclude_dirs" in data:
-                        self._state.exclude_dirs.clear()
-                        self._state.exclude_dirs.update(data["exclude_dirs"])
+        if self.project_config_file.exists() and self.project_config_file.is_file():
+            self._load_config_file(self.project_config_file)
 
-                    self._state.max_depth = data.get("max_depth", self._state.max_depth)
-                    self._state.mcts = data.get("mcts", self._state.mcts)
+    def _load_config_file(self, config_path: Path) -> None:
+        """Loads and applies settings from a single JSON config file.
 
-                    loaded_mirrors = data.get("mirrors", {})
-                    if isinstance(loaded_mirrors, dict):
-                        for pm, urls in loaded_mirrors.items():
-                            if pm in SUPPORTED_PMS:
-                                if isinstance(urls, str):
-                                    self._state.mirrors[pm] = [urls]
-                                elif isinstance(urls, list):
-                                    self._state.mirrors[pm] = [
-                                        str(u) for u in urls if u
-                                    ]
-            except json.JSONDecodeError:
-                pass
+        Args:
+            config_path: Path to the JSON config file.
+        """
+        if not config_path.is_file():
+            return
+
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+                if "exclude_dirs" in data:
+                    self._state.exclude_dirs.clear()
+                    self._state.exclude_dirs.update(data["exclude_dirs"])
+
+                self._state.max_depth = data.get("max_depth", self._state.max_depth)
+                self._state.mcts = data.get("mcts", self._state.mcts)
+
+                loaded_mirrors = data.get("mirrors", {})
+                if isinstance(loaded_mirrors, dict):
+                    for pm, urls in loaded_mirrors.items():
+                        if pm in SUPPORTED_PMS:
+                            if isinstance(urls, str):
+                                self._state.mirrors[pm] = [urls]
+                            elif isinstance(urls, list):
+                                self._state.mirrors[pm] = [str(u) for u in urls if u]
+        except json.JSONDecodeError:
+            pass
 
     def save(self) -> None:
         """Saves the current configuration state to the `.chegi.json` file.

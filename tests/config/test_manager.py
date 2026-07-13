@@ -200,3 +200,46 @@ def test_add_mirrors_from_string_empty_and_spaces(tmp_path: Path) -> None:
     config.add_mirrors_from_string("pip=https://pypi.org,  ,  npm=https://npm.js  ")
     assert "https://pypi.org" in config.get_mirror("pip")
     assert "https://npm.js" in config.get_mirror("npm")
+
+
+def test_load_project_config_overrides_dot_chegi_json(tmp_path: Path) -> None:
+    """Tests that `.chegi/config.json` values override `.chegi.json` values."""
+    # Write a .chegi.json with some values
+    chegi_json = tmp_path / ".chegi.json"
+    chegi_json.write_text(
+        json.dumps({"max_depth": 1, "mcts": 5, "exclude_dirs": ["node_modules"]}),
+        encoding="utf-8",
+    )
+
+    # Write .chegi/config.json with overrides
+    chegi_dir = tmp_path / ".chegi"
+    chegi_dir.mkdir()
+    project_config = chegi_dir / "config.json"
+    project_config.write_text(
+        json.dumps({"max_depth": 10, "exclude_dirs": ["build"]}),
+        encoding="utf-8",
+    )
+
+    config = ChegiConfig(base_path=str(tmp_path))
+    # max_depth should come from .chegi/config.json (override)
+    assert config.max_depth == 10
+    # mcts should come from .chegi.json (not overridden)
+    assert config.mcts == 5
+    # exclude_dirs should come from .chegi/config.json (override)
+    assert "build" in config.exclude_dirs
+    assert "node_modules" not in config.exclude_dirs
+
+
+def test_load_project_config_only(tmp_path: Path) -> None:
+    """Tests that ChegiConfig loads from `.chegi/config.json` when no `.chegi.json` exists."""
+    chegi_dir = tmp_path / ".chegi"
+    chegi_dir.mkdir()
+    project_config = chegi_dir / "config.json"
+    project_config.write_text(
+        json.dumps({"max_depth": 7, "mcts": 15}),
+        encoding="utf-8",
+    )
+
+    config = ChegiConfig(base_path=str(tmp_path))
+    assert config.max_depth == 7
+    assert config.mcts == 15
