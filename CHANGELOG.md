@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `chegi commit` command — secure replacement for `git commit` with:
+  - Auto `SecurityGuard` scan on staged files before each commit
+  - Styled diff display with brand-colored file names
+  - Questionary guided flow with 5 commit styles (Free, Conventional, Scope, Body, Gitmoji)
+  - `--ch` / `--chegi-header` flag for brand signature (` 🐆`) on subject line
+  - One-time brand hint on first single-line interactive commit
+  - Extensible commit styles via `.chegi/commit-styles.json`
+  - Last-used style persistence in `~/.config/chegi/prefs.json`
+  - Interactive sensitive file handling (unstage/force/abort)
+- `CommitService` — core service with `build_message()` (style→message builder) and `apply_brand_suffix()`
+- `CommitStyle` dataclass for defining commit message formats
+- `CommitStyleManager` — manages style preferences, hints, and custom styles
+- `BRAND_SUFFIX` and `BUILTIN_STYLES` constants
+- Documentation at `docs/commands/commit.md`
+- 35+ tests for commit service and CLI
 - `.chegi/` project directory infrastructure with `chegi init` command
   - `config.json` — per-project configuration overrides
   - `guard-rules.json` — custom sensitive file patterns

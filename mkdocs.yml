@@ -56,6 +56,7 @@ nav:
       - Configuration: configuration.md
       - Security: security.md
   - Commands:
+      - commit: commands/commit.md
       - scan: commands/scan.md
       - guard: commands/guard.md
       - sync: commands/sync.md

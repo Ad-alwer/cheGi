@@ -1,7 +1,17 @@
 import typer
 
 # Import command modules
-from chegi.cli.commands import config, gitignore, guard, init, reword, scan, setup, sync
+from chegi.cli.commands import (
+    commit,
+    config,
+    gitignore,
+    guard,
+    init,
+    reword,
+    scan,
+    setup,
+    sync,
+)
 
 # Import the preflight orchestrator
 from chegi.cli.core.preflight import run_preflight_checks
@@ -28,6 +38,7 @@ app.add_typer(scan.app, name="scan")
 app.add_typer(reword.app, name="reword")
 app.add_typer(guard.app, name="guard")
 app.add_typer(init.app, name="init")
+app.add_typer(commit.app, name="commit")
 app.add_typer(gitignore.app, name="gitignore")
 
 

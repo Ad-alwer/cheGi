@@ -93,6 +93,15 @@ ci(release): add GitHub Actions workflow for automated builds
 - Never use `shell=True` — always use command lists and `shlex`
 - Don't replace environment variables — merge with `os.environ.copy()`
 
+## UX Philosophy
+
+- **questionary-first**: All interactive CLI commands MUST use `questionary` for step-by-step guided flows
+- User should never face a bare prompt — always provide context, suggestions, and previews
+- Guided flow (no flags) walks the user through the process; flags provide fast-path for power users
+- Every interactive step should have clear defaults, validation, and a way to go back
+- Brand elements (🐆, mascot, colors) should be present but not overwhelming
+- The goal: "Type less, do more" — make the user feel assisted, not questioned
+
 ## Security
 
 - Never `shell=True` in `subprocess.run` (except truly necessary with controlled input)
