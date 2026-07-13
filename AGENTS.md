@@ -64,10 +64,13 @@ ci(release): add GitHub Actions workflow for automated builds
 - After approval, stage and commit only when told to
 - After fixing a GitHub issue: comment with the fix summary + closing commit hash, then close the issue
 
-## Changelog
+## Changelog (CRITICAL)
 
-- Update `CHANGELOG.md` (Keep a Changelog format) with each notable change
-- Every version bump needs a new dated entry in CHANGELOG.md
+- **EVERY notable change** (feat/fix/refactor) MUST have a corresponding entry in `CHANGELOG.md`
+- Format: Keep a Changelog (`## [version] - YYYY-MM-DD`, sections: `Added` / `Changed` / `Fixed` / `Removed`)
+- Every version bump MUST get a new dated entry
+- NEVER skip or forget changelog — this is enforced as a pre-commit gate
+- **Before any commit**: verify CHANGELOG.md has been updated for the change being committed
 
 ## Testing
 
@@ -75,9 +78,12 @@ ci(release): add GitHub Actions workflow for automated builds
 - Every CLI change needs `CliRunner` tests
 - Tests must be added wherever new functionality or bug fixes are introduced
 - Test coverage must remain high — don't leave untested paths
-- Before commit: `pytest -v` (all pass)
-- Before commit: `ruff check src tests` (no errors)
-- Before commit: `ruff format src tests` (no issues)
+- **BEFORE COMMIT CHECKLIST (ALL MUST PASS):**
+  - `pytest -v` (all pass)
+  - `ruff check src tests` (no errors)
+  - `ruff format src tests` (no issues)
+  - `mkdocs build --strict` (no broken links)
+  - **`CHANGELOG.md` updated for this change**
 
 ## Architecture
 
