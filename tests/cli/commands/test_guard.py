@@ -101,3 +101,96 @@ def test_guard_display_command_quotes_filenames(
     assert result.exit_code == 1
     assert "WARNING: Sensitive files detected" in result.stdout
     assert "git rm --cached .env 'file; rm -rf /' '$(whoami).txt'" in result.stdout
+
+
+@patch("chegi.cli.commands.guard.GuardHistoryService.print_findings")
+@patch("chegi.cli.commands.guard.GuardHistoryService")
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+def test_guard_history_subcommand(
+    mock_is_valid: MagicMock,
+    mock_history_cls: MagicMock,
+    mock_print: MagicMock,
+):
+    """Tests guard history subcommand scans and prints findings."""
+    mock_is_valid.return_value = True
+    mock_instance = mock_history_cls.return_value
+    mock_result = MagicMock()
+    mock_result.findings = []
+    mock_result.total_commits_scanned = 10
+    mock_result.total_findings = 0
+    mock_instance.scan.return_value = mock_result
+
+    result = runner.invoke(app, ["guard", "history"])
+
+    assert result.exit_code == 0
+    mock_instance.scan.assert_called_once()
+    mock_print.assert_called_once_with(mock_result)
+
+
+@patch("chegi.cli.commands.guard.GuardHistoryService.print_findings")
+@patch("chegi.cli.commands.guard.GuardHistoryService.generate_report")
+@patch("chegi.cli.commands.guard.GuardHistoryService")
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+def test_guard_history_with_report(
+    mock_is_valid: MagicMock,
+    mock_history_cls: MagicMock,
+    mock_report: MagicMock,
+    mock_print: MagicMock,
+):
+    """Tests guard history --report generates an HTML report."""
+    mock_is_valid.return_value = True
+    mock_instance = mock_history_cls.return_value
+    mock_result = MagicMock()
+    mock_result.findings = [MagicMock()]
+    mock_result.total_commits_scanned = 10
+    mock_result.total_findings = 1
+    mock_instance.scan.return_value = mock_result
+
+    result = runner.invoke(app, ["guard", "history", "--report"])
+
+    assert result.exit_code == 0
+    mock_instance.scan.assert_called_once()
+    mock_report.assert_called_once()
+
+
+@patch("chegi.cli.commands.guard._handle_history_removal")
+@patch("chegi.cli.commands.guard.GuardHistoryService.print_findings")
+@patch("chegi.cli.commands.guard.GuardHistoryService")
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+def test_guard_history_with_fix(
+    mock_is_valid: MagicMock,
+    mock_history_cls: MagicMock,
+    mock_print: MagicMock,
+    mock_removal: MagicMock,
+):
+    """Tests guard history --fix calls the removal handler."""
+    mock_is_valid.return_value = True
+    mock_instance = mock_history_cls.return_value
+    mock_result = MagicMock()
+    mock_result.findings = [MagicMock()]
+    mock_result.total_commits_scanned = 10
+    mock_result.total_findings = 1
+    mock_instance.scan.return_value = mock_result
+
+    result = runner.invoke(app, ["guard", "history", "--fix"])
+
+    assert result.exit_code == 0
+    mock_instance.scan.assert_called_once()
+    mock_removal.assert_called_once()
+
+
+@patch("chegi.cli.commands.guard.GuardHistoryService.print_findings")
+@patch("chegi.cli.commands.guard.GuardHistoryService")
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+def test_guard_history_fails_not_in_repo(
+    mock_is_valid: MagicMock,
+    mock_history_cls: MagicMock,
+    mock_print: MagicMock,
+):
+    """Tests guard history fails when not in a git repo."""
+    mock_is_valid.return_value = False
+
+    result = runner.invoke(app, ["guard", "history"])
+
+    assert result.exit_code == 1
+    assert "fatal: not a git repository" in result.stdout.lower()

@@ -18,10 +18,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `InitService` for creating and loading cheGi projects
 - `InitService.find_project_root()` walks up directories to locate `.chegi/`
 - Full test coverage for init service (14 tests), CLI (5 tests), and config merging (2 tests)
+- `chegi guard history` subcommand — scan Git history for secrets across all branches
+- `chegi guard history --report` — generate HTML report of history scan findings
+- `chegi guard history --fix` — remove detected files from Git history via `git filter-branch`
+  - Shows red DESTRUCTIVE ACTION warnings before execution
+  - Lists all affected files and exact commands to run
+  - Requires explicit user confirmation (`--fix` alone is not enough)
+  - Executes removal per-file and reports success/failure
+  - Shows force-push instructions after completion
+- `GuardHistoryService` for scanning Git history with filename-based pattern matching
+- `GuardHistoryService.remove_file_from_history()` method for programmatic removal
+- History scan respects `.chegi/guard-rules.json` custom patterns and `.chegiignore` excludes
+- HTML report with dark theme, commit details, and per-finding breakdown
+- 14 tests for history scanning service, 4 tests for CLI history subcommand
 
 ### Changed
 
 - AGENTS.md: enforced changelog updates as pre-commit requirement with CRITICAL section
+- `guard --history` / `--report` / `--auto-remove` flags replaced by `guard history` subcommand with `--report` and `--fix` flags
 
 ## [0.3.1] - 2026-07-11
 
