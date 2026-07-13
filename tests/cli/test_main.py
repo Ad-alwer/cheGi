@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from typer.testing import CliRunner
 
-from chegi.cli.main import app, global_setup
+from chegi.cli.main import __version__, app, global_setup
 
 runner = CliRunner()
 
@@ -50,7 +50,20 @@ def test_no_args_is_help(mock_run_preflight):
 def test_global_setup_callback(mock_run_preflight):
     """Test that the global callback executes the preflight checks."""
     # Call the callback directly to unit test its behavior
-    global_setup()
+    global_setup(version=False)
 
     # Verify the preflight orchestrator was called exactly once
     mock_run_preflight.assert_called_once()
+
+
+def test_version_flag():
+    """Test that --version and -v show the version and exit."""
+    result_long = runner.invoke(app, ["--version"])
+    assert result_long.exit_code == 0
+    assert "cheGi" in result_long.stdout
+    assert __version__ in result_long.stdout
+
+    result_short = runner.invoke(app, ["-v"])
+    assert result_short.exit_code == 0
+    assert "cheGi" in result_short.stdout
+    assert __version__ in result_short.stdout

@@ -1,3 +1,5 @@
+from importlib.metadata import PackageNotFoundError, version
+
 import typer
 
 # Import command modules
@@ -19,6 +21,11 @@ from chegi.cli.core.preflight import run_preflight_checks
 # Import the first-run wizard
 from chegi.services.wizard import WizardService
 
+try:
+    __version__ = version("chegi")
+except PackageNotFoundError:
+    __version__ = "0.0.0"
+
 app = typer.Typer(
     help=(
         "cheGi - The ultimate Git companion. Type less, do more.\n\n"
@@ -27,6 +34,7 @@ app = typer.Typer(
         "your branches synchronized without the usual boilerplate."
     ),
     rich_markup_mode="rich",
+    invoke_without_command=True,
     no_args_is_help=True,
 )
 
@@ -43,12 +51,24 @@ app.add_typer(gitignore.app, name="gitignore")
 
 
 @app.callback()
-def global_setup() -> None:
+def global_setup(
+    version: bool = typer.Option(
+        False, "--version", "-v", help="Show the version and exit.", is_eager=True
+    ),
+) -> None:
     """Global setup executed before any command is routed.
 
     Runs essential preflight system checks (e.g., Git installation)
     and the first-run wizard for new users.
     """
+    if version:
+        from rich.console import Console
+
+        console = Console()
+        console.print(f"[bold gold1]cheGi[/bold gold1] [white]v{__version__}[/white]")
+        console.print("[dim]The ultimate Git companion. Type less, do more.[/dim]")
+        raise typer.Exit()
+
     run_preflight_checks()
     WizardService().execute()
 

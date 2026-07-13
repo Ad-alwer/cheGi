@@ -29,6 +29,21 @@ chegi gitignore --commit
 chegi config list
 ```
 
+## Global Options
+
+These flags are available on every `chegi` command.
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--version` | `-v` | Show the cheGi version and exit |
+
+**Example:**
+
+```bash
+chegi --version
+chegi -v
+```
+
 ## Configuration
 
 Workspace settings are stored in `.chegi.json`.

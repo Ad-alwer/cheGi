@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage for init service (14 tests), CLI (5 tests), and config merging (2 tests)
 - `chegi guard history` subcommand — scan Git history for secrets across all branches
 - `chegi guard history --report` — generate HTML report of history scan findings
+- `--version` / `-v` global flag to show cheGi version and exit
 - `chegi guard history --fix` — remove detected files from Git history via `git filter-branch`
   - Shows red DESTRUCTIVE ACTION warnings before execution
   - Lists all affected files and exact commands to run
