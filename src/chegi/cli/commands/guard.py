@@ -2,7 +2,7 @@
 
 import shlex
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 import typer
 from typing_extensions import Annotated
@@ -11,7 +11,9 @@ from chegi.services.git.client import GitClient
 from chegi.services.guard import GuardHistoryService, SecurityGuard
 from chegi.ui import TerminalUI, console
 
-app = typer.Typer(help="Check staged files or Git history for sensitive data.")
+app = typer.Typer(
+    help="Check staged files, directory trees, or Git history for sensitive data."
+)
 
 
 @app.callback(invoke_without_command=True)
@@ -25,16 +27,44 @@ def guard(
             help="Automatically unstage sensitive files without prompting",
         ),
     ] = False,
+    strict: Annotated[
+        bool,
+        typer.Option(
+            "--strict",
+            "-S",
+            help="Scan both staged and unstaged files; auto-unstage sensitive staged files",
+        ),
+    ] = False,
+    scan: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--scan",
+            help="Recursively scan a directory for sensitive files (no Git repo required)",
+            exists=True,
+            file_okay=False,
+            dir_okay=True,
+            readable=True,
+        ),
+    ] = None,
 ) -> None:
-    """Check staged files or Git history for sensitive data.
+    """Check staged files, directory trees, or Git history for sensitive data.
 
-    Scans currently staged files against known sensitive patterns (e.g., .env, keys).
-    If sensitive files are detected, it can automatically unstage them or prompt
-    the user for action.
+    Scans files against known sensitive patterns (e.g., .env, keys, .pem).
+    Detected sensitive files can be automatically unstaged.
 
     Use [bold]chegi guard history[/bold] to scan Git history for secrets.
     """
     if ctx.invoked_subcommand is not None:
+        return
+
+    # --scan mode: directory scan, no Git repo needed
+    if scan is not None:
+        _handle_scan(scan)
+        return
+
+    # --strict mode: staged + unstaged
+    if strict:
+        _handle_strict(fix)
         return
 
     console.print("[dim]🔒 Running Security Guard...[/dim]")
@@ -59,6 +89,86 @@ def guard(
         console.print(
             "[bold green]✅ Security check passed. No sensitive files found in staging.[/bold green]"
         )
+
+
+def _handle_strict(fix: bool) -> None:
+    """Handles --strict mode: scans staged + unstaged, auto-unstages staged sensitive files.
+
+    Args:
+        fix: If True, skip confirmation prompt for unstaging.
+    """
+    console.print("[dim]🔒 Running Security Guard (strict mode)...[/dim]")
+
+    git_client = GitClient(Path.cwd())
+    if not git_client.is_valid_repo():
+        TerminalUI.print_error(
+            "fatal: not a git repository (or any of the parent directories): .git"
+        )
+        raise typer.Exit(code=1)
+
+    staged_result, unstaged_result = SecurityGuard.scan_strict()
+
+    has_sensitive_staged = not staged_result.is_safe
+    has_sensitive_unstaged = not unstaged_result.is_safe
+
+    if has_sensitive_staged:
+        console.print(
+            "\n[bold red]⚠️  Sensitive files detected in staging area![/bold red]"
+        )
+        for f in staged_result.sensitive_files:
+            console.print(f"  [red]  staged: {f}[/red]")
+
+        if fix or typer.confirm("Automatically unstage these files?"):
+            success = SecurityGuard.unstage_files(staged_result.sensitive_files)
+            if success:
+                console.print(
+                    "[bold green]✅ Files successfully unstaged.[/bold green]"
+                )
+            else:
+                TerminalUI.print_error("Failed to unstage files.")
+
+    if has_sensitive_unstaged:
+        console.print(
+            "\n[bold yellow]⚠️  Sensitive files detected in working directory (not staged):[/bold yellow]"
+        )
+        for f in unstaged_result.sensitive_files:
+            console.print(f"  [yellow]  {f}[/yellow]")
+        console.print(
+            "\n[yellow]Run [bold]chegi guard --scan .[/bold] for a full directory scan.[/yellow]"
+        )
+
+    if not has_sensitive_staged and not has_sensitive_unstaged:
+        console.print(
+            "[bold green]✅ Strict security check passed. No sensitive files found.[/bold green]"
+        )
+
+    if has_sensitive_staged or has_sensitive_unstaged:
+        raise typer.Exit(code=1)
+
+
+def _handle_scan(path: Path) -> None:
+    """Handles --scan mode: recursively scans a directory for sensitive files.
+
+    Args:
+        path: The directory path to scan.
+    """
+    console.print(f"[dim]🔒 Scanning directory: {path}[/dim]")
+
+    result = SecurityGuard.scan_directory(path)
+
+    if result.is_safe:
+        console.print(
+            "[bold green]✅ Directory scan complete. No sensitive files found.[/bold green]"
+        )
+        return
+
+    console.print(
+        f"\n[bold red]⚠️  Found {len(result.sensitive_files)} sensitive file(s):[/bold red]"
+    )
+    for f in result.sensitive_files:
+        console.print(f"  [red]- {f}[/red]")
+
+    raise typer.Exit(code=1)
 
 
 def _handle_sensitive_staged(sensitive_files: List[str], fix: bool) -> None:

@@ -6,16 +6,26 @@ Check staged files or Git history for sensitive data.
 
 ```bash
 chegi guard [OPTIONS]
+chegi guard --strict [OPTIONS]
+chegi guard --scan <path>
 chegi guard history [OPTIONS]
 ```
 
 ## Description
 
-`chegi guard` scans files for sensitive data. It operates in two modes:
+`chegi guard` scans files for sensitive data. It operates in four modes:
 
 ### Staged files scan (default)
 
 Scans files currently in the Git staging area and matches their filenames against known sensitive patterns. If sensitive files are found, cheGi warns you and can automatically unstage them.
+
+### Strict scan (`--strict`)
+
+Scans both staged and unstaged (working directory) files. Sensitive files in staging are auto-unstaged (with confirmation unless `--fix` is used). Unstaged sensitive files are reported as warnings.
+
+### Directory scan (`--scan <path>`)
+
+Recursively scans a directory tree for sensitive files. Does **not** require a Git repository — useful for CI/CD pipelines and pre-merge checks.
 
 ### History scan (`guard history`)
 
@@ -23,11 +33,13 @@ Scans all commits across all branches for sensitive files that were committed in
 
 ## Options
 
-### `chegi guard` (staged files)
+### `chegi guard` (staged / strict / scan)
 
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
 | `--fix` | `-f` | Automatically unstage sensitive files without prompting | `false` |
+| `--strict` | `-S` | Scan staged and unstaged files; auto-unstage sensitive staged files | `false` |
+| `--scan` | | Recursively scan a directory for sensitive files (no Git repo needed) | |
 
 ### `chegi guard history` (history scan)
 
@@ -50,6 +62,28 @@ Non-interactive — auto-unstage for CI or pre-commit hooks:
 
 ```bash
 chegi guard --fix
+```
+
+### Strict mode
+
+Scan staged and unstaged files:
+
+```bash
+chegi guard --strict
+```
+
+Auto-unstage sensitive staged files without prompting:
+
+```bash
+chegi guard --strict --fix
+```
+
+### Directory scan (no Git repo needed)
+
+Recursively scan a project directory for sensitive files:
+
+```bash
+chegi guard --scan ~/projects/my-app
 ```
 
 ### History scan

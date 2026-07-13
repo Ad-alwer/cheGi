@@ -194,3 +194,114 @@ def test_guard_history_fails_not_in_repo(
 
     assert result.exit_code == 1
     assert "fatal: not a git repository" in result.stdout.lower()
+
+
+# --- strict mode tests ---
+
+
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+@patch("chegi.cli.commands.guard.SecurityGuard.scan_strict")
+def test_guard_strict_clean(
+    mock_scan_strict: MagicMock,
+    mock_is_valid: MagicMock,
+):
+    """Test guard --strict passes when no sensitive files exist."""
+    mock_is_valid.return_value = True
+    mock_result_staged = MagicMock(is_safe=True, sensitive_files=[])
+    mock_result_unstaged = MagicMock(is_safe=True, sensitive_files=[])
+    mock_scan_strict.return_value = (mock_result_staged, mock_result_unstaged)
+
+    result = runner.invoke(app, ["guard", "--strict"])
+
+    assert result.exit_code == 0
+    assert "Strict security check passed" in result.stdout
+
+
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+@patch("chegi.cli.commands.guard.SecurityGuard.scan_strict")
+@patch("chegi.cli.commands.guard.SecurityGuard.unstage_files")
+def test_guard_strict_staged_sensitive_with_fix(
+    mock_unstage: MagicMock,
+    mock_scan_strict: MagicMock,
+    mock_is_valid: MagicMock,
+):
+    """Test guard --strict --fix auto-unstages sensitive staged files."""
+    mock_is_valid.return_value = True
+    mock_result_staged = MagicMock(is_safe=False, sensitive_files=[".env"])
+    mock_result_unstaged = MagicMock(is_safe=True, sensitive_files=[])
+    mock_scan_strict.return_value = (mock_result_staged, mock_result_unstaged)
+    mock_unstage.return_value = True
+
+    result = runner.invoke(app, ["guard", "--strict", "--fix"])
+
+    assert result.exit_code == 1
+    assert "Sensitive files detected in staging" in result.stdout
+    assert "Files successfully unstaged" in result.stdout
+
+
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+@patch("chegi.cli.commands.guard.SecurityGuard.scan_strict")
+def test_guard_strict_unstaged_only(
+    mock_scan_strict: MagicMock,
+    mock_is_valid: MagicMock,
+):
+    """Test guard --strict warns about unstaged sensitive files."""
+    mock_is_valid.return_value = True
+    mock_result_staged = MagicMock(is_safe=True, sensitive_files=[])
+    mock_result_unstaged = MagicMock(is_safe=False, sensitive_files=[".env"])
+    mock_scan_strict.return_value = (mock_result_staged, mock_result_unstaged)
+
+    result = runner.invoke(app, ["guard", "--strict"])
+
+    assert result.exit_code == 1
+    assert "Sensitive files detected in working directory" in result.stdout
+
+
+@patch("chegi.cli.commands.guard.GitClient.is_valid_repo")
+@patch("chegi.cli.commands.guard.SecurityGuard.scan_strict")
+def test_guard_strict_fails_not_in_repo(
+    mock_scan_strict: MagicMock,
+    mock_is_valid: MagicMock,
+):
+    """Test guard --strict fails when not in a git repo."""
+    mock_is_valid.return_value = False
+
+    result = runner.invoke(app, ["guard", "--strict"])
+
+    assert result.exit_code == 1
+    assert "fatal: not a git repository" in result.stdout.lower()
+    mock_scan_strict.assert_not_called()
+
+
+# --- scan mode tests ---
+
+
+@patch("chegi.cli.commands.guard.SecurityGuard.scan_directory")
+def test_guard_scan_clean(
+    mock_scan_dir: MagicMock,
+    tmp_path,
+):
+    """Test guard --scan returns clean when no sensitive files found."""
+    mock_scan_dir.return_value = MagicMock(is_safe=True, sensitive_files=[])
+
+    result = runner.invoke(app, ["guard", "--scan", str(tmp_path)])
+
+    assert result.exit_code == 0
+    assert "No sensitive files found" in result.stdout
+
+
+@patch("chegi.cli.commands.guard.SecurityGuard.scan_directory")
+def test_guard_scan_finds_sensitive(
+    mock_scan_dir: MagicMock,
+    tmp_path,
+):
+    """Test guard --scan reports sensitive files."""
+    mock_scan_dir.return_value = MagicMock(
+        is_safe=False, sensitive_files=["/path/.env"]
+    )
+
+    result = runner.invoke(app, ["guard", "--scan", str(tmp_path)])
+
+    assert result.exit_code == 1
+    assert "Found 1 sensitive file(s)" in result.stdout
+    assert ".env" in result.stdout

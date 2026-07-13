@@ -1,7 +1,8 @@
 import fnmatch
+import os
 import subprocess
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from chegi.config import DEFAULT_SENSITIVE_PATTERNS
 from chegi.services.guard.models import GuardScanResult
@@ -24,6 +25,29 @@ class SecurityGuard:
         try:
             result = subprocess.run(
                 ["git", "diff", "--name-only", "--cached"],
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return [line.strip() for line in result.stdout.split("\n") if line.strip()]
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return []
+
+    @staticmethod
+    def get_unstaged_files(repo_path: Optional[Path] = None) -> List[str]:
+        """Retrieves a list of unstaged (modified but not staged) files.
+
+        Args:
+            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
+
+        Returns:
+            List[str]: A list of file paths modified but not staged.
+        """
+        cwd = repo_path if repo_path else Path.cwd()
+        try:
+            result = subprocess.run(
+                ["git", "diff", "--name-only"],
                 cwd=cwd,
                 capture_output=True,
                 text=True,
@@ -100,3 +124,62 @@ class SecurityGuard:
             return GuardScanResult(is_safe=True, sensitive_files=[])
 
         return GuardScanResult(is_safe=False, sensitive_files=sensitive)
+
+    @staticmethod
+    def scan_strict(
+        repo_path: Optional[Path] = None,
+    ) -> Tuple[GuardScanResult, GuardScanResult]:
+        """Scans both staged and unstaged files for sensitive content.
+
+        Args:
+            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
+
+        Returns:
+            Tuple[GuardScanResult, GuardScanResult]: (staged_result, unstaged_result)
+        """
+        cwd = repo_path if repo_path else Path.cwd()
+        staged = SecurityGuard.get_staged_files(cwd)
+        unstaged = SecurityGuard.get_unstaged_files(cwd)
+
+        staged_sensitive = SecurityGuard.find_sensitive_files(staged) if staged else []
+        unstaged_sensitive = (
+            SecurityGuard.find_sensitive_files(unstaged) if unstaged else []
+        )
+
+        staged_result = GuardScanResult(
+            is_safe=len(staged_sensitive) == 0,
+            sensitive_files=staged_sensitive,
+        )
+        unstaged_result = GuardScanResult(
+            is_safe=len(unstaged_sensitive) == 0,
+            sensitive_files=unstaged_sensitive,
+        )
+        return staged_result, unstaged_result
+
+    @staticmethod
+    def scan_directory(path: Path) -> GuardScanResult:
+        """Recursively scans a directory tree for sensitive files.
+        Does not require a Git repository.
+
+        Args:
+            path (Path): The directory path to scan.
+
+        Returns:
+            GuardScanResult: Scan result with all sensitive files found.
+        """
+        if not path.exists():
+            return GuardScanResult(is_safe=True, sensitive_files=[])
+
+        sensitive: List[str] = []
+        for root, dirs, files in os.walk(str(path)):
+            dirs[:] = [d for d in dirs if d != ".git"]
+            for file in files:
+                filepath = os.path.join(root, file)
+                detected = SecurityGuard.find_sensitive_files([filepath])
+                if detected:
+                    sensitive.extend(detected)
+
+        return GuardScanResult(
+            is_safe=len(sensitive) == 0,
+            sensitive_files=sensitive,
+        )

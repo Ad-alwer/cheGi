@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `guard --strict` / `-S` — scan both staged and unstaged files with auto-unstage
+- `guard --scan <path>` — recursive directory scan for sensitive files (no Git repo needed)
+- `SecurityGuard.get_unstaged_files()`, `.scan_strict()`, `.scan_directory()` methods
+- 16 new tests for guard strict/scan modes
+- Documentation for `--strict` and `--scan` in `docs/commands/guard.md`
 - `chegi commit` command — secure replacement for `git commit` with:
   - Auto `SecurityGuard` scan on staged files before each commit
   - Styled diff display with brand-colored file names
@@ -37,7 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `chegi guard history --report` — generate HTML report of history scan findings
 - `--version` / `-v` global flag to show cheGi version and exit
 - `chegi guard history --fix` — remove detected files from Git history via `git filter-branch`
-  - Shows red DESTRUCTIVE ACTION warnings before execution
   - Lists all affected files and exact commands to run
   - Requires explicit user confirmation (`--fix` alone is not enough)
   - Executes removal per-file and reports success/failure
