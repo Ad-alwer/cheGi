@@ -1,19 +1,21 @@
 # Configuration Guide
 
-cheGi stores workspace settings in a `.chegi.json` file. This guide explains how configuration works, what each setting does, and how to customize it for your workflow.
+cheGi stores workspace settings in a `.chegi.json` file or a `.chegi/` directory. This guide explains how configuration works, what each setting does, and how to customize it for your workflow.
 
 ## Overview
 
 | Topic | Details |
 |-------|---------|
-| **File name** | `.chegi.json` |
+| **File name** | `.chegi.json` or `.chegi/config.json` |
 | **Format** | JSON |
 | **Scope** | Per workspace directory |
-| **Managed via** | `chegi config` commands or manual editing |
+| **Managed via** | `chegi init`, `chegi config` commands, or manual editing |
 
-Configuration is loaded relative to the path you pass to commands. For example, `chegi scan ~/projects` loads `~/projects/.chegi.json` if it exists.
+Configuration is loaded relative to the path you pass to commands. For example, `chegi scan ~/projects` loads `~/projects/.chegi.json` (and `~/projects/.chegi/config.json`) if they exist.
 
 If no file is present, cheGi uses built-in defaults.
+
+> **Note:** Starting with v0.4.0, cheGi supports a `.chegi/` directory managed via `chegi init`. Settings in `.chegi/config.json` take precedence over `.chegi.json`.
 
 ## File Location
 

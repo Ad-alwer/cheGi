@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `.chegi/` project directory infrastructure with `chegi init` command
+  - `config.json` — per-project configuration overrides
+  - `guard-rules.json` — custom sensitive file patterns
+  - `.chegiignore` — scan exclusion patterns (.gitignore syntax)
+  - Auto-adds `.chegi/` to `.gitignore`
+- Config system now merges `.chegi/config.json` over `.chegi.json` with higher priority
+- `InitService` for creating and loading cheGi projects
+- `InitService.find_project_root()` walks up directories to locate `.chegi/`
+- Full test coverage for init service (14 tests), CLI (5 tests), and config merging (2 tests)
+
+### Changed
+
+- AGENTS.md: enforced changelog updates as pre-commit requirement with CRITICAL section
 
 ## [0.3.1] - 2026-07-11
 

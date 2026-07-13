@@ -61,6 +61,7 @@ nav:
       - sync: commands/sync.md
       - reword: commands/reword.md
       - setup: commands/setup.md
+      - init: commands/init.md
       - gitignore: commands/gitignore.md
       - config: commands/config.md
   - Project:
