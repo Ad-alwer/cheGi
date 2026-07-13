@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `chegi new` command — scaffold complete Git projects from scratch with:
+  - Interactive questionary-first guided flow (project name, tech selection, license, summary confirmation)
+  - Non-interactive mode with `--yes` / `-y` and `--template` / `-t` flags
+  - Git init, `.gitignore` generation (per-technology), `.chegi/` directory, `README.md`, optional `LICENSE`
+  - Automatic initial commit with brand message
+  - Project templates via `--template` (python, node, go, rust, cpp, csharp, ruby)
+  - License options: MIT, Apache 2.0, GNU GPL v3
+- `NewProjectService` — core service for scaffolding projects with:
+  - `NewProjectConfig` and `NewProjectResult` dataclasses
+  - `ProjectAlreadyExistsError`, `GitInitError`, `ProjectCreationError` exceptions
+  - License templates for MIT, Apache 2.0, and GPL v3
+  - Template-to-tech mapping for `--template` flag
+- Full test coverage: 19 service tests + 7 CLI tests
+- Documentation at `docs/commands/new.md`
+
 - `guard --strict` / `-S` — scan both staged and unstaged files with auto-unstage
 - `guard --scan <path>` — recursive directory scan for sensitive files (no Git repo needed)
 - `SecurityGuard.get_unstaged_files()`, `.scan_strict()`, `.scan_directory()` methods

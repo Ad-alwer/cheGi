@@ -14,6 +14,7 @@ from chegi.cli.commands import (
     setup,
     sync,
 )
+from chegi.cli.commands.new import new_cmd
 
 # Import the preflight orchestrator
 from chegi.cli.core.preflight import run_preflight_checks
@@ -48,6 +49,7 @@ app.add_typer(guard.app, name="guard")
 app.add_typer(init.app, name="init")
 app.add_typer(commit.app, name="commit")
 app.add_typer(gitignore.app, name="gitignore")
+app.command(name="new")(new_cmd)
 
 
 @app.callback()
