@@ -31,6 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - History scan respects `.chegi/guard-rules.json` custom patterns and `.chegiignore` excludes
 - HTML report with dark theme, commit details, and per-finding breakdown
 - 14 tests for history scanning service, 4 tests for CLI history subcommand
+- First-run wizard (`WizardService`) — auto-triggers on first `chegi` command
+  - Shows welcome banner with ASCII art cheGi logo
+  - Checks Git installation
+  - Checks Git identity (`user.name`, `user.email`)
+  - Interactive prompt to configure Git identity if not set
+  - Offers to create `.chegi/` project directory via `InitService`
+  - Writes `~/.config/chegi/wizard_done` marker to run only once
+  - Skips automatically when not in a TTY (CI, piped commands)
+- 11 tests for wizard service
 
 ### Changed
 
