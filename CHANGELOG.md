@@ -35,6 +35,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Remote sync status (ahead/behind vs upstream)
 - Full test coverage: 34 service tests + 5 CLI tests
 - Documentation at `docs/commands/doctor.md`
+- `chegi hooks` command — manage Git hooks with automatic guard scanning:
+  - `chegi hooks install` — installs a pre-commit hook that runs `chegi guard --fix`
+    before every commit, auto-unstagging sensitive files and aborting the commit
+  - `chegi hooks remove` — removes the cheGi pre-commit hook (non-cheGi hooks left untouched)
+  - `--force` / `-f` flag to overwrite existing hooks
+  - `--path` / `-p` flag for targeting specific repositories
+- `HooksService` with `HookInfo` model, `HookInstallError`, `HookRemoveError` exceptions
+  - Safe install with existing hook detection (non-cheGi hooks preserved)
+  - Marker-based identification of cheGi hooks via `# cheGi pre-commit hook` comment
+- Full test coverage: 15 service tests + 7 CLI tests
+- Documentation at `docs/commands/hooks.md`
 
 - `guard --strict` / `-S` — scan both staged and unstaged files with auto-unstage
 - `guard --scan <path>` — recursive directory scan for sensitive files (no Git repo needed)

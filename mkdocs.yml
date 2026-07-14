@@ -57,14 +57,17 @@ nav:
       - Security: security.md
   - Commands:
       - commit: commands/commit.md
-      - scan: commands/scan.md
-      - guard: commands/guard.md
-      - sync: commands/sync.md
-      - reword: commands/reword.md
-      - setup: commands/setup.md
-      - init: commands/init.md
-      - gitignore: commands/gitignore.md
       - config: commands/config.md
+      - doctor: commands/doctor.md
+      - gitignore: commands/gitignore.md
+      - guard: commands/guard.md
+      - hooks: commands/hooks.md
+      - init: commands/init.md
+      - new: commands/new.md
+      - reword: commands/reword.md
+      - scan: commands/scan.md
+      - setup: commands/setup.md
+      - sync: commands/sync.md
   - Project:
       - Contributing: https://github.com/Ad-alwer/cheGi/blob/main/CONTRIBUTING.md
       - Changelog: https://github.com/Ad-alwer/cheGi/blob/main/CHANGELOG.md

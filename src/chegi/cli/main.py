@@ -9,6 +9,7 @@ from chegi.cli.commands import (
     doctor,
     gitignore,
     guard,
+    hooks,
     init,
     reword,
     scan,
@@ -52,6 +53,7 @@ app.add_typer(commit.app, name="commit")
 app.add_typer(gitignore.app, name="gitignore")
 app.command(name="new")(new_cmd)
 app.add_typer(doctor.app, name="doctor")
+app.add_typer(hooks.app, name="hooks")
 
 
 @app.callback()
