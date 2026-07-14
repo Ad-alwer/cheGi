@@ -23,6 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Template-to-tech mapping for `--template` flag
 - Full test coverage: 19 service tests + 7 CLI tests
 - Documentation at `docs/commands/new.md`
+- `chegi doctor` command — comprehensive project health check with:
+  - Health checks: Git installation, identity, .gitignore, .chegi/ config
+  - Security checks: staged sensitive files, .env tracking, pre-commit hooks
+  - Stats checks: commit count, branches, remote status
+  - Color-coded Rich output: green (pass), yellow (warn), red (fail)
+  - Actionable suggestions for each issue found
+- `DoctorService` with `DoctorReport`, `CheckResult`, `CheckCategory`, `CheckStatus` models
+  - History secrets scan via `GuardHistoryService`
+  - Contributor count via `git shortlog`
+  - Remote sync status (ahead/behind vs upstream)
+- Full test coverage: 34 service tests + 5 CLI tests
+- Documentation at `docs/commands/doctor.md`
 
 - `guard --strict` / `-S` — scan both staged and unstaged files with auto-unstage
 - `guard --scan <path>` — recursive directory scan for sensitive files (no Git repo needed)
