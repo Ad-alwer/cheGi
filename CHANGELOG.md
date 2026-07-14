@@ -36,15 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Full test coverage: 34 service tests + 5 CLI tests
 - Documentation at `docs/commands/doctor.md`
 - `chegi hooks` command — manage Git hooks with automatic guard scanning:
-  - `chegi hooks install` — installs a pre-commit hook that runs `chegi guard --fix`
-    before every commit, auto-unstagging sensitive files and aborting the commit
-  - `chegi hooks remove` — removes the cheGi pre-commit hook (non-cheGi hooks left untouched)
+  - `chegi hooks install` — installs a guard hook (pre-commit by default, `--pre-push` for pre-push)
+  - `chegi hooks remove` — removes the cheGi hook (non-cheGi hooks left untouched)
+  - `chegi hooks status` — check installation status with file path
+  - `--pre-push` flag for all subcommands to target pre-push hooks
   - `--force` / `-f` flag to overwrite existing hooks
   - `--path` / `-p` flag for targeting specific repositories
-- `HooksService` with `HookInfo` model, `HookInstallError`, `HookRemoveError` exceptions
-  - Safe install with existing hook detection (non-cheGi hooks preserved)
-  - Marker-based identification of cheGi hooks via `# cheGi pre-commit hook` comment
-- Full test coverage: 15 service tests + 7 CLI tests
+- `HooksService` with `HookType` enum, `HookInfo` model, `HookInstallError`, `HookRemoveError` exceptions
+  - Generic `install(hook_type, force)`, `remove(hook_type)`, `is_installed(hook_type)` API
+  - Marker-based identification via per-type cheGi markers
+  - Pre-push hook template checks staged files AND unpushed commits
+- Full test coverage: 22 service tests + 12 CLI tests
 - Documentation at `docs/commands/hooks.md`
 
 - `guard --strict` / `-S` — scan both staged and unstaged files with auto-unstage

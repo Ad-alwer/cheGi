@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 from typer.testing import CliRunner
 
 from chegi.cli.main import app
+from chegi.services.hooks import HookType
 from chegi.services.hooks.exceptions import HookInstallError, HookRemoveError
 
 runner = CliRunner()
@@ -13,6 +14,8 @@ runner = CliRunner()
 
 class TestHooksCli:
     """Tests for the chegi hooks CLI command."""
+
+    # --- install ---
 
     @patch("chegi.cli.commands.hooks.HooksService")
     def test_hooks_install_success(
@@ -40,7 +43,26 @@ class TestHooksCli:
             app, ["hooks", "install", "--path", str(tmp_path), "--force"]
         )
         assert result.exit_code == 0
-        mock_service.return_value.install.assert_called_once_with(force=True)
+        mock_service.return_value.install.assert_called_once_with(
+            hook_type=HookType.PRE_COMMIT, force=True
+        )
+
+    @patch("chegi.cli.commands.hooks.HooksService")
+    def test_hooks_install_with_pre_push(
+        self, mock_service: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test that chegi hooks install --pre-push passes PRE_PUSH type."""
+        mock_service.return_value.install.return_value = (
+            tmp_path / ".git" / "hooks" / "pre-push"
+        )
+
+        result = runner.invoke(
+            app, ["hooks", "install", "--path", str(tmp_path), "--pre-push"]
+        )
+        assert result.exit_code == 0
+        mock_service.return_value.install.assert_called_once_with(
+            hook_type=HookType.PRE_PUSH, force=False
+        )
 
     @patch("chegi.cli.commands.hooks.HooksService")
     def test_hooks_install_failure(
@@ -53,6 +75,8 @@ class TestHooksCli:
         assert result.exit_code == 1
         assert "Failed" in result.stdout
 
+    # --- remove ---
+
     @patch("chegi.cli.commands.hooks.HooksService")
     def test_hooks_remove_success(
         self, mock_service: MagicMock, tmp_path: Path
@@ -63,6 +87,21 @@ class TestHooksCli:
         result = runner.invoke(app, ["hooks", "remove", "--path", str(tmp_path)])
         assert result.exit_code == 0
         assert "removed" in result.stdout.lower()
+
+    @patch("chegi.cli.commands.hooks.HooksService")
+    def test_hooks_remove_with_pre_push(
+        self, mock_service: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test that chegi hooks remove --pre-push passes PRE_PUSH type."""
+        mock_service.return_value.remove.return_value = True
+
+        result = runner.invoke(
+            app, ["hooks", "remove", "--path", str(tmp_path), "--pre-push"]
+        )
+        assert result.exit_code == 0
+        mock_service.return_value.remove.assert_called_once_with(
+            hook_type=HookType.PRE_PUSH
+        )
 
     @patch("chegi.cli.commands.hooks.HooksService")
     def test_hooks_remove_no_hook(
@@ -85,6 +124,8 @@ class TestHooksCli:
         result = runner.invoke(app, ["hooks", "remove", "--path", str(tmp_path)])
         assert result.exit_code == 1
         assert "Failed" in result.stdout
+
+    # --- status ---
 
     @patch("chegi.cli.commands.hooks.HooksService")
     def test_hooks_status_installed(
@@ -109,6 +150,24 @@ class TestHooksCli:
         result = runner.invoke(app, ["hooks", "status", "--path", str(tmp_path)])
         assert result.exit_code == 0
         assert "not installed" in result.stdout.lower()
+
+    @patch("chegi.cli.commands.hooks.HooksService")
+    def test_hooks_status_with_pre_push(
+        self, mock_service: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test that chegi hooks status --pre-push passes PRE_PUSH type."""
+        mock_service.return_value.is_installed.return_value = MagicMock(
+            installed=False, path=None
+        )
+        result = runner.invoke(
+            app, ["hooks", "status", "--path", str(tmp_path), "--pre-push"]
+        )
+        assert result.exit_code == 0
+        mock_service.return_value.is_installed.assert_called_once_with(
+            hook_type=HookType.PRE_PUSH
+        )
+
+    # --- no subcommand ---
 
     def test_hooks_no_subcommand_shows_help(self) -> None:
         """Test that chegi hooks with no subcommand shows usage hint."""

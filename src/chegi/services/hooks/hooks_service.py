@@ -5,10 +5,11 @@ from pathlib import Path
 
 from chegi.services.git.client import GitClient
 from chegi.services.hooks.constants import (
-    CHEGI_HOOK_MARKER,
+    HOOK_FILENAMES,
+    HOOK_MARKERS,
+    HOOK_TEMPLATES,
     HOOKS_DIR,
-    PRE_COMMIT_FILENAME,
-    PRE_COMMIT_TEMPLATE,
+    HookType,
 )
 from chegi.services.hooks.exceptions import HookInstallError, HookRemoveError
 from chegi.services.hooks.models import HookInfo
@@ -17,8 +18,8 @@ from chegi.services.hooks.models import HookInfo
 class HooksService:
     """Manages Git hooks with cheGi guard integration.
 
-    Provides install and remove operations for a pre-commit hook
-    that auto-runs ``chegi guard --fix`` before every commit.
+    Provides install, remove, and status operations for Git hooks
+    (pre-commit, pre-push) that auto-run cheGi guard.
     """
 
     def __init__(self, repo_path: Path):
@@ -43,80 +44,129 @@ class HooksService:
             raise HookInstallError(f"Not a valid Git repository: {self.repo_path}")
         return self.repo_path / ".git"
 
-    def _hook_path(self) -> Path:
-        """Returns the full path to the pre-commit hook.
+    def _hook_path(self, hook_type: HookType = HookType.PRE_COMMIT) -> Path:
+        """Returns the full path to the specified hook file.
+
+        Args:
+            hook_type: The type of hook to get the path for.
 
         Returns:
-            The pre-commit hook file path.
+            The hook file path.
         """
-        return self.repo_path / HOOKS_DIR / PRE_COMMIT_FILENAME
+        filename = HOOK_FILENAMES[hook_type]
+        return self.repo_path / HOOKS_DIR / filename
 
-    def is_installed(self) -> HookInfo:
-        """Checks whether the cheGi pre-commit hook is installed.
+    def _marker(self, hook_type: HookType) -> str:
+        """Returns the cheGi marker comment for the given hook type.
+
+        Args:
+            hook_type: The type of hook.
+
+        Returns:
+            The marker string.
+        """
+        return HOOK_MARKERS[hook_type]
+
+    def _template(self, hook_type: HookType) -> str:
+        """Returns the hook script template for the given hook type.
+
+        Args:
+            hook_type: The type of hook.
+
+        Returns:
+            The template string.
+        """
+        return HOOK_TEMPLATES[hook_type]
+
+    def _type_name(self, hook_type: HookType) -> str:
+        """Returns a human-readable name for the hook type.
+
+        Args:
+            hook_type: The type of hook.
+
+        Returns:
+            Display name like \"pre-commit\" or \"pre-push\".
+        """
+        return hook_type.value
+
+    def is_installed(self, hook_type: HookType = HookType.PRE_COMMIT) -> HookInfo:
+        """Checks whether the cheGi hook of the given type is installed.
+
+        Args:
+            hook_type: The type of hook to check.
 
         Returns:
             A HookInfo dataclass with installation status and path.
         """
-        hook_path = self._hook_path()
+        hook_path = self._hook_path(hook_type)
         if not hook_path.exists():
             return HookInfo(installed=False, path=str(hook_path))
 
         content = hook_path.read_text()
-        is_chegi = CHEGI_HOOK_MARKER in content
+        is_chegi = self._marker(hook_type) in content
         return HookInfo(
             installed=is_chegi,
             path=str(hook_path),
         )
 
-    def install(self, force: bool = False) -> Path:
-        """Installs a pre-commit hook that runs ``chegi guard --fix``.
+    def install(
+        self,
+        hook_type: HookType = HookType.PRE_COMMIT,
+        force: bool = False,
+    ) -> Path:
+        """Installs a Git hook that runs cheGi guard.
 
-        The hook script is written to ``.git/hooks/pre-commit`` and
-        made executable. If a pre-commit hook already exists, the
-        operation is skipped unless ``force=True``.
+        The hook script is written to ``.git/hooks/<name>`` and
+        made executable. If a hook already exists, the operation
+        is skipped unless ``force=True``.
 
         Args:
-            force: If True, overwrite any existing pre-commit hook.
+            hook_type: The type of hook to install.
+            force: If True, overwrite any existing hook.
 
         Returns:
             The path to the installed hook file.
 
         Raises:
-            HookInstallError: If installation fails (not a Git repo,
-                existing hook without force, or write error).
+            HookInstallError: If installation fails.
         """
         self._git_dir()
 
-        hook_path = self._hook_path()
+        hook_path = self._hook_path(hook_type)
         hooks_dir = hook_path.parent
         hooks_dir.mkdir(parents=True, exist_ok=True)
 
+        type_name = self._type_name(hook_type)
+
         if hook_path.exists() and not force:
             content = hook_path.read_text()
-            if CHEGI_HOOK_MARKER in content:
+            if self._marker(hook_type) in content:
                 raise HookInstallError(
-                    "cheGi pre-commit hook is already installed. "
+                    f"cheGi {type_name} hook is already installed. "
                     "Use --force to reinstall."
                 )
             raise HookInstallError(
-                "A pre-commit hook already exists. Use --force to overwrite."
+                f"A {type_name} hook already exists. Use --force to overwrite."
             )
 
         try:
-            hook_path.write_text(PRE_COMMIT_TEMPLATE)
+            hook_path.write_text(self._template(hook_type))
             hook_path.chmod(
                 hook_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH
             )
         except OSError as exc:
-            raise HookInstallError(f"Failed to write pre-commit hook: {exc}") from exc
+            raise HookInstallError(f"Failed to write {type_name} hook: {exc}") from exc
 
         return hook_path
 
-    def remove(self) -> bool:
-        """Removes the cheGi pre-commit hook if installed.
+    def remove(self, hook_type: HookType = HookType.PRE_COMMIT) -> bool:
+        """Removes the cheGi hook of the given type if installed.
 
         Only removes hooks that contain the cheGi marker comment.
         Non-cheGi hooks are left untouched.
+
+        Args:
+            hook_type: The type of hook to remove.
 
         Returns:
             True if the hook was removed, False if no cheGi hook was found.
@@ -124,18 +174,19 @@ class HooksService:
         Raises:
             HookRemoveError: If the hook exists but cannot be removed.
         """
-        hook_path = self._hook_path()
+        hook_path = self._hook_path(hook_type)
+        type_name = self._type_name(hook_type)
 
         if not hook_path.exists():
             return False
 
         content = hook_path.read_text()
-        if CHEGI_HOOK_MARKER not in content:
+        if self._marker(hook_type) not in content:
             return False
 
         try:
             hook_path.unlink()
         except OSError as exc:
-            raise HookRemoveError(f"Failed to remove pre-commit hook: {exc}") from exc
+            raise HookRemoveError(f"Failed to remove {type_name} hook: {exc}") from exc
 
         return True
