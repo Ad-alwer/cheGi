@@ -21,7 +21,7 @@ class SystemInstaller:
             supported for hardcoded automated installation.
     """
 
-    SUPPORTED_PACKAGES: List[str] = ["git"]
+    SUPPORTED_PACKAGES: List[str] = ["git", "gh"]
 
     @classmethod
     def get_os_package_manager(cls) -> str:
@@ -253,7 +253,7 @@ class SystemInstaller:
         Raises:
             UserAbortedSetupError: If the installation is interrupted by the user.
         """
-        winget_map = {"git": "Git.Git"}
+        winget_map = {"git": "Git.Git", "gh": "GitHub.cli"}
         winget_id = winget_map.get(package_name.lower(), package_name)
 
         if shutil.which("winget"):
