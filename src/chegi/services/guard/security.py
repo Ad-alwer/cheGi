@@ -2,7 +2,7 @@ import fnmatch
 import os
 import subprocess
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 from chegi.config import DEFAULT_SENSITIVE_PATTERNS
 from chegi.services.guard.models import GuardScanResult
@@ -58,19 +58,27 @@ class SecurityGuard:
             return []
 
     @staticmethod
-    def find_sensitive_files(files_to_check: List[str]) -> List[str]:
+    def find_sensitive_files(
+        files_to_check: List[str],
+        extra_patterns: Optional[Set[str]] = None,
+    ) -> List[str]:
         """Checks a list of file paths against known sensitive file patterns.
 
         Args:
-            files_to_check (List[str]): A list of file paths to scan.
+            files_to_check: A list of file paths to scan.
+            extra_patterns: Additional patterns from project config (optional).
 
         Returns:
-            List[str]: A list of file paths matching any sensitive pattern.
+            A list of file paths matching any sensitive pattern.
         """
+        patterns: tuple[str, ...] = DEFAULT_SENSITIVE_PATTERNS
+        if extra_patterns:
+            patterns = tuple(sorted(set(DEFAULT_SENSITIVE_PATTERNS) | extra_patterns))
+
         detected_files = []
         for file_path in files_to_check:
             file_name = Path(file_path).name
-            for pattern in DEFAULT_SENSITIVE_PATTERNS:
+            for pattern in patterns:
                 if fnmatch.fnmatch(file_name.lower(), pattern.lower()):
                     detected_files.append(file_path)
                     break
@@ -106,20 +114,24 @@ class SecurityGuard:
             return False
 
     @staticmethod
-    def scan_repo(repo_path: Path) -> GuardScanResult:
+    def scan_repo(
+        repo_path: Path,
+        extra_patterns: Optional[Set[str]] = None,
+    ) -> GuardScanResult:
         """Scans a repository for staged sensitive files.
 
         Args:
-            repo_path (Path): The path to the repository to scan.
+            repo_path: The path to the repository to scan.
+            extra_patterns: Additional patterns from project config (optional).
 
         Returns:
-            GuardScanResult: An object containing safety status and detected files.
+            GuardScanResult with safety status and detected files.
         """
         staged = SecurityGuard.get_staged_files(repo_path)
         if not staged:
             return GuardScanResult(is_safe=True, sensitive_files=[])
 
-        sensitive = SecurityGuard.find_sensitive_files(staged)
+        sensitive = SecurityGuard.find_sensitive_files(staged, extra_patterns)
         if not sensitive:
             return GuardScanResult(is_safe=True, sensitive_files=[])
 
@@ -128,22 +140,28 @@ class SecurityGuard:
     @staticmethod
     def scan_strict(
         repo_path: Optional[Path] = None,
+        extra_patterns: Optional[Set[str]] = None,
     ) -> Tuple[GuardScanResult, GuardScanResult]:
         """Scans both staged and unstaged files for sensitive content.
 
         Args:
-            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
+            repo_path: Path to the repository. Defaults to cwd.
+            extra_patterns: Additional patterns from project config (optional).
 
         Returns:
-            Tuple[GuardScanResult, GuardScanResult]: (staged_result, unstaged_result)
+            Tuple of (staged_result, unstaged_result).
         """
         cwd = repo_path if repo_path else Path.cwd()
         staged = SecurityGuard.get_staged_files(cwd)
         unstaged = SecurityGuard.get_unstaged_files(cwd)
 
-        staged_sensitive = SecurityGuard.find_sensitive_files(staged) if staged else []
+        staged_sensitive = (
+            SecurityGuard.find_sensitive_files(staged, extra_patterns) if staged else []
+        )
         unstaged_sensitive = (
-            SecurityGuard.find_sensitive_files(unstaged) if unstaged else []
+            SecurityGuard.find_sensitive_files(unstaged, extra_patterns)
+            if unstaged
+            else []
         )
 
         staged_result = GuardScanResult(
@@ -157,15 +175,18 @@ class SecurityGuard:
         return staged_result, unstaged_result
 
     @staticmethod
-    def scan_directory(path: Path) -> GuardScanResult:
+    def scan_directory(
+        path: Path,
+        extra_patterns: Optional[Set[str]] = None,
+    ) -> GuardScanResult:
         """Recursively scans a directory tree for sensitive files.
-        Does not require a Git repository.
 
         Args:
-            path (Path): The directory path to scan.
+            path: The directory path to scan.
+            extra_patterns: Additional patterns from project config (optional).
 
         Returns:
-            GuardScanResult: Scan result with all sensitive files found.
+            GuardScanResult with all sensitive files found.
         """
         if not path.exists():
             return GuardScanResult(is_safe=True, sensitive_files=[])
@@ -175,7 +196,9 @@ class SecurityGuard:
             dirs[:] = [d for d in dirs if d != ".git"]
             for file in files:
                 filepath = os.path.join(root, file)
-                detected = SecurityGuard.find_sensitive_files([filepath])
+                detected = SecurityGuard.find_sensitive_files(
+                    [filepath], extra_patterns
+                )
                 if detected:
                     sensitive.extend(detected)
 

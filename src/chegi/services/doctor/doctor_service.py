@@ -2,8 +2,9 @@
 
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
+from chegi.config import ChegiConfig
 from chegi.services.doctor.constants import (
     CHEGI_DIR_NAME,
     GITIGNORE_FILENAME,
@@ -287,7 +288,14 @@ class DoctorService:
                 message="Not a Git repository.",
             )
 
-        result = SecurityGuard.scan_repo(self.path)
+        extra: Optional[Set[str]] = None
+        try:
+            cfg = ChegiConfig(str(self.path))
+            if cfg.sensitive_patterns:
+                extra = cfg.sensitive_patterns
+        except Exception:
+            pass
+        result = SecurityGuard.scan_repo(self.path, extra)
 
         if not result.is_safe:
             files_str = ", ".join(result.sensitive_files[:5])

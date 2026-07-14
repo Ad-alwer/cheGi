@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- First-run wizard now includes an SSH key check step:
+  - Detects existing SSH key pairs (`id_ed25519`, `id_rsa`, etc.) in `~/.ssh/`
+  - Checks if keys are loaded in `ssh-agent`
+  - Offers to generate a new Ed25519 key pair with email label
+  - Displays the public key with links to GitHub/GitLab settings
+  - Offers to add the key to `ssh-agent` automatically
+- `SSH_KEY_TYPES` constant for recognized SSH key filename patterns
+- `_find_ssh_keys`, `_ssh_agent_has_keys`, `_generate_ssh_key`, `_add_key_to_agent`, `_display_public_key` helper methods
+- 16 new tests covering all SSH key check scenarios
+- Custom sensitive file pattern support:
+  - `sensitive_patterns` field in `ChegiConfigModel`, persisted in `.chegi.json`/`.chegi/config.json`
+  - `add_sensitive_pattern()` / `remove_sensitive_pattern()` / `get_all_sensitive_patterns()` in `ChegiConfig`
+  - `SecurityGuard.find_sensitive_files()` accepts `extra_patterns` parameter for project-specific patterns
+  - `SecurityGuard.scan_repo()`, `scan_strict()`, `scan_directory()` forward `extra_patterns`
+  - CLI commands (`guard`, `commit`, `doctor`, `scan`) read custom patterns from config automatically
+  - Wizard step `_step_sensitive_patterns()` asks users to add custom patterns during project setup
+- 7 new config tests, 5 new security guard tests, 3 new wizard tests
+- SSH key wizard step improvements:
+  - Passphrase support — user can optionally protect the key with a passphrase
+  - Backup existing key before overwriting (`id_ed25519.backup` + `.pub.backup`)
+  - Auto-add entry to `~/.ssh/config` for GitHub with `IdentityFile` + `IdentitiesOnly`
+  - Backup `~/.ssh/config` before modification (`config.chegi.backup`)
+  - Event logging to `~/.config/chegi/wizard.log` with ISO timestamps
+  - Restore instructions displayed after changes
+- `_backup_key()`, `_backup_ssh_config()`, `_add_ssh_config_entry()`, `_log_wizard_event()` helper methods
+- 12 new tests covering backup, config entry, and logging
+
 - `chegi new` command — scaffold complete Git projects from scratch with:
   - Interactive questionary-first guided flow (project name, tech selection, license, summary confirmation)
   - Non-interactive mode with `--yes` / `-y` and `--template` / `-t` flags

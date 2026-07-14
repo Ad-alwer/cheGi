@@ -267,7 +267,21 @@ class ScanService:
         Returns:
             List[GitStatus]: A list of GitStatus objects containing analysis results.
         """
-        scanner_func = SecurityGuard.scan_repo if self.options.security else None
+        extra_patterns: Optional[set[str]] = None
+        if self.options.security:
+            try:
+                cfg = ChegiConfig(str(self.base_path))
+                if cfg.sensitive_patterns:
+                    extra_patterns = cfg.sensitive_patterns
+            except Exception:
+                pass
+            from functools import partial
+
+            scanner_func = partial(
+                SecurityGuard.scan_repo, extra_patterns=extra_patterns
+            )
+        else:
+            scanner_func = None
         statuses: List[GitStatus] = []
 
         with Progress(

@@ -1,8 +1,9 @@
 """Service for preparing and executing secure Git commits."""
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
+from chegi.config import ChegiConfig
 from chegi.services.commit.constants import BRAND_SUFFIX
 from chegi.services.commit.exceptions import CommitError, NoStagedFilesError
 from chegi.services.commit.models import CommitContext, CommitStyle
@@ -105,7 +106,14 @@ class CommitService:
         Returns:
             GuardScanResult: The result of the security scan.
         """
-        return SecurityGuard.scan_repo(self.repo_path)
+        extra: Optional[Set[str]] = None
+        try:
+            cfg = ChegiConfig(str(self.repo_path))
+            if cfg.sensitive_patterns:
+                extra = cfg.sensitive_patterns
+        except Exception:
+            pass
+        return SecurityGuard.scan_repo(self.repo_path, extra)
 
     def unstage_files(self, files: List[str]) -> bool:
         """Unstages the specified files.

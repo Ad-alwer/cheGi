@@ -2,14 +2,34 @@
 
 import shlex
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Set
 
 import typer
 from typing_extensions import Annotated
 
+from chegi.config import ChegiConfig
 from chegi.services.git.client import GitClient
 from chegi.services.guard import GuardHistoryService, SecurityGuard
 from chegi.ui import TerminalUI, console
+
+
+def _get_extra_patterns(path: Optional[Path] = None) -> Optional[Set[str]]:
+    """Reads custom sensitive patterns from project config.
+
+    Args:
+        path: Base path for config. Defaults to CWD.
+
+    Returns:
+        Set of custom patterns, or None if none configured.
+    """
+    try:
+        cfg = ChegiConfig(str(path or Path.cwd()))
+        if cfg.sensitive_patterns:
+            return cfg.sensitive_patterns
+    except Exception:
+        pass
+    return None
+
 
 app = typer.Typer(
     help="Check staged files, directory trees, or Git history for sensitive data."
@@ -76,12 +96,13 @@ def guard(
         )
         raise typer.Exit(code=1)
 
+    extra_patterns = _get_extra_patterns()
     staged_files = SecurityGuard.get_staged_files()
     if not staged_files:
         console.print("[bold blue]No staged files found. Nothing to check.[/bold blue]")
         raise typer.Exit()
 
-    sensitive_files = SecurityGuard.find_sensitive_files(staged_files)
+    sensitive_files = SecurityGuard.find_sensitive_files(staged_files, extra_patterns)
 
     if sensitive_files:
         _handle_sensitive_staged(sensitive_files, fix)
@@ -106,7 +127,10 @@ def _handle_strict(fix: bool) -> None:
         )
         raise typer.Exit(code=1)
 
-    staged_result, unstaged_result = SecurityGuard.scan_strict()
+    extra_patterns = _get_extra_patterns()
+    staged_result, unstaged_result = SecurityGuard.scan_strict(
+        extra_patterns=extra_patterns
+    )
 
     has_sensitive_staged = not staged_result.is_safe
     has_sensitive_unstaged = not unstaged_result.is_safe
@@ -154,7 +178,8 @@ def _handle_scan(path: Path) -> None:
     """
     console.print(f"[dim]🔒 Scanning directory: {path}[/dim]")
 
-    result = SecurityGuard.scan_directory(path)
+    extra_patterns = _get_extra_patterns(path)
+    result = SecurityGuard.scan_directory(path, extra_patterns)
 
     if result.is_safe:
         console.print(

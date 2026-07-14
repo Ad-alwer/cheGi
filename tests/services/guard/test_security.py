@@ -61,6 +61,58 @@ def test_find_sensitive_files_clean():
     assert detected == []
 
 
+@patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env", "*.pem"])
+def test_find_sensitive_files_with_extra_patterns():
+    """Test detection with extra custom patterns added."""
+    files_to_check = ["main.py", ".env", "my.key", "secrets.yaml", "config.local"]
+    extra = {"my.key", "secrets.yaml", "*.local"}
+    detected = SecurityGuard.find_sensitive_files(files_to_check, extra)
+
+    assert len(detected) == 4
+    assert ".env" in detected
+    assert "my.key" in detected
+    assert "secrets.yaml" in detected
+    assert "config.local" in detected
+
+
+@patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env"])
+def test_find_sensitive_files_extra_patterns_only():
+    """Test detection when only extra patterns match (not defaults)."""
+    files_to_check = ["main.py", "custom.secret", "regular.txt"]
+    extra = {"custom.secret"}
+    detected = SecurityGuard.find_sensitive_files(files_to_check, extra)
+
+    assert detected == ["custom.secret"]
+
+
+@patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env"])
+def test_find_sensitive_files_extra_patterns_empty():
+    """Test that empty extra_patterns does not affect behavior."""
+    files_to_check = [".env", "main.py"]
+    detected = SecurityGuard.find_sensitive_files(files_to_check, set())
+
+    assert detected == [".env"]
+
+
+@patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env"])
+def test_find_sensitive_files_extra_patterns_none():
+    """Test that None extra_patterns does not affect behavior."""
+    files_to_check = [".env", "main.py"]
+    detected = SecurityGuard.find_sensitive_files(files_to_check, None)
+
+    assert detected == [".env"]
+
+
+@patch("chegi.services.guard.security.DEFAULT_SENSITIVE_PATTERNS", [".env", "*.pem"])
+def test_find_sensitive_files_extra_matches_in_defaults():
+    """Test that extra patterns already covered by defaults don't duplicate."""
+    files_to_check = [".env", "key.pem"]
+    extra = {".env"}  # already in defaults
+    detected = SecurityGuard.find_sensitive_files(files_to_check, extra)
+
+    assert len(detected) == 2
+
+
 @patch("subprocess.run")
 def test_unstage_files_success(mock_run):
     """Test successfully unstaging specific files using git rm."""
