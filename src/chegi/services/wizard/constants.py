@@ -16,3 +16,12 @@ WELCOME_MESSAGE = (
     "[bold cyan]Welcome to cheGi![/bold cyan] "
     "Let's get you set up in a few quick steps."
 )
+
+SSH_KEY_TYPES = [
+    "id_ed25519",
+    "id_ecdsa",
+    "id_ecdsa_sk",
+    "id_ed25519_sk",
+    "id_rsa",
+    "id_dsa",
+]

@@ -2,15 +2,19 @@
 
 import os
 import shlex
+import shutil
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import typer
 
+from chegi.config import ChegiConfig
 from chegi.services.wizard.constants import (
     BANNER,
+    SSH_KEY_TYPES,
     WELCOME_MESSAGE,
     WIZARD_MARKER_DIR,
     WIZARD_MARKER_FILE,
@@ -123,6 +127,7 @@ class WizardService:
 
         self._step_git_check()
         self._step_identity()
+        self._step_ssh_key()
         self._step_project_config()
 
         self._mark_completed()
@@ -200,6 +205,368 @@ class WizardService:
             )
         console.print()
 
+    @staticmethod
+    def _find_ssh_keys(ssh_dir: Path) -> list[str]:
+        """Finds SSH key pairs (private + .pub) in the given directory.
+
+        Args:
+            ssh_dir: Path to the .ssh directory.
+
+        Returns:
+            List of key names with both private and public parts present.
+        """
+        if not ssh_dir.is_dir():
+            return []
+        found: list[str] = []
+        for key_name in SSH_KEY_TYPES:
+            private = ssh_dir / key_name
+            public = ssh_dir / f"{key_name}.pub"
+            if private.is_file() and public.is_file():
+                found.append(key_name)
+        return found
+
+    @staticmethod
+    def _ssh_agent_has_keys() -> bool:
+        """Checks if ssh-agent is running and has any keys loaded.
+
+        Returns:
+            True if at least one key is loaded in the agent.
+        """
+        try:
+            result = subprocess.run(
+                ["ssh-add", "-l"],
+                capture_output=True,
+                text=True,
+            )
+            return result.returncode == 0
+        except FileNotFoundError:
+            return False
+
+    @staticmethod
+    def _log_wizard_event(event: str, details: str = "") -> None:
+        """Logs a wizard event to cheGi's log file.
+
+        Args:
+            event: Short event name (e.g. "ssh_key_generated").
+            details: Optional extra info (key path, email, etc.).
+        """
+        log_dir = WIZARD_MARKER_DIR
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "wizard.log"
+        timestamp = datetime.now().isoformat()
+        line = f"[{timestamp}] {event}"
+        if details:
+            line += f": {details}"
+        line += "\n"
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(line)
+
+    @staticmethod
+    def _backup_key(key_path: Path) -> Optional[Path]:
+        """Backs up an existing SSH key pair before overwriting.
+
+        Args:
+            key_path: Path to the private key to back up.
+
+        Returns:
+            Path to the backup file, or None if backup failed.
+        """
+        backup = key_path.with_name(key_path.name + ".backup")
+        try:
+            shutil.copy2(str(key_path), str(backup))
+            pub = key_path.with_suffix(".pub")
+            if pub.exists():
+                pub_backup = pub.with_name(pub.name + ".backup")
+                shutil.copy2(str(pub), str(pub_backup))
+            return backup
+        except OSError:
+            return None
+
+    @staticmethod
+    def _backup_ssh_config() -> Optional[Path]:
+        """Backs up ~/.ssh/config before modification.
+
+        Returns:
+            Path to the backup file, or None if no config existed or backup failed.
+        """
+        ssh_config = Path.home() / ".ssh" / "config"
+        if not ssh_config.is_file():
+            return None
+        backup = ssh_config.with_name("config.chegi.backup")
+        try:
+            shutil.copy2(str(ssh_config), str(backup))
+            return backup
+        except OSError:
+            return None
+
+    @staticmethod
+    def _generate_ssh_key(
+        key_path: Path, email: str, use_passphrase: bool = False
+    ) -> bool:
+        """Generates an Ed25519 SSH key pair.
+
+        Args:
+            key_path: Full path for the private key.
+            email: Email label for the key comment.
+            use_passphrase: If True, let ssh-keygen prompt interactively.
+
+        Returns:
+            True if generation succeeded.
+        """
+        try:
+            cmd = ["ssh-keygen", "-t", "ed25519", "-C", email, "-f", str(key_path)]
+            if not use_passphrase:
+                cmd += ["-N", ""]
+            subprocess.run(cmd, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    @staticmethod
+    def _add_key_to_agent(key_path: Path) -> bool:
+        """Adds an SSH private key to the ssh-agent.
+
+        Args:
+            key_path: Path to the private key.
+
+        Returns:
+            True if the key was added successfully.
+        """
+        try:
+            subprocess.run(
+                ["ssh-add", str(key_path)],
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+
+    @staticmethod
+    def _add_ssh_config_entry(key_path: Path) -> bool:
+        """Adds entries for common Git hosts to ~/.ssh/config.
+
+        Args:
+            key_path: Path to the private key to associate.
+
+        Returns:
+            True if config was updated, False if skipped or failed.
+        """
+        ssh_config = Path.home() / ".ssh" / "config"
+        hosts = ["github.com"]
+        entries = []
+        existing = (
+            ssh_config.read_text(encoding="utf-8") if ssh_config.is_file() else ""
+        )
+
+        for host in hosts:
+            host_block = f"Host {host}"
+            if host_block not in existing:
+                entries.append(
+                    f"\n# Added by cheGi\nHost {host}\n"
+                    f"  IdentityFile {shlex.quote(str(key_path))}\n"
+                    f"  IdentitiesOnly yes\n"
+                )
+
+        if not entries:
+            return False
+
+        try:
+            with open(ssh_config, "a", encoding="utf-8") as f:
+                f.writelines(entries)
+            return True
+        except OSError:
+            return False
+
+    def _display_public_key(self, key_path: Path) -> None:
+        """Prints the public key content and instructs the user.
+
+        Args:
+            key_path: Path to the public key file.
+        """
+        try:
+            pub_content = key_path.read_text(encoding="utf-8").strip()
+            console.print()
+            TerminalUI.print_info("Here is your public SSH key:")
+            console.print(f"[bold yellow]{pub_content}[/bold yellow]")
+            console.print()
+            console.print("[dim]Add this key to your Git provider:[/dim]")
+            console.print(
+                "  [cyan]GitHub[/cyan]  → [blue]https://github.com/settings/ssh/new[/blue]"
+            )
+            console.print(
+                "  [cyan]GitLab[/cyan]  → [blue]https://gitlab.com/-/profile/keys[/blue]"
+            )
+        except OSError:
+            TerminalUI.print_error("Could not read the public key file.")
+
+    def _step_ssh_key(self) -> None:
+        """Step: Check SSH keys and offer to generate one."""
+        ssh_dir = Path.home() / ".ssh"
+        key_names = self._find_ssh_keys(ssh_dir)
+
+        if key_names:
+            TerminalUI.print_success(
+                f"SSH keys found: [cyan]{', '.join(key_names)}[/cyan]"
+            )
+            if self._ssh_agent_has_keys():
+                TerminalUI.print_info("SSH keys are loaded in ssh-agent.")
+            else:
+                console.print()
+                TerminalUI.print_warning("No keys are loaded in ssh-agent.")
+                should_add = typer.confirm(
+                    "Would you like to add your key to ssh-agent?", default=True
+                )
+                if should_add:
+                    key_path = ssh_dir / f"{key_names[0]}"
+                    if self._add_key_to_agent(key_path):
+                        TerminalUI.print_success(
+                            f"Key [cyan]{key_names[0]}[/cyan] added to ssh-agent."
+                        )
+                    else:
+                        TerminalUI.print_error(
+                            "Failed to add key. Run [bold]ssh-add ~/.ssh/<key>[/bold] manually."
+                        )
+            console.print()
+            return
+
+        console.print()
+        TerminalUI.print_warning("No SSH keys found.")
+        console.print(
+            "[dim]SSH keys allow you to push to remote repositories securely without a password.[/dim]"
+        )
+
+        should_generate = typer.confirm(
+            "Would you like to generate an SSH key?", default=True
+        )
+        if not should_generate:
+            console.print("[dim]Skipping SSH key setup.[/dim]")
+            console.print()
+            return
+
+        email = typer.prompt(
+            "Enter your email for the SSH key label",
+            default=self._get_git_config("user.email") or "",
+            show_default=False,
+        )
+        if not email:
+            TerminalUI.print_error("Email is required. Skipping SSH key generation.")
+            console.print()
+            return
+
+        ssh_dir.mkdir(parents=True, exist_ok=True)
+        key_path = ssh_dir / "id_ed25519"
+        backup_path: Optional[Path] = None
+
+        if key_path.exists():
+            overwrite = typer.confirm(
+                f"[bold]{key_path}[/bold] already exists. Overwrite?", default=False
+            )
+            if not overwrite:
+                console.print("[dim]Skipping SSH key generation.[/dim]")
+                self._log_wizard_event(
+                    "ssh_key_skipped", f"user declined overwrite of {key_path}"
+                )
+                console.print()
+                return
+            backup_path = self._backup_key(key_path)
+            if backup_path:
+                console.print(
+                    f"[dim]Old key backed up to {shlex.quote(str(backup_path))}[/dim]"
+                )
+            else:
+                TerminalUI.print_warning(
+                    "Could not back up existing key. Proceeding anyway."
+                )
+
+        use_passphrase = typer.confirm(
+            "Do you want to protect this key with a passphrase?",
+            default=False,
+        )
+
+        if use_passphrase:
+            console.print(
+                "[dim]ssh-keygen will prompt you to enter a passphrase below.[/dim]"
+            )
+            ok = self._generate_ssh_key(key_path, email, use_passphrase=True)
+        else:
+            with console.status("[bold yellow]Generating SSH key..."):
+                ok = self._generate_ssh_key(key_path, email)
+
+        if ok:
+            TerminalUI.print_success(
+                f"SSH key generated at [cyan]{shlex.quote(str(key_path))}[/cyan]"
+            )
+            self._log_wizard_event(
+                "ssh_key_generated",
+                f"{key_path} for {email}"
+                + (" (passphrase protected)" if use_passphrase else ""),
+            )
+        else:
+            TerminalUI.print_error(
+                "Failed to generate SSH key. Try [bold]ssh-keygen -t ed25519 -C"
+                f" {shlex.quote(email)}[/bold] manually."
+            )
+            self._log_wizard_event("ssh_key_failed", str(key_path))
+            console.print()
+            return
+
+        pub_path = key_path.with_suffix(".pub")
+        self._display_public_key(pub_path)
+
+        should_add = typer.confirm("Add this key to ssh-agent now?", default=True)
+        if should_add:
+            if self._add_key_to_agent(key_path):
+                TerminalUI.print_success("Key added to ssh-agent.")
+            else:
+                TerminalUI.print_warning(
+                    "Could not start ssh-agent. Run [bold]ssh-add ~/.ssh/id_ed25519[/bold] later."
+                )
+                self._log_wizard_event("ssh_agent_add_failed", str(key_path))
+
+        config_backup = self._backup_ssh_config()
+        if config_backup:
+            console.print(
+                f"[dim]~/.ssh/config backed up to {shlex.quote(str(config_backup))}[/dim]"
+            )
+
+        should_configure = typer.confirm(
+            "Add this key to [bold]~/.ssh/config[/bold] for GitHub?", default=True
+        )
+        if should_configure:
+            if self._add_ssh_config_entry(key_path):
+                TerminalUI.print_success(
+                    "GitHub host entry added to [cyan]~/.ssh/config[/cyan]."
+                )
+                self._log_wizard_event(
+                    "ssh_config_updated", f"github.com -> {key_path}"
+                )
+            else:
+                TerminalUI.print_info(
+                    "GitHub host entry already exists in [cyan]~/.ssh/config[/cyan]."
+                )
+
+        if backup_path:
+            console.print()
+            console.print("[dim]To restore your old key:[/dim]")
+            console.print(
+                f"  [cyan]cp {shlex.quote(str(backup_path))} {shlex.quote(str(key_path))}[/cyan]"
+            )
+            pub_backup = key_path.with_suffix(".pub.backup")
+            if pub_backup.is_file():
+                console.print(
+                    f"  [cyan]cp {shlex.quote(str(pub_backup))} {shlex.quote(str(key_path.with_suffix('.pub')))}[/cyan]"
+                )
+
+        if config_backup:
+            console.print(
+                f"  [cyan]cp {shlex.quote(str(config_backup))} "
+                f"{shlex.quote(str(Path.home() / '.ssh' / 'config'))}[/cyan]"
+            )
+
+        console.print()
+
     def _step_project_config(self) -> None:
         """Step 3: Offer to create .chegi/ project config."""
         chegi_dir = self.base_path / ".chegi"
@@ -225,5 +592,43 @@ class WizardService:
             )
         except Exception as e:
             TerminalUI.print_error(f"Failed to create .chegi/: {e}")
+            console.print()
+            return
+
+        self._step_sensitive_patterns()
 
         console.print()
+
+    def _step_sensitive_patterns(self) -> None:
+        """Ask user for custom sensitive file patterns and save them."""
+        has_custom = typer.confirm(
+            "Do you want to add custom sensitive file patterns for [bold]chegi guard[/bold]"
+            " to scan?\n[dim]These will be checked in addition to the default patterns"
+            " (e.g. .env, *.pem, credentials.json).[/dim]",
+            default=False,
+        )
+        if not has_custom:
+            console.print("[dim]Using default sensitive patterns only.[/dim]")
+            return
+
+        pattern = typer.prompt(
+            "Enter a filename or pattern (e.g. secrets.yaml, *.local, config.*)",
+            default="",
+            show_default=False,
+        )
+        if not pattern:
+            TerminalUI.print_error("No pattern entered. Skipping.")
+            return
+
+        try:
+            cfg = ChegiConfig(str(self.base_path))
+            cfg.add_sensitive_pattern(pattern)
+            TerminalUI.print_success(
+                f"Pattern [cyan]{shlex.quote(pattern)}[/cyan] added to project config."
+            )
+        except Exception as e:
+            TerminalUI.print_error(f"Failed to save pattern: {e}")
+
+        more = typer.confirm("Add another pattern?", default=False)
+        if more:
+            self._step_sensitive_patterns()
