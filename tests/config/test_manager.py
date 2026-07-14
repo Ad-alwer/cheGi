@@ -7,6 +7,7 @@ from chegi.config import (
     DEFAULT_EXCLUDES,
     DEFAULT_MAX_DEPTH,
     DEFAULT_MCTS,
+    DEFAULT_SENSITIVE_PATTERNS,
     ChegiConfig,
     InvalidMirrorFormatError,
     UnsupportedPackageManagerError,
@@ -243,3 +244,79 @@ def test_load_project_config_only(tmp_path: Path) -> None:
     config = ChegiConfig(base_path=str(tmp_path))
     assert config.max_depth == 7
     assert config.mcts == 15
+
+
+def test_sensitive_patterns_default_empty(tmp_path: Path) -> None:
+    """Test that sensitive_patterns is empty by default."""
+    config = ChegiConfig(base_path=str(tmp_path))
+    assert config.sensitive_patterns == set()
+
+
+def test_add_and_remove_sensitive_pattern(tmp_path: Path) -> None:
+    """Test adding and removing custom sensitive patterns."""
+    config = ChegiConfig(base_path=str(tmp_path))
+
+    config.add_sensitive_pattern("my_secrets.yaml")
+    assert "my_secrets.yaml" in config.sensitive_patterns
+
+    with open(config.config_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        assert "my_secrets.yaml" in data["sensitive_patterns"]
+
+    assert config.remove_sensitive_pattern("my_secrets.yaml") is True
+    assert "my_secrets.yaml" not in config.sensitive_patterns
+    assert config.remove_sensitive_pattern("does_not_exist") is False
+
+
+def test_sensitive_patterns_persist_across_load(tmp_path: Path) -> None:
+    """Test that custom patterns survive a save/load cycle."""
+    config = ChegiConfig(base_path=str(tmp_path))
+    config.add_sensitive_pattern("secrets.*")
+    config.add_sensitive_pattern("*.local")
+
+    new_config = ChegiConfig(base_path=str(tmp_path))
+    assert "secrets.*" in new_config.sensitive_patterns
+    assert "*.local" in new_config.sensitive_patterns
+
+
+def test_sensitive_patterns_in_get_all(tmp_path: Path) -> None:
+    """Test that sensitive_patterns appears in get_all()."""
+    config = ChegiConfig(base_path=str(tmp_path))
+    config.add_sensitive_pattern("my_keys.txt")
+    all_configs = config.get_all()
+    assert "my_keys.txt" in all_configs["sensitive_patterns"]
+
+
+def test_get_all_sensitive_patterns_merges_defaults(tmp_path: Path) -> None:
+    """Test that get_all_sensitive_patterns() merges defaults with custom."""
+    config = ChegiConfig(base_path=str(tmp_path))
+    config.add_sensitive_pattern("my_app.key")
+    all_patterns = config.get_all_sensitive_patterns()
+    assert "my_app.key" in all_patterns
+    assert ".env*" in all_patterns
+    assert "*.pem" in all_patterns
+    for default in DEFAULT_SENSITIVE_PATTERNS:
+        assert default in all_patterns
+
+
+def test_update_setting_sensitive_patterns(tmp_path: Path) -> None:
+    """Test that update_setting handles sensitive_patterns."""
+    config = ChegiConfig(base_path=str(tmp_path))
+    assert config.update_setting("sensitive_patterns", "custom.key, *.secret") is True
+    assert "custom.key" in config.sensitive_patterns
+    assert "*.secret" in config.sensitive_patterns
+
+
+def test_sensitive_patterns_load_from_project_config(tmp_path: Path) -> None:
+    """Test that sensitive_patterns loads from .chegi/config.json."""
+    chegi_dir = tmp_path / ".chegi"
+    chegi_dir.mkdir()
+    project_config = chegi_dir / "config.json"
+    project_config.write_text(
+        json.dumps({"sensitive_patterns": ["project.env", "deploy.key"]}),
+        encoding="utf-8",
+    )
+
+    config = ChegiConfig(base_path=str(tmp_path))
+    assert "project.env" in config.sensitive_patterns
+    assert "deploy.key" in config.sensitive_patterns

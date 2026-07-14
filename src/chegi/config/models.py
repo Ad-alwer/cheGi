@@ -23,3 +23,4 @@ class ChegiConfigModel:
     mirrors: Dict[str, List[str]] = field(
         default_factory=lambda: {k: list(v) for k, v in DEFAULT_MIRRORS.items()}
     )
+    sensitive_patterns: Set[str] = field(default_factory=set)

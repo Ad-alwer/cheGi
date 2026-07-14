@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
-from .constants import SUPPORTED_PMS
+from .constants import DEFAULT_SENSITIVE_PATTERNS, SUPPORTED_PMS
 from .exceptions import InvalidMirrorFormatError, UnsupportedPackageManagerError
 from .models import ChegiConfigModel
 
@@ -46,6 +46,25 @@ class ChegiConfig:
     @max_depth.setter
     def max_depth(self, value: int) -> None:
         self._state.max_depth = value
+
+    @property
+    def sensitive_patterns(self) -> Set[str]:
+        """Set[str]: Additional sensitive file patterns from project config."""
+        return self._state.sensitive_patterns
+
+    @sensitive_patterns.setter
+    def sensitive_patterns(self, value: Set[str]) -> None:
+        self._state.sensitive_patterns = value
+
+    def get_all_sensitive_patterns(self) -> tuple[str, ...]:
+        """Returns merged default + custom sensitive patterns.
+
+        Returns:
+            Tuple of all sensitive file patterns (defaults + custom).
+        """
+        defaults = set(DEFAULT_SENSITIVE_PATTERNS)
+        custom = self._state.sensitive_patterns
+        return tuple(sorted(defaults | custom))
 
     @property
     def mcts(self) -> int:
@@ -94,6 +113,7 @@ class ChegiConfig:
 
                 self._state.max_depth = data.get("max_depth", self._state.max_depth)
                 self._state.mcts = data.get("mcts", self._state.mcts)
+                self._state.sensitive_patterns = set(data.get("sensitive_patterns", []))
 
                 loaded_mirrors = data.get("mirrors", {})
                 if isinstance(loaded_mirrors, dict):
@@ -117,6 +137,7 @@ class ChegiConfig:
             "max_depth": self._state.max_depth,
             "mcts": self._state.mcts,
             "mirrors": self._state.mirrors,
+            "sensitive_patterns": list(self._state.sensitive_patterns),
         }
         with open(self.config_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=4)
@@ -141,6 +162,12 @@ class ChegiConfig:
             else:
                 new_excludes = list(value)
             self.exclude_dirs.update(new_excludes)
+        elif key == "sensitive_patterns":
+            if isinstance(value, str):
+                new_patterns = [x.strip() for x in value.split(",")]
+            else:
+                new_patterns = list(value)
+            self.sensitive_patterns.update(new_patterns)
         elif key == "mirrors":
             if isinstance(value, dict):
                 for pm, url_data in value.items():
@@ -168,7 +195,33 @@ class ChegiConfig:
             "max_depth": self.max_depth,
             "mcts": self.mcts,
             "mirrors": self.mirrors,
+            "sensitive_patterns": list(self.sensitive_patterns),
         }
+
+    def add_sensitive_pattern(self, pattern: str) -> None:
+        """Adds a sensitive file pattern and saves the changes.
+
+        Args:
+            pattern: The file pattern to add (e.g. 'my_secrets.yaml').
+        """
+        self.sensitive_patterns.add(pattern.strip())
+        self.save()
+
+    def remove_sensitive_pattern(self, pattern: str) -> bool:
+        """Removes a sensitive file pattern and saves the changes.
+
+        Args:
+            pattern: The file pattern to remove.
+
+        Returns:
+            True if the pattern was found and removed, False otherwise.
+        """
+        pattern = pattern.strip()
+        if pattern in self.sensitive_patterns:
+            self.sensitive_patterns.remove(pattern)
+            self.save()
+            return True
+        return False
 
     def add_exclude(self, folder_name: str) -> None:
         """Adds a single folder name to the exclusion list and saves the changes.
