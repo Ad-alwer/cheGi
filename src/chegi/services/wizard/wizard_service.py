@@ -1,10 +1,13 @@
 """Service for the first-run wizard."""
 
+import json
 import os
+import re
 import shlex
 import shutil
 import subprocess
 import sys
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -12,6 +15,7 @@ from typing import Optional
 import typer
 
 from chegi.config import ChegiConfig
+from chegi.services.installer import SystemInstaller
 from chegi.services.wizard.constants import (
     BANNER,
     SSH_KEY_TYPES,
@@ -36,6 +40,7 @@ class WizardService:
             base_path: The project base path. Defaults to CWD.
         """
         self.base_path = base_path or Path.cwd()
+        self._git_available: bool = True
 
     def should_run(self) -> bool:
         """Checks if the wizard should run on this invocation.
@@ -52,22 +57,22 @@ class WizardService:
             f.write("done\n")
 
     @staticmethod
-    def _check_git_installed() -> bool:
-        """Checks if Git is available on the system.
+    def _get_git_version() -> Optional[str]:
+        """Returns the installed Git version string, or None.
 
         Returns:
-            True if Git is installed.
+            Version string (e.g. 'git version 2.43.0') or None.
         """
         try:
-            subprocess.run(
+            result = subprocess.run(
                 ["git", "--version"],
                 capture_output=True,
                 text=True,
                 check=True,
             )
-            return True
+            return result.stdout.strip()
         except (subprocess.CalledProcessError, FileNotFoundError):
-            return False
+            return None
 
     @staticmethod
     def _get_git_config(key: str) -> Optional[str]:
@@ -127,6 +132,7 @@ class WizardService:
 
         self._step_git_check()
         self._step_identity()
+        self._step_gh_check()
         self._step_ssh_key()
         self._step_project_config()
 
@@ -135,16 +141,46 @@ class WizardService:
         TerminalUI.print_success("Wizard complete! Happy coding with cheGi. 🐆")
 
     def _step_git_check(self) -> None:
-        """Step 1: Check if Git is installed."""
-        if self._check_git_installed():
-            TerminalUI.print_success("Git is installed.")
+        """Step 1: Check if Git is installed, offer install if missing."""
+        version = self._get_git_version()
+        if version:
+            TerminalUI.print_success(f"Git is installed. [dim]({version})[/dim]")
+            self._git_available = True
         else:
-            TerminalUI.print_error("Git is not installed. Please install Git first.")
-            raise typer.Exit(code=1)
+            TerminalUI.print_warning("Git is not installed.")
+            console.print("[dim]cheGi needs Git for version control features.[/dim]")
+            should_install = typer.confirm(
+                "Would you like to install Git?", default=True
+            )
+            if should_install:
+                try:
+                    ok = SystemInstaller.install_package("git")
+                    if ok:
+                        TerminalUI.print_success("Git installed successfully!")
+                        self._log_wizard_event("git_installed")
+                        self._git_available = True
+                    else:
+                        TerminalUI.print_error(
+                            "Failed to install Git. "
+                            "See [blue]https://git-scm.com[/blue]"
+                        )
+                        self._git_available = False
+                except Exception:
+                    TerminalUI.print_error(
+                        "Failed to install Git. See [blue]https://git-scm.com[/blue]"
+                    )
+                    self._git_available = False
+            else:
+                console.print("[dim]Skipping Git setup.[/dim]")
+                self._git_available = False
         console.print()
 
     def _step_identity(self) -> None:
         """Step 2: Check and configure Git identity."""
+        if not self._git_available:
+            console.print("[dim]Skipping Git identity setup (Git not available).[/dim]")
+            console.print()
+            return
         user_name = self._get_git_config("user.name")
         user_email = self._get_git_config("user.email")
 
@@ -204,6 +240,123 @@ class WizardService:
                 "Failed to set Git identity. Please configure it manually."
             )
         console.print()
+
+    def _step_gh_check(self) -> None:
+        """Step: Check if GitHub CLI (gh) is installed, offer to install/upgrade."""
+        if not self._git_available:
+            console.print("[dim]Skipping GitHub CLI check (Git not available).[/dim]")
+            console.print()
+            return
+        if shutil.which("gh"):
+            gh_version_line: Optional[str] = None
+            try:
+                result = subprocess.run(
+                    ["gh", "--version"],
+                    capture_output=True,
+                    text=True,
+                    check=True,
+                )
+                gh_version_line = result.stdout.strip().split("\n")[0]
+                TerminalUI.print_success(
+                    f"GitHub CLI is installed. [dim]({gh_version_line})[/dim]"
+                )
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                TerminalUI.print_success("GitHub CLI is installed.")
+
+            installed = (
+                self._parse_gh_version(gh_version_line) if gh_version_line else None
+            )
+            if installed:
+                latest = self._check_latest_gh_version()
+                if latest and installed != latest:
+                    console.print()
+                    TerminalUI.print_warning(
+                        f"A new version of GitHub CLI is available: [cyan]{latest}[/cyan]"
+                    )
+                    should_upgrade = typer.confirm(
+                        "Would you like to upgrade GitHub CLI?", default=True
+                    )
+                    if should_upgrade:
+                        try:
+                            ok = SystemInstaller.install_package("gh")
+                            if ok:
+                                TerminalUI.print_success(
+                                    "GitHub CLI upgraded successfully!"
+                                )
+                                self._log_wizard_event("gh_upgraded", latest)
+                            else:
+                                TerminalUI.print_error(
+                                    "Failed to upgrade GitHub CLI. "
+                                    "See [blue]https://cli.github.com[/blue]"
+                                )
+                        except Exception:
+                            TerminalUI.print_error(
+                                "Failed to upgrade GitHub CLI. "
+                                "See [blue]https://cli.github.com[/blue]"
+                            )
+        else:
+            TerminalUI.print_warning("GitHub CLI (gh) is not installed.")
+            console.print(
+                "[dim]The GitHub CLI lets you create repos, manage PRs, "
+                "and authenticate from the terminal.[/dim]"
+            )
+            should_install = typer.confirm(
+                "Would you like to install GitHub CLI?", default=True
+            )
+            if should_install:
+                try:
+                    ok = SystemInstaller.install_package("gh")
+                    if ok:
+                        TerminalUI.print_success("GitHub CLI installed successfully!")
+                        self._log_wizard_event("gh_installed")
+                    else:
+                        TerminalUI.print_error(
+                            "Failed to install GitHub CLI. "
+                            "See [blue]https://cli.github.com[/blue]"
+                        )
+                except Exception:
+                    TerminalUI.print_error(
+                        "Failed to install GitHub CLI. "
+                        "See [blue]https://cli.github.com[/blue]"
+                    )
+            else:
+                console.print("[dim]Skipping GitHub CLI setup.[/dim]")
+        console.print()
+
+    @staticmethod
+    def _parse_gh_version(version_line: str) -> Optional[str]:
+        """Extracts the version number from the gh --version output.
+
+        Args:
+            version_line: First line of gh --version output.
+
+        Returns:
+            Version string (e.g. '2.45.0') or None.
+        """
+        m = re.search(r"(\d+\.\d+\.\d+)", version_line)
+        return m.group(1) if m else None
+
+    @staticmethod
+    def _check_latest_gh_version() -> Optional[str]:
+        """Fetches the latest GitHub CLI release version from the API.
+
+        Returns:
+            Version string (e.g. '2.67.0') or None on failure.
+        """
+        try:
+            req = urllib.request.Request(
+                "https://api.github.com/repos/cli/cli/releases/latest",
+                headers={
+                    "User-Agent": "cheGi",
+                    "Accept": "application/vnd.github+json",
+                },
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read())
+                tag = data.get("tag_name", "")
+                return tag.lstrip("v")
+        except Exception:
+            return None
 
     @staticmethod
     def _find_ssh_keys(ssh_dir: Path) -> list[str]:

@@ -33,10 +33,11 @@ def test_mark_completed_creates_marker(mock_makedirs: MagicMock, mock_open: Magi
 
 
 @patch("chegi.services.wizard.wizard_service.subprocess.run")
-def test_check_git_installed_returns_true(mock_run: MagicMock):
-    """Test that _check_git_installed returns True when git is found."""
-    mock_run.return_value = MagicMock()
-    assert WizardService._check_git_installed() is True
+def test_get_git_version_returns_version(mock_run: MagicMock):
+    """Test that _get_git_version returns the version string."""
+    mock_run.return_value = MagicMock(stdout="git version 2.43.0\n", stderr="")
+    result = WizardService._get_git_version()
+    assert result == "git version 2.43.0"
     mock_run.assert_called_once_with(
         ["git", "--version"],
         capture_output=True,
@@ -46,12 +47,84 @@ def test_check_git_installed_returns_true(mock_run: MagicMock):
 
 
 @patch("chegi.services.wizard.wizard_service.subprocess.run")
-def test_check_git_installed_returns_false(mock_run: MagicMock):
-    """Test that _check_git_installed returns False when git is missing."""
+def test_get_git_version_returns_none(mock_run: MagicMock):
+    """Test that _get_git_version returns None when git is missing."""
     from subprocess import CalledProcessError
 
     mock_run.side_effect = CalledProcessError(1, "git")
-    assert WizardService._check_git_installed() is False
+    assert WizardService._get_git_version() is None
+
+
+# --- git step tests ---
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch.object(WizardService, "_get_git_version")
+def test_step_git_check_installed(mock_version: MagicMock, mock_log: MagicMock):
+    """Test that _step_git_check reports success when git is found."""
+    mock_version.return_value = "git version 2.43.0"
+    wizard = WizardService()
+    wizard._step_git_check()
+    assert wizard._git_available is True
+
+
+@patch.object(WizardService, "_get_git_version")
+def test_step_git_check_not_installed_decline(mock_version: MagicMock):
+    """Test that _step_git_check skips when user declines install."""
+    mock_version.return_value = None
+    with patch(
+        "chegi.services.wizard.wizard_service.typer.confirm", return_value=False
+    ):
+        wizard = WizardService()
+        wizard._step_git_check()
+    assert wizard._git_available is False
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch.object(WizardService, "_get_git_version")
+def test_step_git_check_installs_success(mock_version: MagicMock, mock_log: MagicMock):
+    """Test that _step_git_check installs git when user accepts."""
+    mock_version.return_value = None
+    with patch("chegi.services.wizard.wizard_service.typer.confirm", return_value=True):
+        with patch(
+            "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+            return_value=True,
+        ):
+            wizard = WizardService()
+            wizard._step_git_check()
+    assert wizard._git_available is True
+    mock_log.assert_called_once_with("git_installed")
+
+
+@patch.object(WizardService, "_get_git_version")
+def test_step_git_check_install_fails(mock_version: MagicMock):
+    """Test that _step_git_check handles install failure gracefully."""
+    mock_version.return_value = None
+    with patch("chegi.services.wizard.wizard_service.typer.confirm", return_value=True):
+        with patch(
+            "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+            return_value=False,
+        ):
+            wizard = WizardService()
+            wizard._step_git_check()
+    assert wizard._git_available is False
+
+
+@patch.object(WizardService, "_get_git_version")
+def test_step_git_check_install_raises(mock_version: MagicMock):
+    """Test that _step_git_check handles exception during install."""
+    mock_version.return_value = None
+    with patch("chegi.services.wizard.wizard_service.typer.confirm", return_value=True):
+        with patch(
+            "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+            side_effect=RuntimeError("error"),
+        ):
+            wizard = WizardService()
+            wizard._step_git_check()
+    assert wizard._git_available is False
+
+
+# --- identity step tests ---
 
 
 @patch("chegi.services.wizard.wizard_service.subprocess.run")
@@ -103,6 +176,7 @@ def test_set_git_identity(mock_run: MagicMock):
 @patch("chegi.services.wizard.wizard_service.sys.stdin.isatty")
 @patch.object(WizardService, "_step_git_check")
 @patch.object(WizardService, "_step_identity")
+@patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_ssh_key")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -110,6 +184,7 @@ def test_execute_runs_all_steps(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_ssh: MagicMock,
+    mock_gh: MagicMock,
     mock_identity: MagicMock,
     mock_git: MagicMock,
     mock_tty: MagicMock,
@@ -124,6 +199,7 @@ def test_execute_runs_all_steps(
 
     mock_git.assert_called_once()
     mock_identity.assert_called_once()
+    mock_gh.assert_called_once()
     mock_ssh.assert_called_once()
     mock_config.assert_called_once()
     mock_mark.assert_called_once()
@@ -132,6 +208,7 @@ def test_execute_runs_all_steps(
 @patch("chegi.services.wizard.wizard_service.os.path.isfile")
 @patch.object(WizardService, "_step_git_check")
 @patch.object(WizardService, "_step_identity")
+@patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_ssh_key")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -139,6 +216,7 @@ def test_execute_skips_when_marker_exists(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_ssh: MagicMock,
+    mock_gh: MagicMock,
     mock_identity: MagicMock,
     mock_git: MagicMock,
     mock_isfile: MagicMock,
@@ -151,6 +229,7 @@ def test_execute_skips_when_marker_exists(
 
     mock_git.assert_not_called()
     mock_identity.assert_not_called()
+    mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
     mock_config.assert_not_called()
     mock_mark.assert_not_called()
@@ -160,6 +239,7 @@ def test_execute_skips_when_marker_exists(
 @patch("chegi.services.wizard.wizard_service.sys.stdin.isatty")
 @patch.object(WizardService, "_step_git_check")
 @patch.object(WizardService, "_step_identity")
+@patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_ssh_key")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -167,6 +247,7 @@ def test_execute_skips_when_not_tty(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_ssh: MagicMock,
+    mock_gh: MagicMock,
     mock_identity: MagicMock,
     mock_git: MagicMock,
     mock_tty: MagicMock,
@@ -181,6 +262,7 @@ def test_execute_skips_when_not_tty(
 
     mock_git.assert_not_called()
     mock_identity.assert_not_called()
+    mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
     mock_config.assert_not_called()
     mock_mark.assert_not_called()
@@ -332,6 +414,149 @@ def test_display_public_key_error(tmp_path: Path, capsys):
     wizard._display_public_key(tmp_path / "nope.pub")
     captured = capsys.readouterr()
     assert "Could not read" in captured.out
+
+
+# --- gh check tests ---
+
+
+@patch.object(WizardService, "_check_latest_gh_version")
+@patch("chegi.services.wizard.wizard_service.subprocess.run")
+def test_step_gh_check_installed(mock_run: MagicMock, mock_latest: MagicMock):
+    """Test that _step_gh_check reports success when gh is installed."""
+    mock_run.return_value = MagicMock(stdout="gh version 2.45.0\n", stderr="")
+    mock_latest.return_value = "2.45.0"
+    with patch(
+        "chegi.services.wizard.wizard_service.shutil.which", return_value="/usr/bin/gh"
+    ):
+        wizard = WizardService()
+        wizard._step_gh_check()
+    mock_run.assert_called_once_with(
+        ["gh", "--version"], capture_output=True, text=True, check=True
+    )
+
+
+@patch("chegi.services.wizard.wizard_service.shutil.which")
+def test_step_gh_check_not_installed(mock_which: MagicMock):
+    """Test that _step_gh_check warns when gh is missing."""
+    mock_which.return_value = None
+    with patch(
+        "chegi.services.wizard.wizard_service.typer.confirm", return_value=False
+    ):
+        wizard = WizardService()
+        wizard._step_gh_check()
+    mock_which.assert_called_with("gh")
+
+
+@patch("chegi.services.wizard.wizard_service.shutil.which")
+@patch.object(WizardService, "_log_wizard_event")
+def test_step_gh_check_installs_success(
+    mock_log: MagicMock,
+    mock_which: MagicMock,
+):
+    """Test that _step_gh_check installs gh when user accepts."""
+    mock_which.return_value = None
+    with patch("chegi.services.wizard.wizard_service.typer.confirm", return_value=True):
+        with patch(
+            "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+            return_value=True,
+        ):
+            wizard = WizardService()
+            wizard._step_gh_check()
+    mock_log.assert_called_once_with("gh_installed")
+
+
+@patch("chegi.services.wizard.wizard_service.shutil.which")
+def test_step_gh_check_install_fails(mock_which: MagicMock):
+    """Test that _step_gh_check handles install failure gracefully."""
+    mock_which.return_value = None
+    with patch("chegi.services.wizard.wizard_service.typer.confirm", return_value=True):
+        with patch(
+            "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+            return_value=False,
+        ):
+            wizard = WizardService()
+            wizard._step_gh_check()
+
+
+@patch("chegi.services.wizard.wizard_service.shutil.which")
+@patch.object(WizardService, "_log_wizard_event")
+def test_step_gh_check_handles_http_error(
+    mock_log: MagicMock,
+    mock_which: MagicMock,
+):
+    """Test that _step_gh_check handles exception during install."""
+    mock_which.return_value = None
+    with patch("chegi.services.wizard.wizard_service.typer.confirm", return_value=True):
+        with patch(
+            "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+            side_effect=RuntimeError("network error"),
+        ):
+            wizard = WizardService()
+            wizard._step_gh_check()
+
+
+# --- gh version helpers ---
+
+
+def test_parse_gh_version_extracts_number():
+    """Test that _parse_gh_version extracts the version number."""
+    result = WizardService._parse_gh_version("gh version 2.45.0 (2024-08-20)")
+    assert result == "2.45.0"
+
+
+def test_parse_gh_version_returns_none_on_mismatch():
+    """Test that _parse_gh_version returns None when no version found."""
+    result = WizardService._parse_gh_version("gh: command not found")
+    assert result is None
+
+
+@patch("chegi.services.wizard.wizard_service.urllib.request.urlopen")
+def test_check_latest_gh_version_success(mock_urlopen: MagicMock):
+    """Test that _check_latest_gh_version returns the tag from API."""
+    mock_response = MagicMock()
+    mock_response.read.return_value = b'{"tag_name": "v2.67.0"}'
+    mock_urlopen.return_value.__enter__.return_value = mock_response
+    result = WizardService._check_latest_gh_version()
+    assert result == "2.67.0"
+
+
+@patch("chegi.services.wizard.wizard_service.urllib.request.urlopen")
+def test_check_latest_gh_version_returns_none_on_error(
+    mock_urlopen: MagicMock,
+):
+    """Test that _check_latest_gh_version returns None on network error."""
+    mock_urlopen.side_effect = RuntimeError("timeout")
+    result = WizardService._check_latest_gh_version()
+    assert result is None
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch.object(WizardService, "_check_latest_gh_version")
+@patch("chegi.services.wizard.wizard_service.subprocess.run")
+def test_step_gh_check_upgrade_offered(
+    mock_run: MagicMock,
+    mock_latest: MagicMock,
+    mock_log: MagicMock,
+):
+    """Test that _step_gh_check offers upgrade when newer version available."""
+    mock_run.return_value = MagicMock(stdout="gh version 2.45.0\n", stderr="")
+    mock_latest.return_value = "2.67.0"
+    with patch(
+        "chegi.services.wizard.wizard_service.shutil.which", return_value="/usr/bin/gh"
+    ):
+        with patch(
+            "chegi.services.wizard.wizard_service.typer.confirm", return_value=True
+        ):
+            with patch(
+                "chegi.services.wizard.wizard_service.SystemInstaller.install_package",
+                return_value=True,
+            ):
+                wizard = WizardService()
+                wizard._step_gh_check()
+    mock_log.assert_called_once_with("gh_upgraded", "2.67.0")
+
+
+# --- SSH key step tests ---
 
 
 @patch("chegi.services.wizard.wizard_service.Path.home")

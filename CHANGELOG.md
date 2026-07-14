@@ -35,6 +35,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Restore instructions displayed after changes
 - `_backup_key()`, `_backup_ssh_config()`, `_add_ssh_config_entry()`, `_log_wizard_event()` helper methods
 - 12 new tests covering backup, config entry, and logging
+- Wizard now checks and offers to install/upgrade GitHub CLI (`gh`):
+  - Detects installed version and checks latest release via GitHub API
+  - Offers to install if missing, upgrade if outdated
+  - Automatically skipped when Git is not available
+  - Logs `gh_installed` / `gh_upgraded` events
+- Git check step now offers to install Git instead of exiting:
+  - Shows installed version, prompts to install if missing
+  - Sets `_git_available` flag to skip downstream steps when Git missing
+  - Logs `git_installed` event
+- `_get_git_version()` — returns parsed Git version string
+- `_parse_gh_version()` — extracts version number from `gh --version` output
+- `_check_latest_gh_version()` — fetches latest GitHub CLI release via API
+- 15 new tests covering Git install flow, gh upgrade flow, and version helpers
 
 - `chegi new` command — scaffold complete Git projects from scratch with:
   - Interactive questionary-first guided flow (project name, tech selection, license, summary confirmation)
