@@ -3,6 +3,7 @@ from typing import Optional
 
 import typer
 
+from chegi.cli.commands.git_config import app as git_config_app
 from chegi.config import ChegiConfig
 from chegi.ui import TerminalUI, console
 
@@ -13,6 +14,8 @@ app = typer.Typer(
         "registry mirrors (e.g., pip, npm) to speed up environment setups."
     )
 )
+
+app.add_typer(git_config_app, name="git")
 
 
 @app.command("list")
