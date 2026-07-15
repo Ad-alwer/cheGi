@@ -16,6 +16,8 @@ import questionary
 import typer
 
 from chegi.config import ChegiConfig, GlobalConfig
+from chegi.services.auth import AuthProvider, AuthService
+from chegi.services.auth.exceptions import TokenValidationError
 from chegi.services.installer import SystemInstaller
 from chegi.services.wizard.constants import (
     BANNER,
@@ -135,6 +137,7 @@ class WizardService:
         self._step_identity()
         self._step_gh_check()
         self._step_ssh_key()
+        self._step_auth_login()
         self._step_project_config()
         self._step_theme_picker()
 
@@ -719,6 +722,189 @@ class WizardService:
                 f"  [cyan]cp {shlex.quote(str(config_backup))} "
                 f"{shlex.quote(str(Path.home() / '.ssh' / 'config'))}[/cyan]"
             )
+
+        console.print()
+
+    def _step_auth_login(self) -> None:
+        """Step: Offer to set up Git provider token-based authentication."""
+        import urllib.parse
+
+        existing = AuthService.status()
+        if existing:
+            providers = ", ".join(
+                sorted(set(c.provider.value.title() for c in existing))
+            )
+            TerminalUI.print_success(
+                f"Token authentication already configured: [cyan]{providers}[/cyan]"
+            )
+            console.print()
+            return
+
+        if not self._git_available:
+            console.print("[dim]Skipping auth setup (Git not available).[/dim]")
+            console.print()
+            return
+
+        TerminalUI.print_info(
+            "Token-based authentication lets cheGi interact with GitHub/GitLab APIs "
+            "on your behalf."
+        )
+        should_setup = typer.confirm(
+            "Would you like to set up Git provider authentication?", default=True
+        )
+        if not should_setup:
+            console.print(
+                "[dim]Skipping auth setup. You can run [bold]chegi auth login[/bold] later.[/dim]"
+            )
+            console.print()
+            return
+
+        # ── Provider ──────────────────────────────────────────
+        provider_choices = ["GitHub", "GitLab"]
+        chosen = questionary.select(
+            "Choose your Git provider:",
+            choices=provider_choices,
+        ).ask()
+        if not chosen:
+            console.print("[dim]Skipping auth setup.[/dim]")
+            console.print()
+            return
+        provider = AuthProvider.GITLAB if chosen == "GitLab" else AuthProvider.GITHUB
+
+        # ── GitLab URL ───────────────────────────────────────
+        gitlab_url = ""
+        if provider == AuthProvider.GITLAB:
+            url = questionary.text(
+                "GitLab instance URL (press Enter for gitlab.com):",
+                default="https://gitlab.com",
+            ).ask()
+            if url:
+                gitlab_url = url.rstrip("/")
+
+        # ── Token ─────────────────────────────────────────────
+        token = questionary.password(
+            f"Paste your personal access token ({chosen}):",
+        ).ask()
+        if not token:
+            TerminalUI.print_error("Token is required. Skipping auth setup.")
+            console.print()
+            return
+
+        # ── Detect & validate ─────────────────────────────────
+        detected = AuthService.detect_provider(token)
+        if detected and detected != provider:
+            TerminalUI.print_warning(
+                f"Token prefix suggests {detected.value.title()}, "
+                f"but you selected {chosen}."
+            )
+            correct = typer.confirm("Use detected provider instead?", default=False)
+            if correct:
+                provider = detected
+                chosen = provider.value.title()
+
+        try:
+            username, scopes = AuthService.validate_token(
+                provider, token, api_url=gitlab_url
+            )
+        except TokenValidationError as e:
+            TerminalUI.print_error(f"Token validation failed: {e}")
+            console.print(
+                "[dim]You can retry with [bold]chegi auth login[/bold] after fixing the token.[/dim]"
+            )
+            console.print()
+            return
+
+        # ── Username ─────────────────────────────────────────
+        username_str = username or ""
+        if not username_str:
+            username_str = typer.prompt(
+                f"Username for {chosen}",
+            )
+            if not username_str:
+                TerminalUI.print_error("Username is required. Skipping auth setup.")
+                console.print()
+                return
+
+        # ── Label ─────────────────────────────────────────────
+        label = questionary.text(
+            "Account label (e.g. personal, work):",
+            default="default",
+        ).ask()
+        if not label:
+            label = "default"
+
+        # ── Scopes ────────────────────────────────────────────
+        missing_scopes = AuthService.check_required_scopes(provider, scopes)
+        if missing_scopes:
+            TerminalUI.print_warning(
+                f"Token is missing recommended scopes: "
+                f"[bold]{', '.join(missing_scopes)}[/bold]"
+            )
+            proceed = typer.confirm("Continue anyway?", default=True)
+            if not proceed:
+                console.print("[dim]Skipping auth setup.[/dim]")
+                console.print()
+                return
+
+        # ── Host ──────────────────────────────────────────────
+        from chegi.services.auth.constants import PROVIDER_INFO
+
+        host = str(PROVIDER_INFO[provider]["default_host"])
+        if provider == AuthProvider.GITLAB and gitlab_url:
+            parsed_host = urllib.parse.urlparse(gitlab_url).hostname
+            if parsed_host:
+                host = parsed_host
+
+        existing_cred = AuthService.get_credential_for_host(host)
+        make_default = existing_cred is None
+
+        # ── Store ─────────────────────────────────────────────
+        try:
+            AuthService.login(
+                provider=provider,
+                label=label,
+                username=username_str,
+                token=token,
+                api_url=gitlab_url,
+                make_default=make_default,
+                username_from_api=username,
+                scopes=scopes,
+            )
+        except Exception as e:
+            TerminalUI.print_error(f"Failed to store credential: {e}")
+            console.print()
+            return
+
+        TerminalUI.print_success(f"Token valid — welcome, [cyan]{username_str}[/cyan]!")
+        self._log_wizard_event("auth_login", f"{provider.value} as {username_str}")
+
+        # ── Credential helper ─────────────────────────────────
+        import shutil
+        import subprocess
+
+        has_git = shutil.which("git") is not None
+        if make_default and has_git:
+            setup_helper = typer.confirm(
+                f"Set up automatic Git authentication for {host}?",
+                default=True,
+            )
+            if setup_helper:
+                key = f"credential.https://{host}.helper"
+                chegi_path = shutil.which("chegi")
+                value = (
+                    f"!{chegi_path} auth get-credential"
+                    if chegi_path
+                    else "!chegi auth get-credential"
+                )
+                subprocess.run(
+                    ["git", "config", "--global", "--add", key, value],
+                    capture_output=True,
+                    check=False,
+                )
+                TerminalUI.print_info(
+                    f"Credential helper registered for [cyan]{host}[/cyan]"
+                )
+                self._log_wizard_event("credential_helper_setup", host)
 
         console.print()
 

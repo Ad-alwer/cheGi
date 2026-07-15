@@ -179,11 +179,13 @@ def test_set_git_identity(mock_run: MagicMock):
 @patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
+@patch.object(WizardService, "_step_auth_login")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
 def test_execute_runs_all_steps(
     mock_mark: MagicMock,
     mock_config: MagicMock,
+    mock_auth: MagicMock,
     mock_ssh: MagicMock,
     mock_theme: MagicMock,
     mock_gh: MagicMock,
@@ -203,6 +205,7 @@ def test_execute_runs_all_steps(
     mock_identity.assert_called_once()
     mock_gh.assert_called_once()
     mock_ssh.assert_called_once()
+    mock_auth.assert_called_once()
     mock_config.assert_called_once()
     mock_theme.assert_called_once()
     mock_mark.assert_called_once()
@@ -214,11 +217,13 @@ def test_execute_runs_all_steps(
 @patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
+@patch.object(WizardService, "_step_auth_login")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
 def test_execute_skips_when_marker_exists(
     mock_mark: MagicMock,
     mock_config: MagicMock,
+    mock_auth: MagicMock,
     mock_ssh: MagicMock,
     mock_theme: MagicMock,
     mock_gh: MagicMock,
@@ -236,6 +241,7 @@ def test_execute_skips_when_marker_exists(
     mock_identity.assert_not_called()
     mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
+    mock_auth.assert_not_called()
     mock_config.assert_not_called()
     mock_theme.assert_not_called()
     mock_mark.assert_not_called()
@@ -248,11 +254,13 @@ def test_execute_skips_when_marker_exists(
 @patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
+@patch.object(WizardService, "_step_auth_login")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
 def test_execute_skips_when_not_tty(
     mock_mark: MagicMock,
     mock_config: MagicMock,
+    mock_auth: MagicMock,
     mock_ssh: MagicMock,
     mock_theme: MagicMock,
     mock_gh: MagicMock,
@@ -272,6 +280,7 @@ def test_execute_skips_when_not_tty(
     mock_identity.assert_not_called()
     mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
+    mock_auth.assert_not_called()
     mock_config.assert_not_called()
     mock_theme.assert_not_called()
     mock_mark.assert_not_called()
@@ -867,3 +876,100 @@ def test_step_theme_picker_cancelled():
         mock_select.return_value.ask.return_value = None
         wizard = WizardService()
         wizard._step_theme_picker()
+
+
+# --- auth step tests ---
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.AuthService.status")
+def test_step_auth_login_already_configured(
+    mock_status: MagicMock,
+    mock_log: MagicMock,
+):
+    """Test that auth step skips when credentials already exist."""
+    mock_status.return_value = [MagicMock(provider=MagicMock(value="github"))]
+
+    wizard = WizardService()
+    wizard._step_auth_login()
+
+    mock_log.assert_not_called()
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.AuthService.status")
+def test_step_auth_login_skips_when_git_missing(
+    mock_status: MagicMock,
+    mock_log: MagicMock,
+):
+    """Test that auth step skips when Git is not available."""
+    mock_status.return_value = []
+
+    wizard = WizardService()
+    wizard._git_available = False
+    wizard._step_auth_login()
+
+    mock_log.assert_not_called()
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.AuthService.status")
+@patch("chegi.services.wizard.wizard_service.typer.confirm")
+def test_step_auth_login_user_declines(
+    mock_confirm: MagicMock,
+    mock_status: MagicMock,
+    mock_log: MagicMock,
+):
+    """Test that auth step skips when user declines setup."""
+    mock_status.return_value = []
+    mock_confirm.return_value = False
+
+    wizard = WizardService()
+    wizard._step_auth_login()
+
+    mock_log.assert_not_called()
+
+
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.shutil.which")
+@patch("chegi.services.wizard.wizard_service.AuthService.get_credential_for_host")
+@patch("chegi.services.wizard.wizard_service.AuthService.login")
+@patch("chegi.services.wizard.wizard_service.AuthService.check_required_scopes")
+@patch("chegi.services.wizard.wizard_service.AuthService.validate_token")
+@patch("chegi.services.wizard.wizard_service.AuthService.detect_provider")
+@patch("questionary.password")
+@patch("questionary.text")
+@patch("questionary.select")
+@patch("chegi.services.wizard.wizard_service.AuthService.status")
+@patch("chegi.services.wizard.wizard_service.typer.confirm")
+def test_step_auth_login_full_flow(
+    mock_confirm: MagicMock,
+    mock_status: MagicMock,
+    mock_select: MagicMock,
+    mock_text: MagicMock,
+    mock_password: MagicMock,
+    mock_detect: MagicMock,
+    mock_validate: MagicMock,
+    mock_check: MagicMock,
+    mock_login: MagicMock,
+    mock_get_cred: MagicMock,
+    mock_shutil_which: MagicMock,
+    mock_log: MagicMock,
+):
+    """Test full auth login flow in the wizard."""
+    mock_status.return_value = []
+    mock_confirm.return_value = True
+    mock_select.return_value.ask.return_value = "GitHub"
+    mock_text.return_value.ask.return_value = None
+    mock_password.return_value.ask.return_value = "ghp_valid_token"
+    mock_detect.return_value = None
+    mock_validate.return_value = ("testuser", ["repo"])
+    mock_check.return_value = []
+    mock_get_cred.return_value = None
+    mock_shutil_which.return_value = None
+
+    wizard = WizardService()
+    wizard._step_auth_login()
+
+    mock_login.assert_called_once()
+    mock_log.assert_called_once_with("auth_login", "github as testuser")

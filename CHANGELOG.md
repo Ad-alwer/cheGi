@@ -44,6 +44,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`
   - `display_results_table()` uses active cheGi theme's `TableTheme` by default
   - Theme stored in `~/.config/chegi/config.json`, persisted across sessions
+- Auth login step (`_step_auth_login`) added to the first-run wizard:
+  - Prompts for provider, token, label; validates and stores credential
+  - Detects provider from token prefix; warns on mismatch
+  - Checks required scopes; warns if missing
+  - Offers to set up Git credential helper for the host
+  - Logs `auth_login` and `credential_helper_setup` events
+  - 4 wizard integration tests
 - First-run wizard now includes a theme picker step after project config:
   - Lists all available themes, marks the current one
   - Changes are applied immediately and persisted to global config
