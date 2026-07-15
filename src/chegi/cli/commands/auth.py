@@ -360,31 +360,11 @@ def _host_for_provider(provider: AuthProvider, gitlab_url: str = "") -> str:
 # ── Git identity check ─────────────────────────────────────
 
 
-def _get_git_config(key: str) -> Optional[str]:
-    """Reads a single git config value.
-
-    Args:
-        key: The git config key to read.
-
-    Returns:
-        The value, or None if not set.
-    """
-    try:
-        result = subprocess.run(
-            ["git", "config", "--global", key],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return result.stdout.strip() or None
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-
 def _ensure_git_identity() -> None:
     """Checks Git identity and prompts to configure if missing."""
-    user_name = _get_git_config("user.name")
-    user_email = _get_git_config("user.email")
+    from chegi.services.git_config import GitConfigService
+
+    user_name, user_email = GitConfigService.get_identity()
 
     if user_name and user_email:
         return
@@ -409,21 +389,13 @@ def _ensure_git_identity() -> None:
         TerminalUI.print_error("Name and email are required. Skipping identity setup.")
         return
 
-    subprocess.run(
-        ["git", "config", "--global", "user.name", name],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    subprocess.run(
-        ["git", "config", "--global", "user.email", email],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    TerminalUI.print_success(
-        f"Git identity set to: [cyan]{name}[/cyan] <[cyan]{email}[/cyan]>"
-    )
+    try:
+        GitConfigService.set_identity(name, email)
+        TerminalUI.print_success(
+            f"Git identity set to: [cyan]{name}[/cyan] <[cyan]{email}[/cyan]>"
+        )
+    except Exception:
+        TerminalUI.print_error("Failed to set Git identity.")
 
 
 # ── Git credential helper ───────────────────────────────────
