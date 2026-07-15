@@ -77,48 +77,6 @@ class WizardService:
         except (subprocess.CalledProcessError, FileNotFoundError):
             return None
 
-    @staticmethod
-    def _get_git_config(key: str) -> Optional[str]:
-        """Reads a single git config value.
-
-        Args:
-            key: The git config key to read.
-
-        Returns:
-            The value, or None if not set.
-        """
-        try:
-            result = subprocess.run(
-                ["git", "config", "--global", key],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return result.stdout.strip() or None
-        except (subprocess.CalledProcessError, FileNotFoundError):
-            return None
-
-    @staticmethod
-    def _set_git_identity(name: str, email: str) -> None:
-        """Sets the global Git user name and email.
-
-        Args:
-            name: The user name to set.
-            email: The user email to set.
-        """
-        subprocess.run(
-            ["git", "config", "--global", "user.name", name],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        subprocess.run(
-            ["git", "config", "--global", "user.email", email],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
     def execute(self) -> None:
         """Runs the first-run wizard."""
         if not self.should_run():
@@ -187,8 +145,11 @@ class WizardService:
             console.print("[dim]Skipping Git identity setup (Git not available).[/dim]")
             console.print()
             return
-        user_name = self._get_git_config("user.name")
-        user_email = self._get_git_config("user.email")
+
+        from chegi.services.git_config import GitConfigService
+
+        user_name = GitConfigService.get("user.name")
+        user_email = GitConfigService.get("user.email")
 
         if user_name and user_email:
             TerminalUI.print_success(
@@ -213,14 +174,16 @@ class WizardService:
         )
         if not should_set:
             console.print(
-                "[dim]Skipping identity setup. You can run [bold]chegi setup git[/bold] later.[/dim]"
+                "[dim]Skipping identity setup. You can run [bold]chegi config git set[/bold] later.[/dim]"
             )
             console.print()
             return
 
+        import os
+
         name_input = typer.prompt(
             "What is your name?",
-            default=user_name or "",
+            default=user_name or os.environ.get("USER", ""),
             show_default=False,
         )
         email_input = typer.prompt(
@@ -236,15 +199,38 @@ class WizardService:
             console.print()
             return
 
+        # Simple email validation
+        if "@" not in email_input or "." not in email_input.split("@")[-1]:
+            TerminalUI.print_warning("Email may be invalid (missing @ or domain).")
+            if not typer.confirm("Continue with this email?", default=True):
+                console.print()
+                return
+
         try:
-            self._set_git_identity(name_input, email_input)
+            GitConfigService.set_identity(name_input, email_input)
             TerminalUI.print_success(
-                f"Git identity set to: [cyan]{name_input}[/cyan] <[cyan]{email_input}[/cyan]>"
+                f"Git identity set to: [cyan]{name_input}[/cyan]"
+                f" <[cyan]{email_input}[/cyan]>"
             )
-        except subprocess.CalledProcessError:
+        except Exception:
             TerminalUI.print_error(
                 "Failed to set Git identity. Please configure it manually."
             )
+
+        # Offer to set init.defaultBranch
+        branch = GitConfigService.get("init.defaultBranch")
+        if not branch:
+            console.print()
+            branch_input = typer.prompt("Set default branch name", default="main")
+            if branch_input:
+                try:
+                    GitConfigService.set("init.defaultBranch", branch_input)
+                    TerminalUI.print_success(
+                        f"init.defaultBranch set to [cyan]{branch_input}[/cyan]"
+                    )
+                except Exception:
+                    pass
+
         console.print()
 
     def _step_gh_check(self) -> None:
@@ -604,9 +590,11 @@ class WizardService:
             console.print()
             return
 
+        from chegi.services.git_config import GitConfigService
+
         email = typer.prompt(
             "Enter your email for the SSH key label",
-            default=self._get_git_config("user.email") or "",
+            default=GitConfigService.get("user.email") or "",
             show_default=False,
         )
         if not email:
@@ -728,6 +716,8 @@ class WizardService:
 
     def _step_git_aliases(self) -> None:
         """Step: Offer to configure Git alias shortcuts."""
+        from chegi.services.git_config import GitConfigService
+
         if not self._git_available:
             console.print("[dim]Skipping Git aliases (Git not available).[/dim]")
             console.print()
@@ -741,7 +731,7 @@ class WizardService:
             ("ci", "commit"),
             ("st", "status"),
         ]:
-            val = self._get_git_config(f"alias.{alias_name}")
+            val = GitConfigService.get(f"alias.{alias_name}")
             if val:
                 existing[alias_name] = val
 

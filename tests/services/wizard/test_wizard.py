@@ -127,51 +127,6 @@ def test_step_git_check_install_raises(mock_version: MagicMock):
 # --- identity step tests ---
 
 
-@patch("chegi.services.wizard.wizard_service.subprocess.run")
-def test_get_git_config_returns_value(mock_run: MagicMock):
-    """Test that _get_git_config returns the config value."""
-    mock_run.return_value = MagicMock(stdout="Alice\n", stderr="")
-    result = WizardService._get_git_config("user.name")
-    assert result == "Alice"
-    mock_run.assert_called_once_with(
-        ["git", "config", "--global", "user.name"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-
-
-@patch("chegi.services.wizard.wizard_service.subprocess.run")
-def test_get_git_config_returns_none_when_not_set(mock_run: MagicMock):
-    """Test that _get_git_config returns None when key is not set."""
-    from subprocess import CalledProcessError
-
-    mock_run.side_effect = CalledProcessError(1, "git")
-    result = WizardService._get_git_config("user.name")
-    assert result is None
-
-
-@patch("chegi.services.wizard.wizard_service.subprocess.run")
-def test_set_git_identity(mock_run: MagicMock):
-    """Test that _set_git_identity sets both name and email."""
-    mock_run.return_value = MagicMock()
-    WizardService._set_git_identity("Alice", "alice@example.com")
-
-    assert mock_run.call_count == 2
-    mock_run.assert_any_call(
-        ["git", "config", "--global", "user.name", "Alice"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    mock_run.assert_any_call(
-        ["git", "config", "--global", "user.email", "alice@example.com"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-
 @patch("chegi.services.wizard.wizard_service.os.path.isfile")
 @patch("chegi.services.wizard.wizard_service.sys.stdin.isatty")
 @patch.object(WizardService, "_step_git_check")
@@ -661,7 +616,7 @@ def test_step_ssh_key_no_keys_decline_generate(
 @patch.object(WizardService, "_backup_ssh_config")
 @patch("chegi.services.wizard.wizard_service.Path.home")
 @patch.object(WizardService, "_find_ssh_keys")
-@patch.object(WizardService, "_get_git_config")
+@patch("chegi.services.git_config.service.GitConfigService.get")
 @patch.object(WizardService, "_generate_ssh_key")
 @patch.object(WizardService, "_display_public_key")
 @patch.object(WizardService, "_add_key_to_agent")
@@ -890,7 +845,7 @@ def test_step_theme_picker_cancelled():
 # --- git aliases step tests ---
 
 
-@patch.object(WizardService, "_get_git_config")
+@patch("chegi.services.git_config.service.GitConfigService.get")
 @patch.object(WizardService, "_log_wizard_event")
 @patch("chegi.services.wizard.wizard_service.typer.confirm")
 def test_step_git_aliases_all_already_set(
@@ -908,7 +863,7 @@ def test_step_git_aliases_all_already_set(
     mock_log.assert_not_called()
 
 
-@patch.object(WizardService, "_get_git_config")
+@patch("chegi.services.git_config.service.GitConfigService.get")
 @patch.object(WizardService, "_log_wizard_event")
 @patch("chegi.services.wizard.wizard_service.subprocess.run")
 @patch("chegi.services.wizard.wizard_service.typer.confirm")
@@ -931,7 +886,7 @@ def test_step_git_aliases_some_missing(
     mock_log.assert_called_once_with("git_aliases_set", "3 aliases")
 
 
-@patch.object(WizardService, "_get_git_config")
+@patch("chegi.services.git_config.service.GitConfigService.get")
 @patch.object(WizardService, "_log_wizard_event")
 @patch("chegi.services.wizard.wizard_service.subprocess.run")
 @patch("chegi.services.wizard.wizard_service.typer.confirm")
@@ -959,7 +914,7 @@ def test_step_git_aliases_git_not_available():
     wizard._step_git_aliases()
 
 
-@patch.object(WizardService, "_get_git_config")
+@patch("chegi.services.git_config.service.GitConfigService.get")
 @patch.object(WizardService, "_log_wizard_event")
 @patch("chegi.services.wizard.wizard_service.subprocess.run")
 @patch("chegi.services.wizard.wizard_service.typer.confirm")
