@@ -142,6 +142,10 @@ def login(
                 f"Credential helper registered for [cyan]{helper_host}[/cyan]"
             )
 
+    # ── Git identity check ───────────────────────────────────
+    if is_interactive and _check_git_installed():
+        _ensure_git_identity()
+
 
 @app.command()
 def logout(
@@ -349,6 +353,75 @@ def _host_for_provider(provider: AuthProvider, gitlab_url: str = "") -> str:
             return hostname
     info = PROVIDER_INFO[provider]
     return str(info["default_host"])
+
+
+# ── Git identity check ─────────────────────────────────────
+
+
+def _get_git_config(key: str) -> Optional[str]:
+    """Reads a single git config value.
+
+    Args:
+        key: The git config key to read.
+
+    Returns:
+        The value, or None if not set.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "config", "--global", key],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stdout.strip() or None
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return None
+
+
+def _ensure_git_identity() -> None:
+    """Checks Git identity and prompts to configure if missing."""
+    user_name = _get_git_config("user.name")
+    user_email = _get_git_config("user.email")
+
+    if user_name and user_email:
+        return
+
+    if not user_name and not user_email:
+        TerminalUI.print_warning("Git identity is not configured.")
+    elif not user_name:
+        TerminalUI.print_warning("Git [cyan]user.name[/cyan] is not set.")
+    elif not user_email:
+        TerminalUI.print_warning("Git [cyan]user.email[/cyan] is not set.")
+
+    should_set = questionary.confirm(
+        "Would you like to configure Git identity now?", default=True
+    ).ask()
+    if not should_set:
+        return
+
+    name = questionary.text("What is your name?", default=user_name or "").ask()
+    email = questionary.text("What is your email?", default=user_email or "").ask()
+
+    if not name or not email:
+        TerminalUI.print_error("Name and email are required. Skipping identity setup.")
+        return
+
+    subprocess.run(
+        ["git", "config", "--global", "user.name", name],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "config", "--global", "user.email", email],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    TerminalUI.print_success(
+        f"Git identity set to: [cyan]{name}[/cyan] <[cyan]{email}[/cyan]>"
+    )
 
 
 # ── Git credential helper ───────────────────────────────────

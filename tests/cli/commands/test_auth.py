@@ -607,3 +607,58 @@ def test_status_shows_scopes(
 
     assert result.exit_code == 0
     assert "[repo, workflow]" in result.stdout
+
+
+# ── Git identity check ──────────────────────────────────────
+
+
+@patch("chegi.cli.commands.auth._get_git_config")
+@patch("questionary.text")
+@patch("questionary.confirm")
+@patch("chegi.cli.commands.auth.subprocess.run")
+def test_ensure_git_identity_sets_name_and_email(
+    mock_run: MagicMock,
+    mock_confirm: MagicMock,
+    mock_text: MagicMock,
+    mock_config: MagicMock,
+):
+    """Tests that _ensure_git_identity prompts and sets identity when missing."""
+    mock_config.return_value = None  # both identity fields missing
+    mock_confirm.return_value.ask.return_value = True
+    mock_text.side_effect = [
+        MagicMock(ask=MagicMock(return_value="Alice")),
+        MagicMock(ask=MagicMock(return_value="alice@example.com")),
+    ]
+
+    from chegi.cli.commands.auth import _ensure_git_identity
+
+    _ensure_git_identity()
+
+    assert mock_run.call_count == 2
+    mock_run.assert_any_call(
+        ["git", "config", "--global", "user.name", "Alice"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    mock_run.assert_any_call(
+        ["git", "config", "--global", "user.email", "alice@example.com"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+@patch("chegi.cli.commands.auth._get_git_config")
+def test_ensure_git_identity_skips_when_set(
+    mock_config: MagicMock,
+):
+    """Tests that _ensure_git_identity skips when identity is already set."""
+    mock_config.return_value = "Alice"  # first call returns name
+
+    from chegi.cli.commands.auth import _ensure_git_identity
+
+    _ensure_git_identity()
+
+    # Called twice — if both return values, the function returns early
+    assert mock_config.call_count == 2

@@ -56,6 +56,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shows helpful suggestion with the exact command to run
   - Does not suggest on non-auth errors (connection refused, etc.)
   - 2 new sync CLI tests
+- Git identity check during `chegi auth login`:
+  - Checks if `user.name` and `user.email` are set in global Git config
+  - Prompts interactively to configure identity if missing
+  - Skips if already configured
+  - Only runs in interactive mode
+  - 2 new auth CLI tests
 - First-run wizard now includes a theme picker step after project config:
   - Lists all available themes, marks the current one
   - Changes are applied immediately and persisted to global config
