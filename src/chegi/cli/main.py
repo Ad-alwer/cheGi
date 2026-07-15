@@ -4,6 +4,7 @@ import typer
 
 # Import command modules
 from chegi.cli.commands import (
+    auth,
     commit,
     config,
     doctor,
@@ -42,6 +43,7 @@ app = typer.Typer(
 )
 
 # Register subcommands
+app.add_typer(auth.app, name="auth")
 app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 app.add_typer(sync.app, name="sync")

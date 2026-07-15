@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Credential` model with `AuthProvider` enum (GitHub, GitLab)
   - 25 service-layer tests
 - New dependency: `cryptography>=41.0.0` for secure token storage
+- `chegi auth` CLI commands with non-interactive flag support:
+  - `chegi auth login` — interactive and non-interactive (`--token`) modes
+  - `chegi auth logout` — remove stored credentials (with `--all`)
+  - `chegi auth status` — display saved accounts with host info
+  - `chegi auth switch` — change the default account for a host
+  - `chegi auth get-credential` — hidden Git credential helper command
+  - Magic provider detection: auto-detects GitHub/GitLab from token prefix
+  - 11 CLI integration tests using `CliRunner`
 - Color theme system with support for switching between preset themes:
   - `TerminalUI` now loads themes dynamically from `GlobalConfig` with caching
   - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`
