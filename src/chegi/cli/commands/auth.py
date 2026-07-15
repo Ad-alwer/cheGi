@@ -1,5 +1,7 @@
 """CLI commands for token-based authentication."""
 
+import shutil
+import subprocess
 from typing import Optional
 
 import questionary
@@ -86,9 +88,8 @@ def login(
     effective_username = username_from_api or resolved_username or ""
 
     # ── Make default ──────────────────────────────────────────
-    existing = AuthService.get_credential_for_host(
-        _host_for_provider(resolved_provider, gitlab_url)
-    )
+    host = _host_for_provider(resolved_provider, gitlab_url)
+    existing = AuthService.get_credential_for_host(host)
     make_default = existing is None
 
     # ── Store ──────────────────────────────────────────────────
@@ -109,10 +110,25 @@ def login(
         f"Token valid — welcome, [cyan]{effective_username}[/cyan]!"
     )
 
-    if make_default:
-        TerminalUI.print_info(
-            f"Credential helper registered for [cyan]{cred.host}[/cyan]"
-        )
+    # ── Git credential helper setup ────────────────────────────
+    if make_default and _check_git_installed():
+        helper_host = cred.host
+        if _has_credential_helper(helper_host):
+            TerminalUI.print_info(
+                f"Credential helper already configured for [cyan]{helper_host}[/cyan]"
+            )
+        else:
+            if is_interactive:
+                setup = questionary.confirm(
+                    f"Set up automatic Git authentication for {helper_host}?",
+                    default=True,
+                ).ask()
+                if not setup:
+                    return
+            _setup_git_credential_helper(helper_host)
+            TerminalUI.print_info(
+                f"Credential helper registered for [cyan]{helper_host}[/cyan]"
+            )
 
 
 @app.command()
@@ -128,6 +144,7 @@ def logout(
     if all_:
         creds = AuthService.status()
         for c in creds:
+            _remove_git_credential_helper(c.host)
             AuthService.logout(c.label)
         TerminalUI.print_success("All credentials removed.")
         return
@@ -145,6 +162,11 @@ def logout(
         if not chosen or chosen == "Cancel":
             return
         label = chosen
+
+    # Get credential before deleting so we can remove the helper
+    cred = AuthService.get_credential_by_label(label)
+    if cred:
+        _remove_git_credential_helper(cred.host)
 
     if AuthService.logout(label):
         TerminalUI.print_success(f"Credential '{label}' removed.")
@@ -166,8 +188,8 @@ def status() -> None:
         default_mark = " (default)" if cred.is_default else ""
         provider_label = cred.provider.value.title()
         console.print(
-            f"  {provider_label:<8} 🔑 {cred.username}@{cred.host}"
-            f"  ✅ Active{default_mark}"
+            f"  {provider_label:<8} \U0001f511 {cred.username}@{cred.host}"
+            f"  \u2705 Active{default_mark}"
         )
     console.print()
     TerminalUI.print_info("To switch default: [bold]chegi auth switch <label>[/]")
@@ -314,3 +336,62 @@ def _host_for_provider(provider: AuthProvider, gitlab_url: str = "") -> str:
             return hostname
     info = PROVIDER_INFO[provider]
     return str(info["default_host"])
+
+
+# ── Git credential helper ───────────────────────────────────
+
+
+def _check_git_installed() -> bool:
+    """Returns True if Git is installed and accessible."""
+    return shutil.which("git") is not None
+
+
+def _helper_value() -> str:
+    """Returns the Git credential helper value for chegi."""
+    chegi_path = shutil.which("chegi")
+    if chegi_path:
+        return f"!{chegi_path} auth get-credential"
+    return "!chegi auth get-credential"
+
+
+def _credential_helper_key(host: str) -> str:
+    """Returns the Git config key for a credential helper."""
+    return f"credential.https://{host}.helper"
+
+
+def _has_credential_helper(host: str) -> bool:
+    """Checks if the chegi credential helper is already configured."""
+    key = _credential_helper_key(host)
+    value = _helper_value()
+    try:
+        result = subprocess.run(
+            ["git", "config", "--global", "--get", key],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return value in result.stdout.strip()
+    except Exception:
+        return False
+
+
+def _setup_git_credential_helper(host: str) -> None:
+    """Configures Git to use chegi as a credential helper for the given host."""
+    key = _credential_helper_key(host)
+    value = _helper_value()
+    subprocess.run(
+        ["git", "config", "--global", "--add", key, value],
+        capture_output=True,
+        check=False,
+    )
+
+
+def _remove_git_credential_helper(host: str) -> None:
+    """Removes the chegi credential helper configuration for the given host."""
+    key = _credential_helper_key(host)
+    value = _helper_value()
+    subprocess.run(
+        ["git", "config", "--global", "--unset", key, value],
+        capture_output=True,
+        check=False,
+    )

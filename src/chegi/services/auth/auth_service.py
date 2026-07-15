@@ -114,6 +114,22 @@ class AuthService:
         return cred
 
     @classmethod
+    def get_credential_by_label(cls, label: str) -> Optional[Credential]:
+        """Finds a stored credential by its label.
+
+        Args:
+            label: The account label to find.
+
+        Returns:
+            The Credential, or None if not found.
+        """
+        data = cls._load_data()
+        key = cls._find_key_by_label(data, label)
+        if not key:
+            return None
+        return cls._dict_to_cred(data[key])
+
+    @classmethod
     def logout(cls, label: str) -> bool:
         """Removes a stored credential by label.
 

@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `chegi auth get-credential` — hidden Git credential helper command
   - Magic provider detection: auto-detects GitHub/GitLab from token prefix
   - 11 CLI integration tests using `CliRunner`
+- Git credential helper integration:
+  - `_setup_git_credential_helper()` — runs `git config --global` per host
+  - `_remove_git_credential_helper()` — cleans up on `logout`
+  - Non-interactive login auto-configures the helper; interactive asks confirmation
+  - `get_credential_by_label()` service method for logout cleanup
+  - 4 new CLI tests for helper setup/teardown
 - Color theme system with support for switching between preset themes:
   - `TerminalUI` now loads themes dynamically from `GlobalConfig` with caching
   - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`
