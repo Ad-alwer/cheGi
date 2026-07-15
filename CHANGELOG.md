@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `chegi config git` commands (`set` and `get`) for viewing and modifying Git global config:
   - `set` — interactive 6-step wizard (user.name, user.email, init.defaultBranch, core.editor, pull.rebase, fetch.prune) with live-write-per-step and review+revert phase
   - `get` — interactive picker with category groups showing all config entries; direct lookup for one or more keys
+- `chegi init` identity step — prompts for user.name/user.email after creating `.chegi/` directory
 
 - Git alias pass-through commands: `chegi co`, `chegi br`, `chegi ci`, `chegi st`
   - Thin wrappers that forward all arguments to `git checkout`, `branch`, `commit`, `status`

@@ -1,11 +1,13 @@
 """CLI command for initializing a cheGi project."""
 
+import os
 import shutil
 from pathlib import Path
 
 import typer
 from typing_extensions import Annotated
 
+from chegi.services.git_config import GitConfigService
 from chegi.services.init import InitService
 from chegi.ui import TerminalUI, console
 
@@ -58,6 +60,28 @@ def init(
         shutil.rmtree(chegi_dir)
 
     InitService.create_project_directory(target_path)
+
+    # ── Offer to set Git identity if missing ──
+    name, email = GitConfigService.get_identity()
+    if not name or not email:
+        console.print()
+        console.print("[bold]👤 Git Identity[/bold]")
+        console.print("[dim]Configure your Git user name and email for commits.[/dim]")
+        should_set = typer.confirm(
+            "  Would you like to set Git identity?", default=True
+        )
+        if should_set:
+            new_name = name or os.environ.get("USER", "")
+            if not name:
+                new_name = typer.prompt("  Enter your name", default=new_name)
+            new_email = email or ""
+            if not email:
+                new_email = typer.prompt("  Enter your email", default=new_email)
+            if new_name and new_email:
+                GitConfigService.set_identity(new_name, new_email)
+                TerminalUI.print_success(
+                    f"Git identity set to: [cyan]{new_name}[/cyan] <[cyan]{new_email}[/cyan]>"
+                )
 
     console.print()
     TerminalUI.print_success(
