@@ -495,3 +495,115 @@ def test_get_credential_no_match():
 
     assert result.exit_code == 0
     assert result.stdout == ""
+
+
+# ── Scope display ─────────────────────────────────────────────
+
+
+@patch("chegi.cli.commands.auth._check_git_installed")
+@patch("chegi.cli.commands.auth._has_credential_helper")
+@patch("chegi.services.auth.auth_service.AuthService.validate_token")
+@patch("chegi.services.auth.auth_service.AuthService._load_data")
+@patch("chegi.services.auth.auth_service.AuthService._save_data")
+@patch("chegi.services.auth.auth_service.AuthService._ensure_key")
+def test_login_shows_scopes(
+    mock_key: MagicMock,
+    mock_save: MagicMock,
+    mock_load: MagicMock,
+    mock_validate: MagicMock,
+    mock_has_helper: MagicMock,
+    mock_git_installed: MagicMock,
+):
+    """Tests that login displays scopes in the output."""
+    mock_key.return_value = b"test-key-here"
+    mock_load.return_value = {}
+    mock_validate.return_value = ("user", ["repo", "read:user"])
+    mock_git_installed.return_value = False
+
+    result = runner.invoke(
+        app,
+        [
+            "auth",
+            "login",
+            "--token",
+            "ghp_scope_test",
+            "--username",
+            "user",
+            "--provider",
+            "github",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Scopes:" in result.stdout
+    assert "repo" in result.stdout
+    assert "read:user" in result.stdout
+
+
+@patch("chegi.cli.commands.auth._check_git_installed")
+@patch("chegi.cli.commands.auth._has_credential_helper")
+@patch("chegi.services.auth.auth_service.AuthService.check_required_scopes")
+@patch("chegi.services.auth.auth_service.AuthService.validate_token")
+@patch("chegi.services.auth.auth_service.AuthService._load_data")
+@patch("chegi.services.auth.auth_service.AuthService._save_data")
+@patch("chegi.services.auth.auth_service.AuthService._ensure_key")
+def test_login_warns_missing_scopes(
+    mock_key: MagicMock,
+    mock_save: MagicMock,
+    mock_load: MagicMock,
+    mock_validate: MagicMock,
+    mock_check: MagicMock,
+    mock_has_helper: MagicMock,
+    mock_git_installed: MagicMock,
+):
+    """Tests that login warns about missing required scopes."""
+    mock_key.return_value = b"test-key-here"
+    mock_load.return_value = {}
+    mock_validate.return_value = ("user", ["repo"])
+    mock_check.return_value = ["read:user"]
+    mock_git_installed.return_value = False
+
+    result = runner.invoke(
+        app,
+        [
+            "auth",
+            "login",
+            "--token",
+            "ghp_missing_scope",
+            "--username",
+            "user",
+            "--provider",
+            "github",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "missing recommended scopes" in result.stdout.lower()
+    assert "read:user" in result.stdout
+
+
+@patch("chegi.services.auth.auth_service.AuthService._load_data")
+@patch("chegi.services.auth.auth_service.AuthService._ensure_key")
+def test_status_shows_scopes(
+    mock_key: MagicMock,
+    mock_load: MagicMock,
+):
+    """Tests that status displays scope hint."""
+    mock_key.return_value = b"test"
+    mock_load.return_value = {
+        "github-default": {
+            "provider": "github",
+            "label": "default",
+            "username": "u",
+            "token": "t",
+            "host": "github.com",
+            "api_url": "",
+            "is_default": True,
+            "scope_hint": "repo, workflow",
+        }
+    }
+
+    result = runner.invoke(app, ["auth", "status"])
+
+    assert result.exit_code == 0
+    assert "[repo, workflow]" in result.stdout

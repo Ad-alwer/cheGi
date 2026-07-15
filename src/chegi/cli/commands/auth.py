@@ -87,6 +87,14 @@ def login(
 
     effective_username = username_from_api or resolved_username or ""
 
+    # ── Scope check ────────────────────────────────────────────
+    missing_scopes = AuthService.check_required_scopes(resolved_provider, scopes)
+    if missing_scopes:
+        TerminalUI.print_warning(
+            f"Token is missing recommended scopes: "
+            f"[bold]{', '.join(missing_scopes)}[/bold]"
+        )
+
     # ── Make default ──────────────────────────────────────────
     host = _host_for_provider(resolved_provider, gitlab_url)
     existing = AuthService.get_credential_for_host(host)
@@ -101,6 +109,8 @@ def login(
             token=token,
             api_url=gitlab_url or "",
             make_default=make_default,
+            username_from_api=username_from_api,
+            scopes=scopes,
         )
     except Exception as e:
         TerminalUI.print_error(f"Failed to store credential: {e}")
@@ -109,6 +119,8 @@ def login(
     TerminalUI.print_success(
         f"Token valid — welcome, [cyan]{effective_username}[/cyan]!"
     )
+    if scopes:
+        TerminalUI.print_info(f"Scopes: [cyan]{', '.join(scopes)}[/cyan]")
 
     # ── Git credential helper setup ────────────────────────────
     if make_default and _check_git_installed():
@@ -187,9 +199,10 @@ def status() -> None:
     for cred in creds:
         default_mark = " (default)" if cred.is_default else ""
         provider_label = cred.provider.value.title()
+        scope_info = f" [cyan]\\[{cred.scope_hint}][/cyan]" if cred.scope_hint else ""
         console.print(
             f"  {provider_label:<8} \U0001f511 {cred.username}@{cred.host}"
-            f"  \u2705 Active{default_mark}"
+            f"  \u2705 Active{default_mark}{scope_info}"
         )
     console.print()
     TerminalUI.print_info("To switch default: [bold]chegi auth switch <label>[/]")

@@ -52,6 +52,8 @@ class AuthService:
         token: str,
         api_url: str = "",
         make_default: bool = True,
+        username_from_api: Optional[str] = None,
+        scopes: Optional[List[str]] = None,
     ) -> Credential:
         """Validates and stores a new credential.
 
@@ -62,6 +64,8 @@ class AuthService:
             token: Personal access token.
             api_url: Base API URL (for self-hosted GitLab).
             make_default: Whether to set as default for its host.
+            username_from_api: Pre-validated username (skips validation if given with scopes).
+            scopes: Pre-validated scopes (skips validation if given with username_from_api).
 
         Returns:
             The stored Credential.
@@ -73,11 +77,12 @@ class AuthService:
         if provider == AuthProvider.GITLAB and api_url:
             host = urllib.parse.urlparse(api_url).hostname or host
 
-        # Validate before storing
-        username_from_api, scopes = cls.validate_token(provider, token, api_url)
-
-        # Prefer API-returned username, fall back to user-provided
-        effective_username = username_from_api or username
+        # Validate before storing (skip if pre-validated data provided)
+        if username_from_api is not None and scopes is not None:
+            effective_username = username_from_api or username
+        else:
+            username_from_api, scopes = cls.validate_token(provider, token, api_url)
+            effective_username = username_from_api or username
 
         cred = Credential(
             provider=provider,
@@ -262,6 +267,7 @@ class AuthService:
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 body = json.loads(resp.read())
+                header_scopes = resp.headers.get("X-OAuth-Scopes", "")
         except urllib.error.HTTPError as e:
             if e.code == 401:
                 raise TokenValidationError(
@@ -281,12 +287,31 @@ class AuthService:
         # Detect scopes from response
         scopes: List[str] = []
         if provider == AuthProvider.GITHUB:
-            # GitHub returns scopes in the response header
-            pass  # Will be extracted via header if available
+            scopes = [s.strip() for s in header_scopes.split(",") if s.strip()]
         elif provider == AuthProvider.GITLAB:
             scopes = body.get("scopes", [])
 
         return username, scopes
+
+    @classmethod
+    def check_required_scopes(
+        cls, provider: AuthProvider, actual_scopes: List[str]
+    ) -> List[str]:
+        """Checks whether the required scopes for a provider are present.
+
+        Args:
+            provider: The Git provider.
+            actual_scopes: The list of scopes from the validated token.
+
+        Returns:
+            List of missing required scope strings (empty if all present).
+        """
+        info = PROVIDER_INFO.get(provider, {})
+        required: List[str] = list(info.get("scopes", []))  # type: ignore[arg-type]
+        if not required:
+            return []
+        actual_lower = [s.lower() for s in actual_scopes]
+        return [s for s in required if s.lower() not in actual_lower]
 
     @classmethod
     def validate_github_scopes(cls, token: str) -> List[str]:

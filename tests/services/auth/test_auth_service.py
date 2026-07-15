@@ -83,6 +83,21 @@ def test_validate_token_github_success(mock_urlopen: MagicMock):
     """Tests successful GitHub token validation."""
     mock_resp = MagicMock()
     mock_resp.read.return_value = json.dumps({"login": "ad-alwer"}).encode()
+    mock_resp.headers = {"X-OAuth-Scopes": "repo, user"}
+    mock_urlopen.return_value.__enter__.return_value = mock_resp
+
+    username, scopes = AuthService.validate_token(AuthProvider.GITHUB, "ghp_valid")
+
+    assert username == "ad-alwer"
+    assert scopes == ["repo", "user"]
+
+
+@patch("urllib.request.urlopen")
+def test_validate_token_github_no_scopes_header(mock_urlopen: MagicMock):
+    """Tests GitHub validation when X-OAuth-Scopes header is missing."""
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps({"login": "ad-alwer"}).encode()
+    mock_resp.headers = {}
     mock_urlopen.return_value.__enter__.return_value = mock_resp
 
     username, scopes = AuthService.validate_token(AuthProvider.GITHUB, "ghp_valid")
@@ -98,6 +113,7 @@ def test_validate_token_gitlab_success(mock_urlopen: MagicMock):
     mock_resp.read.return_value = json.dumps(
         {"username": "myuser", "scopes": ["api", "read_user"]}
     ).encode()
+    mock_resp.headers = {}
     mock_urlopen.return_value.__enter__.return_value = mock_resp
 
     username, scopes = AuthService.validate_token(AuthProvider.GITLAB, "glpat-valid")
@@ -283,3 +299,63 @@ def test_get_token_no_creds_returns_none(tmp_path: Path):
     """Tests that get_token returns None when no credentials exist."""
     with patch("chegi.services.auth.auth_service.AUTH_DIR", tmp_path):
         assert AuthService.get_token(AuthProvider.GITHUB) is None
+
+
+# ── Scope checks ─────────────────────────────────────────────
+
+
+def test_check_required_scopes_all_present():
+    """Returns empty list when all required scopes are present."""
+    missing = AuthService.check_required_scopes(
+        AuthProvider.GITHUB, ["repo", "read:user", "workflow"]
+    )
+    assert missing == []
+
+
+def test_check_required_scopes_some_missing():
+    """Returns missing scopes when some are absent."""
+    missing = AuthService.check_required_scopes(AuthProvider.GITHUB, ["repo"])
+    assert "read:user" in missing
+    assert "workflow" in missing
+
+
+def test_check_required_scopes_case_insensitive():
+    """Scope comparison is case-insensitive."""
+    missing = AuthService.check_required_scopes(
+        AuthProvider.GITHUB, ["REPO", "Read:User", "Workflow"]
+    )
+    assert missing == []
+
+
+def test_check_required_scopes_empty_actual():
+    """Returns all required when actual is empty."""
+    missing = AuthService.check_required_scopes(AuthProvider.GITHUB, [])
+    assert "repo" in missing
+    assert "read:user" in missing
+    assert "workflow" in missing
+
+
+def test_check_required_scopes_unknown_provider():
+    """Returns empty for unknown providers."""
+    missing = AuthService.check_required_scopes(AuthProvider.GITLAB, [])
+    assert isinstance(missing, list)
+
+
+# ── Login with pre-validated scopes ─────────────────────────
+
+
+def test_login_with_pre_validated_scopes(tmp_path: Path):
+    """Tests login with pre-validated scopes skips validate_token."""
+    with patch("chegi.services.auth.auth_service.AUTH_DIR", tmp_path):
+        with patch.object(AuthService, "validate_token") as mock_validate:
+            cred = AuthService.login(
+                provider=AuthProvider.GITHUB,
+                label="test",
+                username="user",
+                token="ghp_secret",
+                username_from_api="api_user",
+                scopes=["repo", "workflow"],
+            )
+    assert cred.username == "api_user"
+    assert cred.scope_hint == "repo, workflow"
+    mock_validate.assert_not_called()

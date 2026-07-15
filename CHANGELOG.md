@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Non-interactive login auto-configures the helper; interactive asks confirmation
   - `get_credential_by_label()` service method for logout cleanup
   - 4 new CLI tests for helper setup/teardown
+- Deep scope validation on login:
+  - `validate_token()` now extracts scopes from GitHub `X-OAuth-Scopes` header
+  - `check_required_scopes()` compares against recommended scopes per provider
+  - Missing scope warnings shown during login and in `status` output
+  - `login()` accepts pre-validated `username_from_api` + `scopes` to avoid double API call
+  - 6 new scope-related service tests + 3 CLI tests
 - Color theme system with support for switching between preset themes:
   - `TerminalUI` now loads themes dynamically from `GlobalConfig` with caching
   - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`
