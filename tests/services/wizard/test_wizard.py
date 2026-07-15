@@ -177,6 +177,7 @@ def test_set_git_identity(mock_run: MagicMock):
 @patch.object(WizardService, "_step_git_check")
 @patch.object(WizardService, "_step_identity")
 @patch.object(WizardService, "_step_gh_check")
+@patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -184,6 +185,7 @@ def test_execute_runs_all_steps(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_ssh: MagicMock,
+    mock_theme: MagicMock,
     mock_gh: MagicMock,
     mock_identity: MagicMock,
     mock_git: MagicMock,
@@ -202,6 +204,7 @@ def test_execute_runs_all_steps(
     mock_gh.assert_called_once()
     mock_ssh.assert_called_once()
     mock_config.assert_called_once()
+    mock_theme.assert_called_once()
     mock_mark.assert_called_once()
 
 
@@ -209,6 +212,7 @@ def test_execute_runs_all_steps(
 @patch.object(WizardService, "_step_git_check")
 @patch.object(WizardService, "_step_identity")
 @patch.object(WizardService, "_step_gh_check")
+@patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -216,6 +220,7 @@ def test_execute_skips_when_marker_exists(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_ssh: MagicMock,
+    mock_theme: MagicMock,
     mock_gh: MagicMock,
     mock_identity: MagicMock,
     mock_git: MagicMock,
@@ -232,6 +237,7 @@ def test_execute_skips_when_marker_exists(
     mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
     mock_config.assert_not_called()
+    mock_theme.assert_not_called()
     mock_mark.assert_not_called()
 
 
@@ -240,6 +246,7 @@ def test_execute_skips_when_marker_exists(
 @patch.object(WizardService, "_step_git_check")
 @patch.object(WizardService, "_step_identity")
 @patch.object(WizardService, "_step_gh_check")
+@patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -247,6 +254,7 @@ def test_execute_skips_when_not_tty(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_ssh: MagicMock,
+    mock_theme: MagicMock,
     mock_gh: MagicMock,
     mock_identity: MagicMock,
     mock_git: MagicMock,
@@ -265,6 +273,7 @@ def test_execute_skips_when_not_tty(
     mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
     mock_config.assert_not_called()
+    mock_theme.assert_not_called()
     mock_mark.assert_not_called()
 
 
@@ -821,3 +830,40 @@ def test_log_wizard_event_creates_log(tmp_path: Path):
     content = log_file.read_text()
     assert "test_event" in content
     assert "some detail" in content
+
+
+# --- theme picker tests ---
+
+
+@patch.object(WizardService, "_log_wizard_event")
+def test_step_theme_picker_keeps_current(mock_log: MagicMock):
+    """Test that _step_theme_picker keeps current theme when no change."""
+    with patch("questionary.select") as mock_select:
+        with patch("chegi.services.wizard.wizard_service.GlobalConfig") as mock_cfg:
+            mock_instance = mock_cfg.return_value
+            mock_instance.theme = "default"
+            mock_select.return_value.ask.return_value = "default"
+            wizard = WizardService()
+            wizard._step_theme_picker()
+    mock_log.assert_not_called()
+
+
+@patch.object(WizardService, "_log_wizard_event")
+def test_step_theme_picker_changes_theme(mock_log: MagicMock):
+    """Test that _step_theme_picker changes theme when user picks new one."""
+    with patch("questionary.select") as mock_select:
+        with patch("chegi.services.wizard.wizard_service.GlobalConfig") as mock_cfg:
+            mock_instance = mock_cfg.return_value
+            mock_instance.theme = "default"
+            mock_select.return_value.ask.return_value = "hacker"
+            wizard = WizardService()
+            wizard._step_theme_picker()
+    mock_log.assert_called_once_with("theme_changed", "hacker")
+
+
+def test_step_theme_picker_cancelled():
+    """Test that _step_theme_picker handles cancellation gracefully."""
+    with patch("questionary.select") as mock_select:
+        mock_select.return_value.ask.return_value = None
+        wizard = WizardService()
+        wizard._step_theme_picker()

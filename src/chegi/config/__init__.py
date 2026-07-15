@@ -12,12 +12,14 @@ from .exceptions import (
     InvalidMirrorFormatError,
     UnsupportedPackageManagerError,
 )
+from .global_config import GlobalConfig
 from .manager import ChegiConfig
 from .models import ChegiConfigModel
 
 __all__ = [
     "ChegiConfig",
     "ChegiConfigModel",
+    "GlobalConfig",
     "ConfigError",
     "UnsupportedPackageManagerError",
     "InvalidMirrorFormatError",

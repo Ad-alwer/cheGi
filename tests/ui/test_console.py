@@ -37,3 +37,24 @@ def test_terminal_ui_print_message_neutral():
         TerminalUI.print_message("Neutral text")
 
         mock_print.assert_called_once_with("[white]Neutral text[/]")
+
+
+def test_terminal_ui_get_active_theme_returns_chegi_theme():
+    """Test that get_active_theme returns a ChegiTheme."""
+    from chegi.ui.themes import ChegiTheme
+
+    theme = TerminalUI.get_active_theme()
+    assert isinstance(theme, ChegiTheme)
+
+
+def test_terminal_ui_apply_theme_changes_style():
+    """Test that apply_theme changes the active theme for the session."""
+    from chegi.ui.themes import get_theme
+
+    hacker = get_theme("hacker")
+    TerminalUI.apply_theme(hacker)
+    assert TerminalUI.get_active_theme().name == "hacker"
+
+    # Reset back to default
+    TerminalUI.apply_theme(get_theme("default"))
+    assert TerminalUI.get_active_theme().name == "default"

@@ -7,6 +7,7 @@ from .console import TerminalUI, console
 from .exceptions import TableRenderingError, ThemeConfigurationError, UIError
 from .models import MessageType, TableTheme
 from .tables import display_results_table
+from .themes import THEMES, ChegiTheme, get_theme, list_themes
 
 __all__ = [
     "console",
@@ -14,6 +15,10 @@ __all__ = [
     "display_results_table",
     "MessageType",
     "TableTheme",
+    "ChegiTheme",
+    "THEMES",
+    "get_theme",
+    "list_themes",
     "UIError",
     "TableRenderingError",
     "ThemeConfigurationError",

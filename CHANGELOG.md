@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Color theme system with support for switching between preset themes:
+  - `TerminalUI` now loads themes dynamically from `GlobalConfig` with caching
+  - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`
+  - `display_results_table()` uses active cheGi theme's `TableTheme` by default
+  - Theme stored in `~/.config/chegi/config.json`, persisted across sessions
+- First-run wizard now includes a theme picker step after project config:
+  - Lists all available themes, marks the current one
+  - Changes are applied immediately and persisted to global config
+  - Logs `theme_changed` event with the chosen theme name
+- `GlobalConfig` class for global user-level configuration (`~/.config/chegi/config.json`)
+  - Exported from `chegi.config` public API
+  - `theme` field with default value `"default"`
+- 3 new tests for theme picker wizard step
+- 7 new tests for themed TerminalUI
 - First-run wizard now includes an SSH key check step:
   - Detects existing SSH key pairs (`id_ed25519`, `id_rsa`, etc.) in `~/.ssh/`
   - Checks if keys are loaded in `ssh-agent`

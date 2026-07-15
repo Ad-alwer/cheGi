@@ -1,26 +1,38 @@
-from typing import Any, List
+"""Table rendering for cheGi with theme support."""
+
+from typing import Any, List, Optional
 
 from rich.table import Table
 
-from .console import console
+from .console import TerminalUI, console
 from .exceptions import TableRenderingError
 from .models import TableTheme
 
 
-def display_results_table(results: List[Any], theme: TableTheme = None) -> None:
+def _get_table_theme() -> TableTheme:
+    """Loads the table theme from the active cheGi theme.
+
+    Returns:
+        The active TableTheme.
+    """
+    return TerminalUI.get_active_theme().table
+
+
+def display_results_table(
+    results: List[Any], theme: Optional[TableTheme] = None
+) -> None:
     """Renders and displays a formatted table for repository statuses.
 
     Args:
-        results (List[Any]): A list of objects containing table data.
-        theme (TableTheme, optional): The theme configuration for styling
-            the table. Defaults to None (uses default TableTheme).
+        results: A list of objects containing table data.
+        theme: Optional override TableTheme. Uses active cheGi theme if None.
 
     Raises:
         TableRenderingError: If the results argument is not a list or if
             there is an error parsing row data.
     """
     if theme is None:
-        theme = TableTheme()
+        theme = _get_table_theme()
 
     if not isinstance(results, list):
         raise TableRenderingError("Expected 'results' to be a list.")
@@ -48,7 +60,6 @@ def display_results_table(results: List[Any], theme: TableTheme = None) -> None:
                 str(getattr(item, "status", "N/A")),
             )
     except Exception as e:
-        # Wrap arbitrary object parsing errors into a domain-specific UI error
         raise TableRenderingError(f"Failed to extract data for table row: {str(e)}")
 
     console.print(table)

@@ -274,6 +274,34 @@ If `.chegi.json` contains invalid JSON, cheGi falls back to defaults and ignores
 
 ---
 
+## Global Configuration
+
+cheGi also stores user-level preferences in `~/.config/chegi/config.json`. This file is managed automatically by the first-run wizard and is separate from per-project `.chegi.json` settings.
+
+### `theme`
+
+| | |
+|---|---|
+| **Type** | `string` |
+| **Default** | `"default"` |
+
+The active color theme for cheGi terminal output. Available themes:
+
+| Key | Label |
+|-----|-------|
+| `default` | Default |
+| `hacker` | Hacker |
+
+Set via the first-run wizard's theme picker step. Example global config:
+
+```json
+{
+    "theme": "hacker"
+}
+```
+
+The setting persists across sessions and affects all `TerminalUI` output as well as table rendering.
+
 ## See Also
 
 - [config command reference](commands/config.md) — all `chegi config` subcommands

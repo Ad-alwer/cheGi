@@ -12,9 +12,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+import questionary
 import typer
 
-from chegi.config import ChegiConfig
+from chegi.config import ChegiConfig, GlobalConfig
 from chegi.services.installer import SystemInstaller
 from chegi.services.wizard.constants import (
     BANNER,
@@ -23,7 +24,7 @@ from chegi.services.wizard.constants import (
     WIZARD_MARKER_DIR,
     WIZARD_MARKER_FILE,
 )
-from chegi.ui import TerminalUI, console
+from chegi.ui import ChegiTheme, TerminalUI, console, get_theme, list_themes
 
 
 class WizardService:
@@ -135,6 +136,7 @@ class WizardService:
         self._step_gh_check()
         self._step_ssh_key()
         self._step_project_config()
+        self._step_theme_picker()
 
         self._mark_completed()
         console.print()
@@ -785,3 +787,35 @@ class WizardService:
         more = typer.confirm("Add another pattern?", default=False)
         if more:
             self._step_sensitive_patterns()
+
+    def _step_theme_picker(self) -> None:
+        """Step: Let the user choose a color theme for cheGi output."""
+        current = GlobalConfig().theme
+
+        choices: list[questionary.Choice] = []
+        for key, label in list_themes().items():
+            selected = key == current
+            choices.append(
+                questionary.Choice(
+                    title=f"{'●' if selected else '○'} {label}",
+                    value=key,
+                )
+            )
+
+        chosen = questionary.select(
+            "Pick a color theme for cheGi:",
+            choices=choices,
+            default=current,
+        ).ask()
+
+        if chosen and chosen != current:
+            GlobalConfig().theme = chosen
+            theme: ChegiTheme = get_theme(chosen)
+            TerminalUI.apply_theme(theme)
+            self._log_wizard_event("theme_changed", chosen)
+            TerminalUI.print_success(f"Theme changed to [cyan]{theme.label}[/cyan].")
+        elif chosen:
+            TerminalUI.print_info(
+                f"Keeping current theme: [cyan]{get_theme(current).label}[/cyan]"
+            )
+        console.print()
