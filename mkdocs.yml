@@ -62,6 +62,7 @@ nav:
       - config: commands/config.md
       - doctor: commands/doctor.md
       - gitignore: commands/gitignore.md
+      - git-config: commands/git-config.md
       - guard: commands/guard.md
       - hooks: commands/hooks.md
       - init: commands/init.md
