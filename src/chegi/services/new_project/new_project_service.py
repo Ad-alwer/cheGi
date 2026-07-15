@@ -200,6 +200,7 @@ class NewProjectService:
         Returns:
             The commit hash, or None if commit fails.
         """
+        msg = self.config.commit_message or INITIAL_COMMIT_MESSAGE
         try:
             subprocess.run(
                 ["git", "add", "-A"],
@@ -208,7 +209,7 @@ class NewProjectService:
                 check=True,
             )
             result = subprocess.run(
-                ["git", "commit", "-m", INITIAL_COMMIT_MESSAGE],
+                ["git", "commit", "-m", msg],
                 cwd=str(self.project_path),
                 capture_output=True,
                 text=True,

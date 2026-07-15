@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wizard `_step_identity()` upgraded: email validated (must contain `@` + domain dot), name suggested from `$USER`, optional `init.defaultBranch` prompt after identity
 - Removed old `_get_git_config()` and `_set_git_identity()` from `wizard_service.py`; `_step_ssh_key()` and `_step_git_aliases()` now use `GitConfigService.get()`
 - Documentation at `docs/commands/git-config.md` with usage examples for `set` and `get` subcommands
+- `chegi new --github` / `-g` — create local project, optionally create/push to GitHub:
+  - Interactive flow: location → git init → .gitignore → prerequisites → repo pick/create → brand in commit → push → report
+  - Non-interactive mode (`--yes`) auto-creates repo and pushes
+  - `--private` flag for private repos
+  - Lists user's existing repos for selection
+  - Detects default branch from git config
+  - Updates README with actual repo URL
 
 - Git alias pass-through commands: `chegi co`, `chegi br`, `chegi ci`, `chegi st`
   - Thin wrappers that forward all arguments to `git checkout`, `branch`, `commit`, `status`

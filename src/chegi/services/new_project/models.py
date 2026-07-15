@@ -19,6 +19,10 @@ class NewProjectConfig:
         skip_gitignore: If True, skip .gitignore generation.
         skip_chegi: If True, skip .chegi/ directory creation.
         yes: If True, non-interactive mode (use defaults).
+        github: If True, create and push to GitHub repo.
+        private: If True, create private GitHub repo.
+        repo_name: GitHub repo name (defaults to project name).
+        commit_message: Custom initial commit message (overrides default).
     """
 
     name: str
@@ -30,6 +34,10 @@ class NewProjectConfig:
     skip_gitignore: bool = False
     skip_chegi: bool = False
     yes: bool = False
+    github: bool = False
+    private: bool = False
+    repo_name: Optional[str] = None
+    commit_message: Optional[str] = None
 
 
 @dataclass
@@ -40,10 +48,12 @@ class NewProjectResult:
         project_path: The full path to the created project directory.
         files_created: List of files that were created.
         commit_hash: The SHA of the initial commit, if made.
+        repo_url: URL of the created GitHub repo (if --github).
         is_successful: Whether the project was created successfully.
     """
 
     project_path: Path
     files_created: List[str] = field(default_factory=list)
     commit_hash: Optional[str] = None
+    repo_url: Optional[str] = None
     is_successful: bool = True
