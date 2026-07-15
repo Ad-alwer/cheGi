@@ -51,6 +51,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Offers to set up Git credential helper for the host
   - Logs `auth_login` and `credential_helper_setup` events
   - 4 wizard integration tests
+- Auto-detect auth failure in `chegi sync` and suggest `chegi auth login`:
+  - Detects keywords like "authentication failed", "403", "access token" in errors
+  - Shows helpful suggestion with the exact command to run
+  - Does not suggest on non-auth errors (connection refused, etc.)
+  - 2 new sync CLI tests
 - First-run wizard now includes a theme picker step after project config:
   - Lists all available themes, marks the current one
   - Changes are applied immediately and persisted to global config

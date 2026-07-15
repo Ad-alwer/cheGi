@@ -78,3 +78,45 @@ def test_sync_cli_failure_triggers_pop_stash(
     mock_sync_service.pull_rebase.assert_called_once()
     mock_sync_service.push_changes.assert_not_called()
     mock_sync_service.pop_stash.assert_called_once()
+
+
+@patch("chegi.cli.commands.sync.SyncService")
+@patch("chegi.cli.commands.sync.GitClient")
+def test_sync_cli_auth_failure_suggests_auth_login(
+    mock_git_client_class, mock_sync_service_class
+):
+    """Tests that sync suggests auth login on authentication failure."""
+    mock_git_client = mock_git_client_class.return_value
+    mock_git_client.is_workspace_clean.return_value = True
+
+    mock_sync_service = mock_sync_service_class.return_value
+    mock_sync_service.pull_rebase.side_effect = GitCoreError(
+        "fatal: Authentication failed for 'https://github.com/user/repo.git'"
+    )
+
+    result = runner.invoke(app, ["sync"])
+
+    assert result.exit_code == 1
+    assert "Sync Failed" in result.stdout
+    assert "authentication issue" in result.stdout.lower()
+    assert "chegi auth login" in result.stdout
+
+
+@patch("chegi.cli.commands.sync.SyncService")
+@patch("chegi.cli.commands.sync.GitClient")
+def test_sync_cli_generic_failure_no_auth_suggestion(
+    mock_git_client_class, mock_sync_service_class
+):
+    """Tests that sync does NOT suggest auth login on non-auth failure."""
+    mock_git_client = mock_git_client_class.return_value
+    mock_git_client.is_workspace_clean.return_value = True
+
+    mock_sync_service = mock_sync_service_class.return_value
+    mock_sync_service.pull_rebase.side_effect = GitCoreError("Connection refused")
+
+    result = runner.invoke(app, ["sync"])
+
+    assert result.exit_code == 1
+    assert "Sync Failed" in result.stdout
+    assert "authentication issue" not in result.stdout.lower()
+    assert "chegi auth login" not in result.stdout
