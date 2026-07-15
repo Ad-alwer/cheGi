@@ -62,6 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Skips if already configured
   - Only runs in interactive mode
   - 2 new auth CLI tests
+- Branded output for auth commands with cheGi mascot and slogan
+- Updated `docs/commands/auth.md` with scope validation, identity check, sync integration
 - First-run wizard now includes a theme picker step after project config:
   - Lists all available themes, marks the current one
   - Changes are applied immediately and persisted to global config

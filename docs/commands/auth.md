@@ -22,7 +22,9 @@ chegi auth login
 1. Detects the provider from the token prefix automatically
 2. Validates the token against the provider's API
 3. Stores the credential encrypted
-4. Offers to register a Git credential helper for automatic authentication
+4. Displays token scopes and warns if recommended scopes are missing
+5. Checks Git identity (`user.name` / `user.email`) and prompts to configure if needed
+6. Offers to register a Git credential helper for automatic authentication
 
 Supports multiple accounts on the same host (labels: `personal`, `work`, ...).
 
@@ -112,7 +114,15 @@ chegi auth login --provider gitlab --gitlab-url https://gitlab.mycompany.com
 
 ```bash
 chegi auth login
-# → Paste your token → validated → credential helper registered
+# → Paste your token → validated → scopes checked → identity check
+# → credential helper registered → ready to sync
+```
+
+The first-run wizard also includes auth setup as a step — run any cheGi command
+to trigger it:
+
+```bash
+chegi status  # triggers wizard → includes auth login step
 ```
 
 **Add a second GitHub account:**
@@ -136,7 +146,21 @@ git push
 # → Git calls chegi's credential helper → transparent auth
 ```
 
+## Integration with Sync
+
+If `chegi sync` fails due to an authentication error, it automatically detects
+the issue and suggests running `chegi auth login`:
+
+```bash
+$ chegi sync
+Sync Failed:
+fatal: Authentication failed for 'https://github.com/user/repo.git'
+
+⚠ This looks like an authentication issue.
+  Run chegi auth login to set up token-based authentication.
+```
+
 ## See Also
 
-- [Configuration guide](../configuration.md) — global config and theme settings
 - [Sync command](sync.md) — pull + push in one command
+- [Configuration guide](../configuration.md) — global config and theme settings

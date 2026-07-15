@@ -117,7 +117,7 @@ def login(
         raise typer.Exit(code=1) from e
 
     TerminalUI.print_success(
-        f"Token valid — welcome, [cyan]{effective_username}[/cyan]!"
+        f"\U0001f98e Token valid — welcome, [cyan]{effective_username}[/cyan]!"
     )
     if scopes:
         TerminalUI.print_info(f"Scopes: [cyan]{', '.join(scopes)}[/cyan]")
@@ -198,7 +198,9 @@ def status() -> None:
         TerminalUI.print_info("No credentials stored. Run [bold]chegi auth login[/].")
         return
 
-    console.print("[bold]Auth Status[/bold]")
+    console.print()
+    console.print("[bold]\U0001f98e cheGi Auth Status[/bold]")
+    console.print("  [dim]Type less, do more.[/dim]")
     console.print("─" * 40)
     for cred in creds:
         default_mark = " (default)" if cred.is_default else ""

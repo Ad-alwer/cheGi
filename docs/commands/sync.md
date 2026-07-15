@@ -62,6 +62,24 @@ chegi sync
 | `0` | Repository synced successfully |
 | `1` | Git operation failed or unexpected error |
 
+## Authentication Failures
+
+If `chegi sync` fails with an authentication error (e.g., expired token, no
+credentials configured), it detects the issue and suggests a fix:
+
+```
+Sync Failed:
+fatal: Authentication failed for 'https://github.com/user/repo.git'
+
+⚠ This looks like an authentication issue.
+  Run chegi auth login to set up token-based authentication.
+```
+
+Run `chegi auth login` to set up token-based authentication with automatic
+credential helper configuration. Once configured, `chegi sync` uses the stored
+token transparently.
+
 ## See Also
 
 - [scan](scan.md) — check remote sync status across multiple repos
+- [auth](auth.md) — set up token-based authentication
