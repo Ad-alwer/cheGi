@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `GitConfigService` — new service for centralised Git global config operations (`get`, `set`, `unset`, `get_all`, `get_identity`, `set_identity`)
+- `GitConfigEntry`, `ConfigChange`, `GitConfigCategory` models with automatic key categorisation
+
 - Git alias pass-through commands: `chegi co`, `chegi br`, `chegi ci`, `chegi st`
   - Thin wrappers that forward all arguments to `git checkout`, `branch`, `commit`, `status`
   - Wizards step `_step_git_aliases()` offers to configure `git config --global alias.*`
