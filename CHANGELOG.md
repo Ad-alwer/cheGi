@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Git alias pass-through commands: `chegi co`, `chegi br`, `chegi ci`, `chegi st`
+  - Thin wrappers that forward all arguments to `git checkout`, `branch`, `commit`, `status`
+  - Wizards step `_step_git_aliases()` offers to configure `git config --global alias.*`
+  - 5 wizard tests + 8 CLI integration tests via `CliRunner`
+  - Documentation at `docs/commands/aliases.md`
+  - Wizard step logs `git_aliases_set` event
+
 - `chegi auth` token-based authentication system for GitHub and GitLab:
   - `AuthService` with encrypted token storage (Fernet via `cryptography`)
   - `login()` validates token via provider API before persisting

@@ -179,6 +179,7 @@ def test_set_git_identity(mock_run: MagicMock):
 @patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
+@patch.object(WizardService, "_step_git_aliases")
 @patch.object(WizardService, "_step_auth_login")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -186,6 +187,7 @@ def test_execute_runs_all_steps(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_auth: MagicMock,
+    mock_aliases: MagicMock,
     mock_ssh: MagicMock,
     mock_theme: MagicMock,
     mock_gh: MagicMock,
@@ -205,6 +207,7 @@ def test_execute_runs_all_steps(
     mock_identity.assert_called_once()
     mock_gh.assert_called_once()
     mock_ssh.assert_called_once()
+    mock_aliases.assert_called_once()
     mock_auth.assert_called_once()
     mock_config.assert_called_once()
     mock_theme.assert_called_once()
@@ -217,6 +220,7 @@ def test_execute_runs_all_steps(
 @patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
+@patch.object(WizardService, "_step_git_aliases")
 @patch.object(WizardService, "_step_auth_login")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -224,6 +228,7 @@ def test_execute_skips_when_marker_exists(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_auth: MagicMock,
+    mock_aliases: MagicMock,
     mock_ssh: MagicMock,
     mock_theme: MagicMock,
     mock_gh: MagicMock,
@@ -241,6 +246,7 @@ def test_execute_skips_when_marker_exists(
     mock_identity.assert_not_called()
     mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
+    mock_aliases.assert_not_called()
     mock_auth.assert_not_called()
     mock_config.assert_not_called()
     mock_theme.assert_not_called()
@@ -254,6 +260,7 @@ def test_execute_skips_when_marker_exists(
 @patch.object(WizardService, "_step_gh_check")
 @patch.object(WizardService, "_step_theme_picker")
 @patch.object(WizardService, "_step_ssh_key")
+@patch.object(WizardService, "_step_git_aliases")
 @patch.object(WizardService, "_step_auth_login")
 @patch.object(WizardService, "_step_project_config")
 @patch.object(WizardService, "_mark_completed")
@@ -261,6 +268,7 @@ def test_execute_skips_when_not_tty(
     mock_mark: MagicMock,
     mock_config: MagicMock,
     mock_auth: MagicMock,
+    mock_aliases: MagicMock,
     mock_ssh: MagicMock,
     mock_theme: MagicMock,
     mock_gh: MagicMock,
@@ -280,6 +288,7 @@ def test_execute_skips_when_not_tty(
     mock_identity.assert_not_called()
     mock_gh.assert_not_called()
     mock_ssh.assert_not_called()
+    mock_aliases.assert_not_called()
     mock_auth.assert_not_called()
     mock_config.assert_not_called()
     mock_theme.assert_not_called()
@@ -876,6 +885,99 @@ def test_step_theme_picker_cancelled():
         mock_select.return_value.ask.return_value = None
         wizard = WizardService()
         wizard._step_theme_picker()
+
+
+# --- git aliases step tests ---
+
+
+@patch.object(WizardService, "_get_git_config")
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.typer.confirm")
+def test_step_git_aliases_all_already_set(
+    mock_confirm: MagicMock,
+    mock_log: MagicMock,
+    mock_config: MagicMock,
+):
+    """Test that _step_git_aliases skips when all 4 aliases are configured."""
+    mock_config.return_value = "checkout"
+
+    wizard = WizardService()
+    wizard._step_git_aliases()
+
+    mock_confirm.assert_not_called()
+    mock_log.assert_not_called()
+
+
+@patch.object(WizardService, "_get_git_config")
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.subprocess.run")
+@patch("chegi.services.wizard.wizard_service.typer.confirm")
+def test_step_git_aliases_some_missing(
+    mock_confirm: MagicMock,
+    mock_run: MagicMock,
+    mock_log: MagicMock,
+    mock_config: MagicMock,
+):
+    """Test that _step_git_aliases sets missing aliases."""
+    mock_config.side_effect = lambda key: "checkout" if key == "alias.co" else None
+    mock_confirm.return_value = True
+    mock_run.return_value = MagicMock()
+
+    wizard = WizardService()
+    wizard._step_git_aliases()
+
+    # Should set br, ci, st (3 aliases)
+    assert mock_confirm.called
+    mock_log.assert_called_once_with("git_aliases_set", "3 aliases")
+
+
+@patch.object(WizardService, "_get_git_config")
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.subprocess.run")
+@patch("chegi.services.wizard.wizard_service.typer.confirm")
+def test_step_git_aliases_none_configured(
+    mock_confirm: MagicMock,
+    mock_run: MagicMock,
+    mock_log: MagicMock,
+    mock_config: MagicMock,
+):
+    """Test that _step_git_aliases sets all 4 when none configured."""
+    mock_config.return_value = None
+    mock_confirm.return_value = True
+    mock_run.return_value = MagicMock()
+
+    wizard = WizardService()
+    wizard._step_git_aliases()
+
+    mock_log.assert_called_once_with("git_aliases_set", "4 aliases")
+
+
+def test_step_git_aliases_git_not_available():
+    """Test that _step_git_aliases skips when Git is not available."""
+    wizard = WizardService()
+    wizard._git_available = False
+    wizard._step_git_aliases()
+
+
+@patch.object(WizardService, "_get_git_config")
+@patch.object(WizardService, "_log_wizard_event")
+@patch("chegi.services.wizard.wizard_service.subprocess.run")
+@patch("chegi.services.wizard.wizard_service.typer.confirm")
+def test_step_git_aliases_user_declines(
+    mock_confirm: MagicMock,
+    mock_run: MagicMock,
+    mock_log: MagicMock,
+    mock_config: MagicMock,
+):
+    """Test that _step_git_aliases skips when user declines."""
+    mock_config.return_value = None
+    mock_confirm.return_value = False
+    mock_run.return_value = MagicMock()
+
+    wizard = WizardService()
+    wizard._step_git_aliases()
+
+    mock_log.assert_not_called()
 
 
 # --- auth step tests ---

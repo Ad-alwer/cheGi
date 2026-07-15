@@ -137,6 +137,7 @@ class WizardService:
         self._step_identity()
         self._step_gh_check()
         self._step_ssh_key()
+        self._step_git_aliases()
         self._step_auth_login()
         self._step_project_config()
         self._step_theme_picker()
@@ -723,6 +724,80 @@ class WizardService:
                 f"{shlex.quote(str(Path.home() / '.ssh' / 'config'))}[/cyan]"
             )
 
+        console.print()
+
+    def _step_git_aliases(self) -> None:
+        """Step: Offer to configure Git alias shortcuts."""
+        if not self._git_available:
+            console.print("[dim]Skipping Git aliases (Git not available).[/dim]")
+            console.print()
+            return
+
+        # Check which aliases are already set
+        existing = {}
+        for alias_name, full_cmd in [
+            ("co", "checkout"),
+            ("br", "branch"),
+            ("ci", "commit"),
+            ("st", "status"),
+        ]:
+            val = self._get_git_config(f"alias.{alias_name}")
+            if val:
+                existing[alias_name] = val
+
+        if len(existing) == 4:
+            TerminalUI.print_success(
+                "All Git aliases are already configured:"
+                " [cyan]co[/], [cyan]br[/], [cyan]ci[/], [cyan]st[/]"
+            )
+            console.print()
+            return
+
+        if existing:
+            present = ", ".join(f"[cyan]{k}[/]→{v}" for k, v in existing.items())
+            missing_count = 4 - len(existing)
+            TerminalUI.print_info(
+                f"Some Git aliases already set ({present}). "
+                f"[dim]{missing_count} missing[/dim]"
+            )
+        else:
+            TerminalUI.print_warning("Git aliases (co, br, ci, st) are not configured.")
+            console.print(
+                "[dim]Aliases let you type [bold]git co[/bold] instead of "
+                "[bold]git checkout[/bold].[/dim]"
+            )
+
+        should_set = typer.confirm("Configure Git shortcut aliases?", default=True)
+        if not should_set:
+            console.print("[dim]Skipping Git alias setup.[/dim]")
+            console.print()
+            return
+
+        aliases = [
+            ("co", "checkout"),
+            ("br", "branch"),
+            ("ci", "commit"),
+            ("st", "status"),
+        ]
+        set_count = 0
+        for alias_name, full_cmd in aliases:
+            if alias_name in existing:
+                continue
+            try:
+                subprocess.run(
+                    ["git", "config", "--global", f"alias.{alias_name}", full_cmd],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                )
+                set_count += 1
+            except subprocess.CalledProcessError:
+                pass
+
+        if set_count:
+            names = ", ".join(a for a, _ in aliases if a not in existing)
+            TerminalUI.print_success(f"Git aliases configured: [cyan]{names}[/cyan]")
+            self._log_wizard_event("git_aliases_set", f"{set_count} aliases")
         console.print()
 
     def _step_auth_login(self) -> None:

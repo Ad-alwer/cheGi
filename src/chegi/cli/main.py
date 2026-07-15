@@ -4,6 +4,7 @@ import typer
 
 # Import command modules
 from chegi.cli.commands import (
+    aliases,
     auth,
     commit,
     config,
@@ -56,6 +57,13 @@ app.add_typer(gitignore.app, name="gitignore")
 app.command(name="new")(new_cmd)
 app.add_typer(doctor.app, name="doctor")
 app.add_typer(hooks.app, name="hooks")
+
+# Register Git alias commands (pass-through to git)
+alias_settings = {"allow_extra_args": True, "ignore_unknown_options": True}
+app.command(name="co", context_settings=alias_settings)(aliases.co)
+app.command(name="br", context_settings=alias_settings)(aliases.br)
+app.command(name="ci", context_settings=alias_settings)(aliases.ci)
+app.command(name="st", context_settings=alias_settings)(aliases.st)
 
 
 @app.callback()
