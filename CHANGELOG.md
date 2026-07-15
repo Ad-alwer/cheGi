@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `GitHubRepoService` — create and list GitHub repositories via API:
+  - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling
+  - `list_repos()` — fetches user repos via `GET /user/repos`
+  - `push_project()` — adds remote and pushes via `git push -u`
+- `GhService` — check `gh` CLI installation and authentication status
+- `GitHubRepo` model for repository metadata (name, url, visibility, default_branch)
+
 - `GitConfigService` — new service for centralised Git global config operations (`get`, `set`, `unset`, `get_all`, `get_identity`, `set_identity`)
 - `GitConfigEntry`, `ConfigChange`, `GitConfigCategory` models with automatic key categorisation
 - `chegi config git` commands (`set` and `get`) for viewing and modifying Git global config:
