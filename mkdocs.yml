@@ -67,6 +67,7 @@ nav:
       - hooks: commands/hooks.md
       - init: commands/init.md
       - new: commands/new.md
+      - repo: commands/repo.md
       - reword: commands/reword.md
       - scan: commands/scan.md
       - setup: commands/setup.md

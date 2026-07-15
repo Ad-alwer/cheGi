@@ -49,6 +49,11 @@ def _parse_repo(data: dict) -> GitHubRepo:
         private=data.get("private", False),
         default_branch=data.get("default_branch", "main"),
         description=data.get("description") or "",
+        language=data.get("language"),
+        stargazers_count=data.get("stargazers_count", 0),
+        forks_count=data.get("forks_count", 0),
+        updated_at=data.get("updated_at", ""),
+        fork=data.get("fork", False),
     )
 
 

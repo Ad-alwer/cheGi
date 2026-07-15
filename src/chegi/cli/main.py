@@ -13,6 +13,7 @@ from chegi.cli.commands import (
     guard,
     hooks,
     init,
+    repo,
     reword,
     scan,
     setup,
@@ -57,6 +58,7 @@ app.add_typer(gitignore.app, name="gitignore")
 app.command(name="new")(new_cmd)
 app.add_typer(doctor.app, name="doctor")
 app.add_typer(hooks.app, name="hooks")
+app.add_typer(repo.app, name="repo")
 
 # Register Git alias commands (pass-through to git)
 alias_settings = {"allow_extra_args": True, "ignore_unknown_options": True}

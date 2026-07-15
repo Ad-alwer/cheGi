@@ -1,5 +1,6 @@
 """GitHub service for repository management and API interactions."""
 
+from chegi.services.github.cache import RepoCache
 from chegi.services.github.exceptions import (
     GitHubAuthError,
     GitHubError,
@@ -16,4 +17,5 @@ __all__ = [
     "GitHubError",
     "GitHubAuthError",
     "RepoExistsError",
+    "RepoCache",
 ]

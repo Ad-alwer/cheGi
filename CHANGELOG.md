@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Lists user's existing repos for selection
   - Detects default branch from git config
   - Updates README with actual repo URL
+- `chegi repo list` — list GitHub repositories with interactive fuzzy-select picker:
+  - Rich table with visibility icons, star count, language colors, relative time
+  - Local cache (`~/.config/chegi/repo_cache.json`, 5-minute TTL) with `--refresh`
+  - Filters: `--public`, `--private`, `--owner`, `--limit`, `--sort`
+  - Output formats: `--format interactive` (default), `--format table`, `--format json`
+  - Actions after selection: open in browser, copy SSH/HTTPS URL
+  - Fuzzy-search filtering via questionary
+  - RepoCache service for local caching with age/clear/is_fresh methods
+  - Language color constants for Rich display
+  - `GitHubRepo` model extended with `language`, `stargazers_count`, `forks_count`, `updated_at`, `fork`
 
 - Git alias pass-through commands: `chegi co`, `chegi br`, `chegi ci`, `chegi st`
   - Thin wrappers that forward all arguments to `git checkout`, `branch`, `commit`, `status`
