@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `chegi auth` token-based authentication system for GitHub and GitLab:
+  - `AuthService` with encrypted token storage (Fernet via `cryptography`)
+  - `login()` validates token via provider API before persisting
+  - `logout()` / `status()` / `switch()` for credential management
+  - `get_credential_for_host()` for Git credential helper protocol
+  - Magic provider detection from token prefix (`ghp_` → GitHub, `glpat-` → GitLab)
+  - Multiple account support with label-based switching per host
+  - `Credential` model with `AuthProvider` enum (GitHub, GitLab)
+  - 25 service-layer tests
+- New dependency: `cryptography>=41.0.0` for secure token storage
 - Color theme system with support for switching between preset themes:
   - `TerminalUI` now loads themes dynamically from `GlobalConfig` with caching
   - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`

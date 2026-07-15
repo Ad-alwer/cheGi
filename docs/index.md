@@ -8,6 +8,7 @@ cheGi is a command-line tool for developers who work with multiple Git repositor
 
 | Command | Description |
 |---------|-------------|
+| [auth](commands/auth.md) | Manage token-based authentication for GitHub and GitLab |
 | [scan](commands/scan.md) | Scan a directory tree for Git repositories and report their status |
 | [guard](commands/guard.md) | Check staged files for sensitive data before committing |
 | [sync](commands/sync.md) | Safely sync the current branch with its remote |
