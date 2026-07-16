@@ -5,13 +5,19 @@ from pathlib import Path
 from typing import List
 
 from chegi.services.clone.constants import DETECTION_FILES, DETECTION_RULES
-from chegi.services.clone.exceptions import CloneError, CloneUrlError
+from chegi.services.clone.exceptions import (
+    CloneError,
+    CloneTargetExistsError,
+    CloneUrlError,
+)
 from chegi.services.clone.models import (
     CloneConfig,
     CloneResult,
 )
+from chegi.services.environment import EnvManager
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
+from chegi.services.init import InitService
 
 # Regex to detect shorthand user/repo format
 _SHORTHAND_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
@@ -93,6 +99,7 @@ class CloneService:
         Raises:
             CloneError: If any step of the clone process fails.
         """
+        config = self.config
         result = self._clone_repo()
 
         # Detect default branch
@@ -108,6 +115,37 @@ class CloneService:
         # Smart-detect technologies
         result.detected_techs = self._smart_detect_techs(result.target_dir)
 
+        # Submodule init
+        if config.submodules and (result.target_dir / ".gitmodules").exists():
+            result.had_submodules = True
+            try:
+                output = git_client.submodule_update(recursive=True)
+                result.submodules_inited = _parse_submodule_output(output)
+            except (GitCommandError, GitNotInstalledError):
+                result.submodules_inited = []
+
+        # .gitignore generation
+        if config.gitignore:
+            gitignore_path = result.target_dir / ".gitignore"
+            if not gitignore_path.exists():
+                result.gitignore_was_missing = True
+                techs = config.technologies or result.detected_techs
+                if techs:
+                    try:
+                        env_mgr = EnvManager()
+                        env_mgr.generate_gitignore(techs, str(result.target_dir))
+                        result.gitignore_created = True
+                    except Exception:
+                        result.gitignore_created = False
+
+        # .chegi/ setup
+        if config.chegi:
+            try:
+                InitService.create_project_directory(result.target_dir)
+                result.chegi_created = True
+            except Exception:
+                result.chegi_created = False
+
         return result
 
     def _clone_repo(self) -> CloneResult:
@@ -118,16 +156,25 @@ class CloneService:
 
         Raises:
             CloneError: If the clone operation fails.
+            CloneTargetExistsError: If target exists and is not empty.
         """
         config = self.config
-        parent = config.target_dir.parent
+        target = config.target_dir
+
+        # Safety check: warn if target exists and is not empty
+        if target.exists() and any(target.iterdir()):
+            raise CloneTargetExistsError(
+                f"Target directory already exists and is not empty: {target}"
+            )
+
+        parent = target.parent
         parent.mkdir(parents=True, exist_ok=True)
 
         try:
             git_client = GitClient(parent)
             git_client.clone(
                 url=config.url,
-                target_dir=config.target_dir,
+                target_dir=target,
                 branch=config.branch,
                 depth=config.depth,
             )
@@ -161,3 +208,31 @@ class CloneService:
                 if tech not in detected:
                     detected.append(tech)
         return detected
+
+
+def _parse_submodule_output(output: str) -> List[str]:
+    """Parses git submodule update output to extract submodule names.
+
+    Args:
+        output: The raw stdout from git submodule update.
+
+    Returns:
+        List of submodule paths that were initialized.
+    """
+    if not output:
+        # When no submodules need updating, output may be empty
+        return []
+    # Typical output lines: "Cloning into '/path/to/submodule'..."
+    names: List[str] = []
+    for line in output.splitlines():
+        if "Cloning into" in line:
+            parts = line.split("'")
+            if len(parts) >= 2:
+                path = parts[1]
+                name = Path(path).name
+                if name not in names:
+                    names.append(name)
+    # If no Cloning lines, maybe all cached; still return something
+    if not names:
+        return ["<unknown>"]
+    return names

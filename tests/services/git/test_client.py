@@ -138,3 +138,19 @@ def test_commit_file_rejects_newline_in_message(mock_run_command, git_client):
     """Test that commit_msg containing newline is rejected."""
     with pytest.raises(ValueError, match="must not contain newlines"):
         git_client.commit_file("test.py", "msg\ninjection")
+
+
+def test_submodule_update_default(git_client):
+    """Tests submodule_update with default recursive=True."""
+    with patch.object(git_client, "run_command") as mock_run:
+        git_client.submodule_update()
+        mock_run.assert_called_once_with(
+            ["git", "submodule", "update", "--init", "--recursive"]
+        )
+
+
+def test_submodule_update_non_recursive(git_client):
+    """Tests submodule_update with recursive=False."""
+    with patch.object(git_client, "run_command") as mock_run:
+        git_client.submodule_update(recursive=False)
+        mock_run.assert_called_once_with(["git", "submodule", "update", "--init"])

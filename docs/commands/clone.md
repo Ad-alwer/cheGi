@@ -42,7 +42,31 @@ After cloning, cheGi scans the target directory for well-known project files:
 | `pom.xml` | Maven |
 
 If a `.gitignore` does not already exist, one is generated using templates for
-the detected technologies.
+the detected technologies. In interactive mode, you can select or modify
+the technologies via a checkbox prompt.
+
+### Interactive `.gitignore` Selection
+
+In interactive mode (no URL argument), cheGi prompts you to select
+technologies for `.gitignore` generation from a checkbox list of all
+available environments. In direct mode (URL provided), technologies are
+auto-detected from the cloned project files.
+
+### Submodule Detection
+
+If the cloned repository contains a `.gitmodules` file, cheGi automatically
+runs `git submodule update --init --recursive` to initialize submodules.
+Use `--no-submodules` to skip this step.
+
+### `.chegi/` Setup
+
+If `--no-chegi` is not specified, cheGi initializes a `.chegi/` directory
+with default guard rules, config, and `.chegiignore` file.
+
+### Safety Check
+
+If the target directory already exists and is not empty, cheGi warns you
+and asks for confirmation before proceeding.
 
 ## Options
 
@@ -87,4 +111,4 @@ chegi clone --own
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `1` | Invalid URL, clone failed, target exists |
+| `1` | Invalid URL, clone failed, target exists and not confirmed |

@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `--own` flag to browse and clone from your GitHub repos
   - Flags: `--path`, `--here`, `--branch`, `--depth`, `--no-submodules`, `--no-gitignore`, `--no-chegi`
   - 11 CLI integration tests via `CliRunner`, 16 service-layer tests
+- `CloneService.execute()` extended with submodule init, `.gitignore` generation,
+  `.chegi/` setup, and safety check for non-empty target directories:
+  - Submodule detection (`.gitmodules`) + `git submodule update --init --recursive`
+  - Smart `.gitignore` generation via `EnvManager` using detected or user-selected technologies
+  - `.chegi/` directory initialization via `InitService`
+  - `CloneTargetExistsError` raised when target dir exists and is not empty
+  - `GitClient.submodule_update()` — new method for submodule initialization
+  - `_parse_submodule_output()` helper for extracting submodule names from git output
+  - Interactive `.gitignore` technology checkbox in CLI interactive mode
+  - 10 new service-layer tests covering submodules, gitignore, chegi, and safety check
+  - 2 new `GitClient` tests for `submodule_update()`
 
 - `GitHubRepoService` — create and list GitHub repositories via API:
   - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling

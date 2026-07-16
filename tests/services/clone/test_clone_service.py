@@ -3,8 +3,12 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from chegi.services.clone.clone_service import CloneService, parse_url
-from chegi.services.clone.exceptions import CloneUrlError
+from chegi.services.clone.clone_service import (
+    CloneService,
+    _parse_submodule_output,
+    parse_url,
+)
+from chegi.services.clone.exceptions import CloneTargetExistsError, CloneUrlError
 from chegi.services.clone.models import CloneConfig, CloneResult, CloneSource
 
 
@@ -108,8 +112,16 @@ class TestCloneService:
         detected = CloneService._smart_detect_techs(tmp_path)
         assert detected == ["python"]
 
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
     @patch("chegi.services.clone.clone_service.GitClient")
-    def test_execute_success(self, mock_git_client_cls: MagicMock, tmp_path: Path):
+    def test_execute_success(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
         """Tests that execute clones and detects branch."""
         mock_client = MagicMock()
         mock_client.run_command.return_value = "main"
@@ -122,6 +134,7 @@ class TestCloneService:
             source=CloneSource.EXTERNAL_URL,
             target_dir=target,
             repo_name="test-repo",
+            chegi=False,
         )
         service = CloneService(config)
         result = service.execute()
@@ -133,3 +146,279 @@ class TestCloneService:
         mock_client.clone.assert_called_once_with(
             url=url, target_dir=target, branch=None, depth=None
         )
+
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_with_submodules(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that execute detects .gitmodules and inits submodules."""
+        mock_client = MagicMock()
+        mock_client.run_command.return_value = "main"
+        mock_client.submodule_update.return_value = (
+            "Cloning into '/tmp/sub/foo'...\nCloning into '/tmp/sub/bar'..."
+        )
+        mock_git_client_cls.return_value = mock_client
+
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+        target.mkdir(parents=True)
+        (target / ".gitmodules").write_text('[submodule "foo"]\n\tpath = foo')
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+            chegi=False,
+        )
+        service = CloneService(config)
+        # Patch _clone_repo to bypass safety check (target already exists)
+        with patch.object(service, "_clone_repo") as mock_clone:
+            mock_clone.return_value = CloneResult(
+                target_dir=target, repo_name="test-repo"
+            )
+            result = service.execute()
+
+        assert result.had_submodules is True
+        assert len(result.submodules_inited) > 0
+        mock_client.submodule_update.assert_called_once_with(recursive=True)
+
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_no_submodules_when_disabled(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that submodules are skipped when config.submodules is False."""
+        mock_client = MagicMock()
+        mock_client.run_command.return_value = "main"
+        mock_git_client_cls.return_value = mock_client
+
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+        target.mkdir(parents=True)
+        (target / ".gitmodules").write_text('[submodule "foo"]')
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+            submodules=False,
+            chegi=False,
+        )
+        service = CloneService(config)
+        with patch.object(service, "_clone_repo") as mock_clone:
+            mock_clone.return_value = CloneResult(
+                target_dir=target, repo_name="test-repo"
+            )
+            result = service.execute()
+
+        assert result.had_submodules is False
+        mock_client.submodule_update.assert_not_called()
+
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_gitignore_created(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that .gitignore is created when missing and techs available."""
+        mock_client = MagicMock()
+        mock_client.run_command.return_value = "main"
+        mock_git_client_cls.return_value = mock_client
+
+        mock_env = MagicMock()
+        mock_env_mgr_cls.return_value = mock_env
+
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+            technologies=["python", "javascript"],
+            chegi=False,
+        )
+        service = CloneService(config)
+        with patch.object(service, "_clone_repo") as mock_clone:
+            mock_clone.return_value = CloneResult(
+                target_dir=target, repo_name="test-repo"
+            )
+            result = service.execute()
+
+        assert result.gitignore_was_missing is True
+        assert result.gitignore_created is True
+        mock_env.generate_gitignore.assert_called_once_with(
+            ["python", "javascript"], str(target)
+        )
+
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_gitignore_skipped_when_exists(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that .gitignore creation is skipped when file already exists."""
+        mock_client = MagicMock()
+        mock_client.run_command.return_value = "main"
+        mock_git_client_cls.return_value = mock_client
+
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+            technologies=["python"],
+            chegi=False,
+        )
+        service = CloneService(config)
+        with patch.object(service, "_clone_repo") as mock_clone:
+            mock_clone.return_value = CloneResult(
+                target_dir=target, repo_name="test-repo"
+            )
+            # Create .gitignore in the target dir set by mock
+            target.mkdir(parents=True)
+            (target / ".gitignore").write_text("node_modules/\n")
+            result = service.execute()
+
+        assert result.gitignore_was_missing is False
+        assert result.gitignore_created is False
+
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_chegi_created(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that .chegi/ directory is created."""
+        mock_client = MagicMock()
+        mock_client.run_command.return_value = "main"
+        mock_git_client_cls.return_value = mock_client
+
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+            chegi=True,
+        )
+        service = CloneService(config)
+        with patch.object(service, "_clone_repo") as mock_clone:
+            mock_clone.return_value = CloneResult(
+                target_dir=target, repo_name="test-repo"
+            )
+            result = service.execute()
+
+        assert result.chegi_created is True
+        mock_init_svc.create_project_directory.assert_called_once_with(target)
+
+    @patch("chegi.services.clone.clone_service.InitService")
+    @patch("chegi.services.clone.clone_service.EnvManager")
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_chegi_skipped_when_disabled(
+        self,
+        mock_git_client_cls: MagicMock,
+        mock_env_mgr_cls: MagicMock,
+        mock_init_svc: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that .chegi/ is skipped when config.chegi is False."""
+        mock_client = MagicMock()
+        mock_client.run_command.return_value = "main"
+        mock_git_client_cls.return_value = mock_client
+
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+            chegi=False,
+        )
+        service = CloneService(config)
+        with patch.object(service, "_clone_repo") as mock_clone:
+            mock_clone.return_value = CloneResult(
+                target_dir=target, repo_name="test-repo"
+            )
+            result = service.execute()
+
+        assert result.chegi_created is False
+        mock_init_svc.create_project_directory.assert_not_called()
+
+    @patch("chegi.services.clone.clone_service.GitClient")
+    def test_execute_target_exists_error(
+        self,
+        mock_git_client_cls: MagicMock,
+        tmp_path: Path,
+    ):
+        """Tests that CloneTargetExistsError is raised for non-empty target."""
+        url = "https://github.com/user/test-repo.git"
+        target = tmp_path / "test-repo"
+        target.mkdir(parents=True)
+        (target / "some_file.txt").write_text("hello")
+
+        config = CloneConfig(
+            url=url,
+            source=CloneSource.EXTERNAL_URL,
+            target_dir=target,
+            repo_name="test-repo",
+        )
+        service = CloneService(config)
+
+        import pytest
+
+        with pytest.raises(CloneTargetExistsError):
+            service.execute()
+
+
+class TestParseSubmoduleOutput:
+    """Tests for _parse_submodule_output."""
+
+    def test_parses_cloning_lines(self):
+        """Tests extraction of submodule names from git output."""
+        output = (
+            "Cloning into '/home/user/proj/sub/foo'...\n"
+            "Cloning into '/home/user/proj/sub/bar'...\n"
+        )
+        assert _parse_submodule_output(output) == ["foo", "bar"]
+
+    def test_empty_output(self):
+        """Tests that empty output returns empty list."""
+        assert _parse_submodule_output("") == []
+
+    def test_no_cloning_lines(self):
+        """Tests output without Cloning lines returns placeholder."""
+        assert _parse_submodule_output("Already up to date.") == ["<unknown>"]

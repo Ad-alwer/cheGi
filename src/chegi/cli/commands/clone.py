@@ -1,15 +1,20 @@
 """CLI command for cloning repositories with smart defaults."""
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import questionary
 import typer
 from typing_extensions import Annotated
 
 from chegi.services.clone import CloneService, parse_url
-from chegi.services.clone.exceptions import CloneError, CloneUrlError
+from chegi.services.clone.exceptions import (
+    CloneError,
+    CloneTargetExistsError,
+    CloneUrlError,
+)
 from chegi.services.clone.models import CloneConfig, CloneSource
+from chegi.services.environment import EnvManager
 from chegi.ui import TerminalUI, console
 
 
@@ -204,6 +209,26 @@ def _run_interactive(
             raise typer.Exit(0)
         target_dir = Path(p).resolve()
 
+    # Interactive .gitignore technology selection
+    if not no_gitignore:
+        env_mgr = EnvManager()
+        available = env_mgr.get_envs_with_gitignore()
+        if available:
+            selected = questionary.checkbox(
+                "Select technologies for .gitignore:",
+                choices=[
+                    questionary.Choice(tech, checked=False)
+                    for tech in sorted(available)
+                ],
+            ).ask()
+            if selected is None:
+                raise typer.Exit(0)
+            technologies = selected
+        else:
+            technologies = []
+    else:
+        technologies = []
+
     config = CloneConfig(
         url=url,
         source=source,
@@ -214,6 +239,7 @@ def _run_interactive(
         submodules=not no_submodules,
         gitignore=not no_gitignore,
         chegi=not no_chegi,
+        technologies=technologies,
     )
 
     _execute_clone(config)
@@ -305,6 +331,37 @@ def _resolve_target_dir(repo_name: str, path: Optional[str], here: bool) -> Path
     return Path.cwd() / repo_name
 
 
+def _confirm_overwrite(target_dir: Path) -> bool:
+    """Asks user to confirm overwriting a non-empty target directory.
+
+    Args:
+        target_dir: The target path that exists and is not empty.
+
+    Returns:
+        True if the user confirms, False to abort.
+    """
+    TerminalUI.print_warning(
+        f"Target directory already exists and is not empty: [bold]{target_dir}[/bold]"
+    )
+    return typer.confirm("Continue cloning into this directory?", default=False)
+
+
+def _select_technologies(available: List[str]) -> List[str]:
+    """Prompts user to select technologies for .gitignore generation.
+
+    Args:
+        available: List of available technology names.
+
+    Returns:
+        List of selected technology names.
+    """
+    selected = questionary.checkbox(
+        "Select technologies for .gitignore:",
+        choices=[questionary.Choice(tech, checked=False) for tech in sorted(available)],
+    ).ask()
+    return selected or []
+
+
 def _execute_clone(config: CloneConfig) -> None:
     """Executes the clone and prints the result."""
     console.print()
@@ -313,6 +370,17 @@ def _execute_clone(config: CloneConfig) -> None:
     try:
         service = CloneService(config)
         result = service.execute()
+    except CloneTargetExistsError:
+        if _confirm_overwrite(config.target_dir):
+            # Retry after user confirms
+            try:
+                service = CloneService(config)
+                result = service.execute()
+            except CloneError as e:
+                TerminalUI.print_error(str(e))
+                raise typer.Exit(code=1) from e
+        else:
+            raise typer.Exit(0)
     except CloneError as e:
         TerminalUI.print_error(str(e))
         raise typer.Exit(code=1) from e
@@ -327,6 +395,24 @@ def _execute_clone(config: CloneConfig) -> None:
 
     if result.detected_techs:
         console.print(f"  [dim]📄 Detected:[/dim] {', '.join(result.detected_techs)}")
+
+    if result.had_submodules:
+        if result.submodules_inited:
+            console.print(
+                f"  [dim]📦 Submodules:[/dim] {', '.join(result.submodules_inited)}"
+            )
+        else:
+            console.print("  [dim]📦 Submodules initialized[/dim]")
+
+    if result.gitignore_created:
+        console.print("  [dim]📄 .gitignore created[/dim]")
+    elif result.gitignore_was_missing and not result.gitignore_created:
+        console.print(
+            "  [dim]📄 .gitignore generation skipped (no technologies selected)[/dim]"
+        )
+
+    if result.chegi_created:
+        console.print("  [dim]🐆 .chegi/ initialized[/dim]")
 
     console.print()
     console.print(f"  [dim]🐆 cd {result.target_dir}[/dim]")

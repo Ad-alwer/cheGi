@@ -132,6 +132,24 @@ class GitClient:
         output = self.run_command(["git", "status", "--porcelain"])
         return len(output) == 0
 
+    def submodule_update(self, recursive: bool = True) -> str:
+        """Initializes and updates submodules.
+
+        Args:
+            recursive: Whether to init submodules recursively.
+
+        Returns:
+            The git submodule command output.
+
+        Raises:
+            GitCommandError: If the submodule update fails.
+            GitNotInstalledError: If git is not installed.
+        """
+        cmd = ["git", "submodule", "update", "--init"]
+        if recursive:
+            cmd.append("--recursive")
+        return self.run_command(cmd)
+
     def commit_file(self, file_path: str, commit_msg: str) -> str:
         """Adds and commits a specific file to the repository.
 
