@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `CloneError`, `CloneUrlError`, `CloneAuthError`, `CloneTargetExistsError` exceptions
   - `GitClient.clone()` — new method for cloning with optional branch and depth
   - `GitClient.run_command()` extended with optional `cwd` parameter
+- `chegi clone` CLI command (`feat(clone)`) — clone repos with smart defaults:
+  - Direct mode: `chegi clone user/repo` with user/repo shorthand expansion
+  - Interactive mode with questionary for source selection and location
+  - `--own` flag to browse and clone from your GitHub repos
+  - Flags: `--path`, `--here`, `--branch`, `--depth`, `--no-submodules`, `--no-gitignore`, `--no-chegi`
+  - 11 CLI integration tests via `CliRunner`, 16 service-layer tests
 
 - `GitHubRepoService` — create and list GitHub repositories via API:
   - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling

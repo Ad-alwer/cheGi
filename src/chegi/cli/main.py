@@ -19,6 +19,7 @@ from chegi.cli.commands import (
     setup,
     sync,
 )
+from chegi.cli.commands.clone import clone_cmd
 from chegi.cli.commands.new import new_cmd
 
 # Import the preflight orchestrator
@@ -50,6 +51,7 @@ app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 app.add_typer(sync.app, name="sync")
 app.add_typer(scan.app, name="scan")
+app.command(name="clone")(clone_cmd)
 app.add_typer(reword.app, name="reword")
 app.add_typer(guard.app, name="guard")
 app.add_typer(init.app, name="init")
