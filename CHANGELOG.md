@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `CloneService` — new service for cloning repositories with smart defaults:
+  - `parse_url()` — supports `user/repo` shorthand and full URLs
+  - `_smart_detect_techs()` — scans cloned directory for `package.json`, `Cargo.toml`, etc.
+  - `CloneConfig`, `CloneResult`, `CloneSource` models for typed configuration
+  - `CloneError`, `CloneUrlError`, `CloneAuthError`, `CloneTargetExistsError` exceptions
+  - `GitClient.clone()` — new method for cloning with optional branch and depth
+  - `GitClient.run_command()` extended with optional `cwd` parameter
+
 - `GitHubRepoService` — create and list GitHub repositories via API:
   - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling
   - `list_repos()` — fetches user repos via `GET /user/repos`

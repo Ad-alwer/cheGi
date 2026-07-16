@@ -57,6 +57,7 @@ nav:
       - Security: security.md
   - Commands:
       - auth: commands/auth.md
+      - clone: commands/clone.md
       - "co / br / ci / st": commands/aliases.md
       - commit: commands/commit.md
       - config: commands/config.md

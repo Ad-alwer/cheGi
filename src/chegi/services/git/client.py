@@ -36,7 +36,11 @@ class GitClient:
             return False
 
     def run_command(
-        self, command: List[str], check: bool = True, env: Optional[dict] = None
+        self,
+        command: List[str],
+        check: bool = True,
+        env: Optional[dict] = None,
+        cwd: Optional[Path] = None,
     ) -> str:
         """Executes a git command securely using subprocess.
 
@@ -44,6 +48,7 @@ class GitClient:
             command (List[str]): The git command and its arguments as a list.
             check (bool, optional): Whether to raise an exception on command failure. Defaults to True.
             env (dict, optional): Environment variables to pass to the subprocess. Defaults to None.
+            cwd (Path, optional): Working directory. Defaults to self.repo_path.
 
         Returns:
             str: The stripped standard output of the command.
@@ -55,7 +60,7 @@ class GitClient:
         try:
             result = subprocess.run(
                 command,
-                cwd=self.repo_path,
+                cwd=str(cwd) if cwd is not None else self.repo_path,
                 capture_output=True,
                 text=True,
                 check=check,
@@ -69,6 +74,39 @@ class GitClient:
             ) from e
         except FileNotFoundError:
             raise GitNotInstalledError("Git executable not found. Is Git installed?")
+
+    def clone(
+        self,
+        url: str,
+        target_dir: Path,
+        branch: Optional[str] = None,
+        depth: Optional[int] = None,
+    ) -> str:
+        """Clones a remote repository into a local directory.
+
+        Args:
+            url: The repository URL.
+            target_dir: The target directory to clone into.
+            branch: Optional branch to clone.
+            depth: Optional shallow clone depth.
+
+        Returns:
+            The git clone output.
+
+        Raises:
+            GitCommandError: If the clone fails.
+            GitNotInstalledError: If git is not installed.
+        """
+        cmd: List[str] = ["git", "clone"]
+        if branch:
+            cmd.extend(["-b", branch])
+        if depth:
+            cmd.extend(["--depth", str(depth)])
+        cmd.append(url)
+        cmd.append(str(target_dir))
+
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+        return self.run_command(cmd, cwd=str(target_dir.parent))
 
     def check_git_installation(self) -> bool:
         """Ensures Git is installed on the system.
