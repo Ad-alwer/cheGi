@@ -1,5 +1,7 @@
 import argparse
 import platform
+import re
+from pathlib import Path
 
 from builder_binary.linux import build_all_linux
 from builder_binary.macos import build_all_macos
@@ -7,11 +9,21 @@ from builder_binary.utils import setup_environment
 from builder_binary.windows import build_all_windows
 
 
+def _read_version() -> str:
+    """Reads the version from pyproject.toml."""
+    pyproject = Path(__file__).parent / "pyproject.toml"
+    match = re.search(r'^version\s*=\s*"([^"]+)"', pyproject.read_text(), re.M)
+    return match.group(1) if match else "0.0.0"
+
+
 def main():
     """Main entry point for the build orchestration script."""
+    default_ver = _read_version()
     parser = argparse.ArgumentParser(description="Build script for Chegi CLI")
     parser.add_argument(
-        "--version", default="0.3.0", help="Version to build (e.g., 0.3.0)"
+        "--version",
+        default=default_ver,
+        help="Version to build (default: from pyproject.toml)",
     )
     args = parser.parse_args()
 
