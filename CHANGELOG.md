@@ -33,6 +33,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Interactive `.gitignore` technology checkbox in CLI interactive mode
   - 10 new service-layer tests covering submodules, gitignore, chegi, and safety check
   - 2 new `GitClient` tests for `submodule_update()`
+- `chegi clone` progress spinner and Rich report table:
+  - `console.status` spinner during clone operation
+  - Rich `Table` output showing Path, Branch, Origin, Submodules, .gitignore, and .chegi/ status
 
 - `GitHubRepoService` — create and list GitHub repositories via API:
   - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling

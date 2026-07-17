@@ -5,6 +5,7 @@ from typing import List, Optional
 
 import questionary
 import typer
+from rich.table import Table
 from typing_extensions import Annotated
 
 from chegi.services.clone import CloneService, parse_url
@@ -365,17 +366,23 @@ def _select_technologies(available: List[str]) -> List[str]:
 def _execute_clone(config: CloneConfig) -> None:
     """Executes the clone and prints the result."""
     console.print()
-    console.print(f"[dim]📡 Cloning [bold]{config.repo_name}[/bold]...[/dim]")
 
     try:
-        service = CloneService(config)
-        result = service.execute()
+        with console.status(
+            f"[bold gold1]📡 Cloning [bold]{config.repo_name}[/bold]...[/bold gold1]",
+            spinner="dots",
+        ):
+            service = CloneService(config)
+            result = service.execute()
     except CloneTargetExistsError:
         if _confirm_overwrite(config.target_dir):
-            # Retry after user confirms
             try:
-                service = CloneService(config)
-                result = service.execute()
+                with console.status(
+                    f"[bold gold1]📡 Cloning [bold]{config.repo_name}[/bold]...[/bold gold1]",
+                    spinner="dots",
+                ):
+                    service = CloneService(config)
+                    result = service.execute()
             except CloneError as e:
                 TerminalUI.print_error(str(e))
                 raise typer.Exit(code=1) from e
@@ -385,34 +392,42 @@ def _execute_clone(config: CloneConfig) -> None:
         TerminalUI.print_error(str(e))
         raise typer.Exit(code=1) from e
 
-    TerminalUI.print_success(
-        f"Cloned [bold cyan]{config.repo_name}[/bold cyan] "
-        f"into [bold]{result.target_dir}[/bold]"
+    # Build report table
+    table = Table(
+        title="[bold gold1]🐆 Clone Complete[/bold gold1]",
+        title_justify="left",
+        show_header=False,
+        box=None,
+        padding=(0, 1),
     )
+    table.add_column("Key", style="dim", no_wrap=True)
+    table.add_column("Value", style="bold")
 
-    if result.default_branch:
-        console.print(f"  [dim]🌿 Branch:[/dim] [cyan]{result.default_branch}[/cyan]")
-
-    if result.detected_techs:
-        console.print(f"  [dim]📄 Detected:[/dim] {', '.join(result.detected_techs)}")
+    table.add_row("Path", str(result.target_dir))
+    table.add_row("Branch", f"[cyan]{result.default_branch}[/cyan]")
+    table.add_row("Origin", f"[cyan]{config.url}[/cyan]")
 
     if result.had_submodules:
         if result.submodules_inited:
-            console.print(
-                f"  [dim]📦 Submodules:[/dim] {', '.join(result.submodules_inited)}"
+            table.add_row(
+                "Submodules",
+                f"[dim]{len(result.submodules_inited)} initialized[/dim] "
+                f"({', '.join(result.submodules_inited)})",
             )
         else:
-            console.print("  [dim]📦 Submodules initialized[/dim]")
+            table.add_row("Submodules", "[dim]initialized[/dim]")
 
     if result.gitignore_created:
-        console.print("  [dim]📄 .gitignore created[/dim]")
+        techs = result.detected_techs or config.technologies
+        label = ", ".join(t.capitalize() for t in techs) if techs else "Yes"
+        table.add_row(".gitignore", label)
     elif result.gitignore_was_missing and not result.gitignore_created:
-        console.print(
-            "  [dim]📄 .gitignore generation skipped (no technologies selected)[/dim]"
-        )
+        table.add_row(".gitignore", "[dim]skipped (no technologies)[/dim]")
 
     if result.chegi_created:
-        console.print("  [dim]🐆 .chegi/ initialized[/dim]")
+        table.add_row(".chegi/", "[dim]Guard rules + config[/dim]")
 
+    console.print()
+    console.print(table)
     console.print()
     console.print(f"  [dim]🐆 cd {result.target_dir}[/dim]")
