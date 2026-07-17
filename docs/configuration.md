@@ -15,7 +15,7 @@ Configuration is loaded relative to the path you pass to commands. For example, 
 
 If no file is present, cheGi uses built-in defaults.
 
-> **Note:** Starting with v0.4.0, cheGi supports a `.chegi/` directory managed via `chegi init`. Settings in `.chegi/config.json` take precedence over `.chegi.json`.
+> **Note:** Starting with v0.4.0, cheGi supports a `.chegi/` directory managed via `chegi init`. Settings in `.chegi/config.json` take precedence over `.chegi.json`. The `.chegi/` directory can also contain `guard-rules.json` (custom sensitive patterns) and `.chegiignore` (scan exclusion patterns).
 
 ## File Location
 
@@ -57,7 +57,8 @@ When no `.chegi.json` exists, cheGi starts with these defaults:
     ],
     "max_depth": 3,
     "mcts": 10,
-    "mirrors": {}
+    "mirrors": {},
+    "sensitive_patterns": []
 }
 ```
 
@@ -140,6 +141,39 @@ chegi config set mcts 8
 ```
 
 > **Note:** `chegi scan` uses the `--workers` flag (default `5`) for concurrency at runtime. The `mcts` value is persisted for future use across cheGi features.
+
+---
+
+### `sensitive_patterns`
+
+| | |
+|---|---|
+| **Type** | `string[]` |
+| **Used by** | `chegi guard`, `chegi scan --security`, `chegi guard history` |
+| **Default** | `[]` |
+
+Additional filename patterns for the Security Guard to flag as sensitive. Patterns use glob-style matching (e.g. `*.tfstate`, `kubeconfig*`) and are case-insensitive.
+
+Custom patterns are merged with the built-in defaults at scan time. Files matching either built-in or custom patterns are flagged.
+
+**CLI example:**
+
+```bash
+chegi config set sensitive_patterns '["*.tfstate", "*.backup"]'
+```
+
+**Manual JSON:**
+
+```json
+{
+    "sensitive_patterns": [
+        "*.tfstate",
+        "kubeconfig*"
+    ]
+}
+```
+
+You can also manage patterns via `.chegi/guard-rules.json` (created by `chegi init`), which is loaded alongside `sensitive_patterns` from the config.
 
 ---
 

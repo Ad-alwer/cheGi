@@ -31,6 +31,8 @@ The interactive flow (default):
 | `--path` | `-p` | Parent directory to create the project in | `.` |
 | `--template` | `-t` | Predefined project template (python, node, go, rust, ...) | — |
 | `--license` | `-l` | License type (mit, apache, gpl3) | — |
+| `--github` | `-g` | Create a GitHub repository and push to it | `false` |
+| `--private` | | Make the GitHub repository private (requires `--github`) | `false` |
 | `--no-readme` | | Skip `README.md` generation | `false` |
 | `--no-gitignore` | | Skip `.gitignore` generation | `false` |
 | `--yes` | `-y` | Non-interactive mode — use defaults for all prompts | `false` |
@@ -53,6 +55,13 @@ Create a Python project:
 
 ```bash
 chegi new my-app -t python
+```
+
+Create and push to a new GitHub repository:
+
+```bash
+chegi new my-app --github
+chegi new my-app --github --private
 ```
 
 Create with specific options (non-interactive):
@@ -82,3 +91,4 @@ chegi new my-app -p ~/projects
 
 - [init](init.md) — initialize `.chegi/` in an existing project
 - [guard](guard.md) — scan staged files for sensitive data
+- [repo](repo.md) — list and browse GitHub repositories
