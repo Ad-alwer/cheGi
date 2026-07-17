@@ -15,9 +15,16 @@ def setup_environment():
             shutil.rmtree(folder)
 
 
-def build_base_binary():
-    """Run PyInstaller to create the standalone binary."""
+def build_base_binary(target_arch=None):
+    """Run PyInstaller to create the standalone binary.
+
+    Args:
+        target_arch: Optional target architecture for macOS
+                     (e.g. 'universal2', 'x86_64', 'arm64').
+    """
     print(f"Building standalone binary for {APP_NAME}...")
-    subprocess.run(
-        ["pyinstaller", "--onefile", "--name", APP_NAME, ENTRY_POINT], check=True
-    )
+    cmd = ["pyinstaller", "--onefile", "--name", APP_NAME]
+    if target_arch:
+        cmd.extend(["--target-arch", target_arch])
+    cmd.append(ENTRY_POINT)
+    subprocess.run(cmd, check=True)
