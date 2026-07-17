@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `BranchService` — new service for managing Git branches:
+  - `BranchInfo` dataclass with name, current, remote, last commit, ahead/behind, upstream
+  - CRUD operations: create, list, switch, rename, delete (with protected branch enforcement)
+  - Merge with commit preview, push, push-delete (cleanup workflow), sync (prune), info
+  - 25 service-layer tests covering all operations with real git repos
+- `chegi branch` CLI command — full branch manager:
+  - Interactive questionary menu when run without arguments (9 operations)
+  - Direct subcommands: `list`, `create`, `switch`, `merge`, `rename`, `delete`, `push-delete`, `sync`, `info`
+  - All subcommands support both direct args and interactive fallback
+  - Protected branches: `main`, `master`, `develop` (cannot be deleted)
+  - Merge preview with `git log --oneline`, post-merge push/delete-src prompts
+  - 14 CLI integration tests via `CliRunner`
 - `CloneService` — new service for cloning repositories with smart defaults:
   - `parse_url()` — supports `user/repo` shorthand and full URLs
   - `_smart_detect_techs()` — scans cloned directory for `package.json`, `Cargo.toml`, etc.
