@@ -60,6 +60,7 @@ nav:
       - clone: commands/clone.md
       - "co / br / ci / st": commands/aliases.md
       - commit: commands/commit.md
+      - completions: commands/completions.md
       - config: commands/config.md
       - doctor: commands/doctor.md
       - gitignore: commands/gitignore.md

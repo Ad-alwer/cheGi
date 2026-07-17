@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Smart `.gitignore` generation via `EnvManager` using detected or user-selected technologies
   - `.chegi/` directory initialization via `InitService`
   - `CloneTargetExistsError` raised when target dir exists and is not empty
-  - `GitClient.submodule_update()` — new method for submodule initialization
+- `GitClient.submodule_update()` — new method for submodule initialization
   - `_parse_submodule_output()` helper for extracting submodule names from git output
   - Interactive `.gitignore` technology checkbox in CLI interactive mode
   - 10 new service-layer tests covering submodules, gitignore, chegi, and safety check
@@ -36,6 +36,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `chegi clone` progress spinner and Rich report table:
   - `console.status` spinner during clone operation
   - Rich `Table` output showing Path, Branch, Origin, Submodules, .gitignore, and .chegi/ status
+- `chegi completions` CLI command — generate shell completion scripts for bash, zsh, fish, and powershell:
+  - `CompletionsService` — new service wrapping Typer's shell completion classes (`BashComplete`, `ZshComplete`, `FishComplete`, `PowerShellComplete`)
+  - `SupportedShell` enum and `UnsupportedShellError` for invalid shell detection
+  - Direct mode: `chegi completions bash` prints script to stdout for piping
+  - `--install` / `-i` flag: `chegi completions -i` detects shell and installs without prompts; `chegi completions -i bash` installs a specific shell directly
+  - Interactive mode: `chegi completions` (no args) detects your shell via shellingham and offers to install automatically with questionary
+  - `detect_shell()` — detects current shell via shellingham with `$SHELL` fallback
+  - `install()` — writes completion script to the standard path for the detected shell
+  - Service-layer tests for all 5 shells, shell detection, installation, and error cases
+  - CLI integration tests via `CliRunner` for direct, interactive, and install-flag modes
+  - `docs/commands/completions.md` with install instructions for each shell
 
 - `GitHubRepoService` — create and list GitHub repositories via API:
   - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling
