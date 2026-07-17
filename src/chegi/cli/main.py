@@ -6,6 +6,7 @@ import typer
 from chegi.cli.commands import (
     aliases,
     auth,
+    branch,
     commit,
     completions,
     config,
@@ -49,6 +50,7 @@ app = typer.Typer(
 
 # Register subcommands
 app.add_typer(auth.app, name="auth")
+app.add_typer(branch.app, name="branch")
 app.add_typer(setup.app, name="setup")
 app.add_typer(config.app, name="config")
 app.add_typer(sync.app, name="sync")
