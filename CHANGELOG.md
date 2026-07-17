@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `UpgradeService` — new service for self-upgrading:
+  - `UpgradeInfo` dataclass with current_version, latest_version, is_outdated, changelog_diff
+  - `check_version()` — fetches latest version from PyPI JSON API
+  - `upgrade()` — runs `pip install --upgrade chegi`
+  - `_compare_versions()` — semantic version comparison
+  - `_fetch_changelog_diff()` — fetches raw CHANGELOG from GitHub and extracts release notes
+  - `should_check()` / `mark_checked()` — 24-hour cooldown via marker file in `.chegi/`
+  - 20 service-layer tests covering version check, upgrade, cooldown, and changelog diff
 - `BranchService` — new service for managing Git branches:
   - `BranchInfo` dataclass with name, current, remote, last commit, ahead/behind, upstream
   - CRUD operations: create, list, switch, rename, delete (with protected branch enforcement)
