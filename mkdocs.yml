@@ -67,6 +67,7 @@ nav:
       - git-config: commands/git-config.md
       - guard: commands/guard.md
       - hooks: commands/hooks.md
+      - info: commands/info.md
       - init: commands/init.md
       - new: commands/new.md
       - repo: commands/repo.md

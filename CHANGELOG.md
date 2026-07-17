@@ -47,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Service-layer tests for all 5 shells, shell detection, installation, and error cases
   - CLI integration tests via `CliRunner` for direct, interactive, and install-flag modes
   - `docs/commands/completions.md` with install instructions for each shell
+- `chegi info` CLI command — quick project status overview with Rich dashboard:
+  - `InfoService` with `collect()` — fetches branch, remote, ahead/behind, changes, stash count, last commit, contributors, guard status, hooks, `.chegi/` config, git identity, and latest tag
+  - `InfoReport` dataclass with partial-failure tolerance (each field fetched independently)
+  - Full dashboard with 4 color-coded sections (branch & sync, changes, commit & contributors, security & config)
+  - `--short` / `-s` flag for one-line summary
+  - `--json` / `-j` flag for machine-readable JSON output
+  - `--watch` / `-w` flag for live refresh every 2 seconds
+  - `--path` / `-p` flag to check another directory
+  - 16 service-layer tests covering clean, dirty, diverged, no-remote, no-tag, sensitive files, hooks, stash, identity, JSON, and short modes
+  - 6 CLI integration tests via `CliRunner` for dashboard, JSON, short, non-git, and directory-not-found scenarios
+  - `docs/commands/info.md` with usage examples
 
 - `GitHubRepoService` — create and list GitHub repositories via API:
   - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling
