@@ -15,8 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `upgrade()` — runs `pip install --upgrade chegi`
   - `_compare_versions()` — semantic version comparison
   - `_fetch_changelog_diff()` — fetches raw CHANGELOG from GitHub and extracts release notes
-  - `should_check()` / `mark_checked()` — 24-hour cooldown via marker file in `.chegi/`
+  - `should_check()` / `mark_checked()` — 24-hour cooldown via marker file in `~/.config/chegi/`
   - 20 service-layer tests covering version check, upgrade, cooldown, and changelog diff
+- `chegi upgrade` CLI command — self-upgrade with `--check` and `--yes` flags:
+  - Rich output displaying current version, latest version, and changelog diff
+  - `--check` / `-c` — only check without upgrading
+  - `--yes` / `-y` — skip confirmation prompt
+  - Automatic background check in `global_setup()` with 24h cooldown via `~/.config/chegi/.last_upgrade_check`
+  - `questionary.confirm` prompt when auto-check finds a new version
+  - 8 CLI integration tests via `CliRunner`
 - `BranchService` — new service for managing Git branches:
   - `BranchInfo` dataclass with name, current, remote, last commit, ahead/behind, upstream
   - CRUD operations: create, list, switch, rename, delete (with protected branch enforcement)

@@ -9,5 +9,5 @@ CHANGELOG_RAW_URL = "https://raw.githubusercontent.com/Ad-alwer/cheGi/main/CHANG
 # Cooldown between auto-checks (in seconds: 24 hours)
 AUTO_CHECK_COOLDOWN = 86400
 
-# Marker file name inside .chegi/ directory
+# Marker file name inside the global config directory
 CHECK_MARKER_FILE = ".last_upgrade_check"

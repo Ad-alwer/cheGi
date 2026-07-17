@@ -124,7 +124,10 @@ class TestUpgrade:
         assert "Successfully installed" in result
         mock_run.assert_called_once()
 
-    @patch("subprocess.run", side_effect=subprocess.CalledProcessError(1, "pip", stderr="error"))
+    @patch(
+        "subprocess.run",
+        side_effect=subprocess.CalledProcessError(1, "pip", stderr="error"),
+    )
     def test_upgrade_pip_error(self, mock_run: MagicMock) -> None:
         """Test that upgrade raises UpgradeError on pip failure."""
         with pytest.raises(UpgradeError):
@@ -140,42 +143,74 @@ class TestUpgrade:
 class TestCooldown:
     """Tests for should_check and mark_checked."""
 
-    def test_first_check_returns_true(self, tmp_path: Path) -> None:
+    @patch("chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR")
+    def test_first_check_returns_true(
+        self, mock_config_dir: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that should_check returns True when no marker exists."""
-        service = UpgradeService(repo_path=tmp_path)
-        assert service.should_check() is True
+        mock_config_dir.return_value = tmp_path
+        # Remove the MagicMock wrapper to get the actual Path
+        mock_config_dir.__class__ = Path
+        mock_config_dir.__str__ = lambda self: str(tmp_path)
+        # Just patch directly
+        with patch(
+            "chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR", tmp_path
+        ):
+            service = UpgradeService()
+            assert service.should_check() is True
 
-    def test_after_mark_returns_false(self, tmp_path: Path) -> None:
+    @patch("chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR")
+    def test_after_mark_returns_false(
+        self, mock_config_dir: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that should_check returns False right after marking."""
-        (tmp_path / ".chegi").mkdir(parents=True)
-        service = UpgradeService(repo_path=tmp_path)
-        service.mark_checked()
-        assert service.should_check() is False
+        with patch(
+            "chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR", tmp_path
+        ):
+            service = UpgradeService()
+            service.mark_checked()
+            assert service.should_check() is False
 
-    def test_after_cooldown_returns_true(self, tmp_path: Path) -> None:
+    @patch("chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR")
+    def test_after_cooldown_returns_true(
+        self, mock_config_dir: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that should_check returns True after cooldown expires."""
-        (tmp_path / ".chegi").mkdir(parents=True)
-        marker = tmp_path / ".chegi" / ".last_upgrade_check"
-        # Write a timestamp from way in the past
+        marker = tmp_path / CHECK_MARKER_FILE
+        marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text(str(int(time.time() - AUTO_CHECK_COOLDOWN - 1)))
-        service = UpgradeService(repo_path=tmp_path)
-        assert service.should_check() is True
+        with patch(
+            "chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR", tmp_path
+        ):
+            service = UpgradeService()
+            assert service.should_check() is True
 
-    def test_mark_creates_marker_file(self, tmp_path: Path) -> None:
-        """Test that mark_checked creates the marker file in .chegi/."""
-        (tmp_path / ".chegi").mkdir(parents=True)
-        service = UpgradeService(repo_path=tmp_path)
-        service.mark_checked()
-        marker = tmp_path / ".chegi" / CHECK_MARKER_FILE
-        assert marker.exists()
+    @patch("chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR")
+    def test_mark_creates_marker_file(
+        self, mock_config_dir: MagicMock, tmp_path: Path
+    ) -> None:
+        """Test that mark_checked creates the marker file."""
+        with patch(
+            "chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR", tmp_path
+        ):
+            service = UpgradeService()
+            service.mark_checked()
+            marker = tmp_path / CHECK_MARKER_FILE
+            assert marker.exists()
 
-    def test_corrupted_marker_returns_true(self, tmp_path: Path) -> None:
+    @patch("chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR")
+    def test_corrupted_marker_returns_true(
+        self, mock_config_dir: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that a corrupted marker file triggers a check."""
-        (tmp_path / ".chegi").mkdir(parents=True)
-        marker = tmp_path / ".chegi" / ".last_upgrade_check"
+        marker = tmp_path / CHECK_MARKER_FILE
+        marker.parent.mkdir(parents=True, exist_ok=True)
         marker.write_text("not a number")
-        service = UpgradeService(repo_path=tmp_path)
-        assert service.should_check() is True
+        with patch(
+            "chegi.services.upgrade.upgrade_service.GLOBAL_CONFIG_DIR", tmp_path
+        ):
+            service = UpgradeService()
+            assert service.should_check() is True
 
 
 class TestChangelogDiff:

@@ -21,15 +21,18 @@ from chegi.cli.commands import (
     scan,
     setup,
     sync,
+    upgrade,
 )
 from chegi.cli.commands.clone import clone_cmd
 from chegi.cli.commands.new import new_cmd
 
 # Import the preflight orchestrator
 from chegi.cli.core.preflight import run_preflight_checks
+from chegi.services.upgrade import UpgradeService
 
 # Import the first-run wizard
 from chegi.services.wizard import WizardService
+from chegi.ui import TerminalUI
 
 try:
     __version__ = version("chegi")
@@ -67,6 +70,7 @@ app.add_typer(hooks.app, name="hooks")
 app.add_typer(repo.app, name="repo")
 app.add_typer(completions.app, name="completions")
 app.add_typer(info.app, name="info")
+app.add_typer(upgrade.app, name="upgrade")
 
 # Register Git alias commands (pass-through to git)
 alias_settings = {"allow_extra_args": True, "ignore_unknown_options": True}
@@ -97,6 +101,58 @@ def global_setup(
 
     run_preflight_checks()
     WizardService().execute()
+    _auto_upgrade_check()
+
+
+def _auto_upgrade_check() -> None:
+    """Checks for a newer version and prompts to upgrade, respecting cooldown."""
+    from rich.text import Text
+
+    from chegi.ui import console
+
+    service = UpgradeService()
+
+    if not service.should_check():
+        return
+
+    info = service.check_version()
+    service.mark_checked()
+
+    if info.error or not info.is_outdated:
+        return
+
+    console.print()
+    msg = Text.assemble(
+        ("\U0001f426 ", "bold gold1"),
+        (f"A new version [bold]{info.latest_version}[/] is available!", ""),
+    )
+    console.print(msg)
+
+    try:
+        import questionary
+
+        upgrade_now = questionary.confirm(
+            "Upgrade now?",
+            default=True,
+        ).ask()
+    except Exception:
+        upgrade_now = False
+
+    if upgrade_now:
+        try:
+            service.upgrade(yes=True)
+            TerminalUI.print_success(
+                f"Successfully upgraded to v{info.latest_version}!"
+            )
+        except Exception:
+            TerminalUI.print_error(
+                "Failed to upgrade. Run 'chegi upgrade' to try again."
+            )
+    else:
+        console.print(
+            "[dim]Run [bold]chegi upgrade[/] anytime to upgrade "
+            "to the latest version.[/dim]"
+        )
 
 
 if __name__ == "__main__":

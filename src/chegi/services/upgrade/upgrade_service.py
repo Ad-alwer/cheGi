@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from chegi.config.global_config import GLOBAL_CONFIG_DIR
 from chegi.services.upgrade.constants import (
     AUTO_CHECK_COOLDOWN,
     CHANGELOG_RAW_URL,
@@ -28,8 +29,7 @@ class UpgradeService:
         """Initializes the UpgradeService.
 
         Args:
-            repo_path: Path to the project root (for .chegi/ marker).
-                       Defaults to current directory.
+            repo_path: Deprecated, kept for backward compatibility.
         """
         self.repo_path = repo_path or Path.cwd()
 
@@ -108,8 +108,11 @@ class UpgradeService:
         """
         try:
             cmd = [
-                "pip", "install", "--upgrade",
-                "--quiet", "--quiet",
+                "pip",
+                "install",
+                "--upgrade",
+                "--quiet",
+                "--quiet",
                 "chegi",
             ]
             result = subprocess.run(
@@ -121,9 +124,7 @@ class UpgradeService:
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            raise UpgradeError(
-                f"Upgrade failed: {e.stderr.strip()}"
-            ) from e
+            raise UpgradeError(f"Upgrade failed: {e.stderr.strip()}") from e
         except subprocess.TimeoutExpired as e:
             raise UpgradeError("Upgrade timed out after 120 seconds.") from e
         except FileNotFoundError:
@@ -140,6 +141,7 @@ class UpgradeService:
         Returns:
             Negative if v1 < v2, positive if v1 > v2, 0 if equal.
         """
+
         def parse(ver: str):
             try:
                 return [int(p) for p in ver.split(".")]
@@ -228,5 +230,5 @@ class UpgradeService:
             pass
 
     def _cooldown_path(self) -> Path:
-        """Returns the path to the cooldown marker file under repo_path."""
-        return self.repo_path / ".chegi" / CHECK_MARKER_FILE
+        """Returns the path to the cooldown marker file under the global config dir."""
+        return GLOBAL_CONFIG_DIR / CHECK_MARKER_FILE

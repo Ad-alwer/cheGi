@@ -76,6 +76,7 @@ nav:
       - scan: commands/scan.md
       - setup: commands/setup.md
       - sync: commands/sync.md
+      - upgrade: commands/upgrade.md
   - Project:
       - Contributing: https://github.com/Ad-alwer/cheGi/blob/main/CONTRIBUTING.md
       - Changelog: https://github.com/Ad-alwer/cheGi/blob/main/CHANGELOG.md
