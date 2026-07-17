@@ -1,7 +1,7 @@
 """CLI command for chegi branch — branch manager with interactive and direct modes."""
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import questionary
 import typer
@@ -96,65 +96,73 @@ def create_branch(
         if not name:
             raise typer.Exit()
 
-    base = None
-    base_choice = questionary.select(
-        "Create from:",
-        choices=[
-            questionary.Choice(
-                title="Current branch",
-                value=None,
-                description=f"({service.get_current_branch()})",
-            ),
-            questionary.Choice(
-                title="Another branch",
-                value="other",
-            ),
-        ],
-    ).ask()
-
-    if base_choice == "other":
-        branches = service.get_local_branch_names()
-        base = questionary.select(
-            "Select base branch:",
-            choices=branches,
+        base = None
+        base_choice = questionary.select(
+            "Create from:",
+            choices=[
+                questionary.Choice(
+                    title="Current branch",
+                    value=None,
+                    description=f"({service.get_current_branch()})",
+                ),
+                questionary.Choice(
+                    title="Another branch",
+                    value="other",
+                ),
+            ],
         ).ask()
 
-        if not base:
-            raise typer.Exit()
+        if base_choice == "other":
+            branches = service.get_local_branch_names()
+            base = questionary.select(
+                "Select base branch:",
+                choices=branches,
+            ).ask()
 
-    try:
-        service.create_branch(name, base=base)
-    except BranchError as e:
-        TerminalUI.print_error(str(e))
-        raise typer.Exit(code=1)
+            if not base:
+                raise typer.Exit()
 
-    TerminalUI.print_success(f"Created branch '{name}'")
-
-    switch_now = questionary.confirm(
-        "Switch to it now?",
-        default=True,
-    ).ask()
-
-    if switch_now:
         try:
-            service.switch_branch(name)
-            TerminalUI.print_success(f"Switched to '{name}'")
+            service.create_branch(name, base=base)
         except BranchError as e:
             TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
 
-    push_now = questionary.confirm(
-        "Push to origin?",
-        default=False,
-    ).ask()
+        TerminalUI.print_success(f"Created branch '{name}'")
 
-    if push_now:
+        switch_now = questionary.confirm(
+            "Switch to it now?",
+            default=True,
+        ).ask()
+
+        if switch_now:
+            try:
+                service.switch_branch(name)
+                TerminalUI.print_success(f"Switched to '{name}'")
+            except BranchError as e:
+                TerminalUI.print_error(str(e))
+                raise typer.Exit(code=1)
+
+        push_now = questionary.confirm(
+            "Push to origin?",
+            default=False,
+        ).ask()
+
+        if push_now:
+            try:
+                service.push_branch(name)
+                TerminalUI.print_success(f"Pushed '{name}' to origin")
+            except BranchError as e:
+                TerminalUI.print_error(str(e))
+                raise typer.Exit(code=1)
+    else:
         try:
-            service.push_branch(name)
-            TerminalUI.print_success(f"Pushed '{name}' to origin")
+            service.create_branch(name)
         except BranchError as e:
             TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
+
+        TerminalUI.print_success(f"Created branch '{name}'")
 
 
 @app.command(name="switch")
@@ -219,8 +227,11 @@ def merge_branch(
     service = _get_service()
 
     if not source:
-        branches = [b for b in service.get_local_branch_names()
-                    if b != service.get_current_branch()]
+        branches = [
+            b
+            for b in service.get_local_branch_names()
+            if b != service.get_current_branch()
+        ]
         if not branches:
             TerminalUI.print_error("No other branches to merge from.")
             raise typer.Exit(code=1)
@@ -253,19 +264,19 @@ def merge_branch(
     else:
         console.print("  [dim]Already up to date.[/]")
 
-    if not questionary.confirm("Proceed with merge?", default=True).ask():
+    if not typer.confirm("Proceed with merge?", default=True):
         console.print("[dim]Merge cancelled.[/]")
         raise typer.Exit()
 
     try:
-        output = service.merge_branch(source, target)
+        service.merge_branch(source, target)
     except BranchError as e:
         TerminalUI.print_error(str(e))
         raise typer.Exit(code=1)
 
     TerminalUI.print_success(f"Merged '{source}' into '{target}'")
 
-    push_now = questionary.confirm("Push now?", default=False).ask()
+    push_now = typer.confirm("Push now?", default=False)
 
     if push_now:
         try:
@@ -275,10 +286,10 @@ def merge_branch(
             TerminalUI.print_error(str(e))
             raise typer.Exit(code=1)
 
-    delete_source = questionary.confirm(
+    delete_source = typer.confirm(
         f"Delete source branch '{source}'?",
         default=False,
-    ).ask()
+    )
 
     if delete_source:
         try:
@@ -346,8 +357,7 @@ def delete_branch(
 
     if not name:
         branches = [
-            b for b in service.get_local_branch_names()
-            if b not in PROTECTED_BRANCHES
+            b for b in service.get_local_branch_names() if b not in PROTECTED_BRANCHES
         ]
         if not branches:
             TerminalUI.print_error("No deletable branches (all are protected).")
@@ -385,8 +395,7 @@ def push_delete_branch(
 
     if not name:
         branches = [
-            b for b in service.get_local_branch_names()
-            if b not in PROTECTED_BRANCHES
+            b for b in service.get_local_branch_names() if b not in PROTECTED_BRANCHES
         ]
         if not branches:
             TerminalUI.print_error("No branches available to push-delete.")
@@ -452,7 +461,9 @@ def branch_info(
         TerminalUI.print_error(str(e))
         raise typer.Exit(code=1)
 
-    table = Table(title=f"Branch: {info.name}", title_style="bold gold1", border_style="gold1")
+    table = Table(
+        title=f"Branch: {info.name}", title_style="bold gold1", border_style="gold1"
+    )
     table.add_column("Property", style="bold")
     table.add_column("Value")
 

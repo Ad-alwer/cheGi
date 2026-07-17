@@ -127,7 +127,6 @@ class TestBranchServiceCurrent:
     def test_get_current_branch_after_switch(self, tmp_path: Path) -> None:
         """Test that get_current_branch reflects the new branch after switch."""
         repo = _init_repo(tmp_path)
-        service = BranchService(repo)
         # Create branch does not switch
         new_name = "feature/switch-test"
         # We need to create + switch manually via git for isolation
@@ -228,7 +227,12 @@ class TestBranchServiceMerge:
 
         assert "feature" in service.get_local_branch_names()
         # The current branch should be up to date
-        assert "Already" in output or "Fast-forward" in output or "Merge" in output or not output
+        assert (
+            "Already" in output
+            or "Fast-forward" in output
+            or "Merge" in output
+            or not output
+        )
 
     def test_merge_with_target(self, tmp_path: Path) -> None:
         """Test that merging with a specified target works."""

@@ -36,9 +36,7 @@ class BranchService:
             BranchError: If the branch name cannot be determined.
         """
         try:
-            return self._git.run_command(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"]
-            )
+            return self._git.run_command(["git", "rev-parse", "--abbrev-ref", "HEAD"])
         except (GitCommandError, GitNotInstalledError) as e:
             raise BranchError(f"Failed to get current branch: {e}") from e
 
@@ -81,7 +79,7 @@ class BranchService:
             if remote and not name.startswith("origin/"):
                 continue
             if remote:
-                name = name[len("origin/"):]
+                name = name[len("origin/") :]
             commit_hash = parts[1] if len(parts) > 1 else None
             message = parts[2] if len(parts) > 2 else None
             author = parts[3] if len(parts) > 3 else None
@@ -149,9 +147,7 @@ class BranchService:
             BranchError: If the deletion fails.
         """
         if name in PROTECTED_BRANCHES:
-            raise ProtectedBranchError(
-                f"Cannot delete protected branch: '{name}'"
-            )
+            raise ProtectedBranchError(f"Cannot delete protected branch: '{name}'")
 
         cmd = ["git", "branch", "--delete"]
         if force:
@@ -179,13 +175,9 @@ class BranchService:
         try:
             self._git.run_command(["git", "branch", "--move", old, new])
         except (GitCommandError, GitNotInstalledError) as e:
-            raise BranchError(
-                f"Failed to rename '{old}' to '{new}': {e}"
-            ) from e
+            raise BranchError(f"Failed to rename '{old}' to '{new}': {e}") from e
 
-    def merge_branch(
-        self, source: str, target: Optional[str] = None
-    ) -> str:
+    def merge_branch(self, source: str, target: Optional[str] = None) -> str:
         """Merges a source branch into the current (or specified) target.
 
         Args:
@@ -202,16 +194,12 @@ class BranchService:
             try:
                 self._git.run_command(["git", "checkout", target])
             except (GitCommandError, GitNotInstalledError) as e:
-                raise BranchError(
-                    f"Failed to checkout target '{target}': {e}"
-                ) from e
+                raise BranchError(f"Failed to checkout target '{target}': {e}") from e
 
         try:
             return self._git.run_command(["git", "merge", source])
         except (GitCommandError, GitNotInstalledError) as e:
-            raise BranchError(
-                f"Failed to merge '{source}': {e}"
-            ) from e
+            raise BranchError(f"Failed to merge '{source}': {e}") from e
 
     def get_merge_preview(self, source: str, target: str) -> List[str]:
         """Returns the list of commits that would be merged.
@@ -231,9 +219,7 @@ class BranchService:
                 ["git", "log", "--oneline", f"{target}..{source}"]
             )
         except (GitCommandError, GitNotInstalledError) as e:
-            raise BranchError(
-                f"Failed to get merge preview: {e}"
-            ) from e
+            raise BranchError(f"Failed to get merge preview: {e}") from e
 
         if not output:
             return []
@@ -250,13 +236,9 @@ class BranchService:
             BranchError: If the push fails.
         """
         try:
-            self._git.run_command(
-                ["git", "push", remote, name]
-            )
+            self._git.run_command(["git", "push", remote, name])
         except (GitCommandError, GitNotInstalledError) as e:
-            raise BranchError(
-                f"Failed to push '{name}' to '{remote}': {e}"
-            ) from e
+            raise BranchError(f"Failed to push '{name}' to '{remote}': {e}") from e
 
     def push_and_delete(self, name: str, remote: str = "origin") -> None:
         """Pushes a branch to remote, then deletes the local branch.
@@ -285,9 +267,7 @@ class BranchService:
                 ["git", "remote", "prune", remote, "--dry-run"]
             )
         except (GitCommandError, GitNotInstalledError) as e:
-            raise BranchError(
-                f"Failed to prune remote '{remote}': {e}"
-            ) from e
+            raise BranchError(f"Failed to prune remote '{remote}': {e}") from e
 
         pruned: List[str] = []
         if output:
@@ -300,13 +280,9 @@ class BranchService:
                             pruned.append(name)
 
         try:
-            self._git.run_command(
-                ["git", "remote", "prune", remote]
-            )
+            self._git.run_command(["git", "remote", "prune", remote])
         except (GitCommandError, GitNotInstalledError) as e:
-            raise BranchError(
-                f"Failed to prune remote '{remote}': {e}"
-            ) from e
+            raise BranchError(f"Failed to prune remote '{remote}': {e}") from e
 
         return pruned
 
@@ -323,7 +299,7 @@ class BranchService:
             BranchError: If the branch does not exist or info cannot be retrieved.
         """
         current = self.get_current_branch()
-        is_current = (name == current)
+        is_current = name == current
 
         try:
             upstream = self._git.run_command(
@@ -341,8 +317,13 @@ class BranchService:
         if upstream:
             try:
                 count_output = self._git.run_command(
-                    ["git", "rev-list", "--left-right", "--count",
-                     f"{name}...{upstream}"]
+                    [
+                        "git",
+                        "rev-list",
+                        "--left-right",
+                        "--count",
+                        f"{name}...{upstream}",
+                    ]
                 )
                 parts = count_output.split()
                 if len(parts) >= 2:

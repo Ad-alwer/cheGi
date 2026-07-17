@@ -75,7 +75,8 @@ class TestBranchCreate:
         repo = _init_repo(tmp_path)
         monkeypatch.chdir(str(repo))
         result = runner.invoke(
-            app, ["branch", "create", "test-branch"],
+            app,
+            ["branch", "create", "test-branch"],
             input="n\nN\n",
         )
         assert result.exit_code == 0
@@ -88,10 +89,13 @@ class TestBranchCreate:
 
         # Mock questionary prompts for the interactive flow
         import questionary
+
         monkeypatch.setattr(
             questionary,
             "text",
-            lambda *a, **kw: type("Q", (), {"ask": lambda self: "interactive-branch"})(),
+            lambda *a, **kw: type(
+                "Q", (), {"ask": lambda self: "interactive-branch"}
+            )(),
         )
         monkeypatch.setattr(
             questionary,
@@ -144,7 +148,8 @@ class TestBranchMerge:
         _git(["checkout", "main"], repo)
 
         result = runner.invoke(
-            app, ["branch", "merge", "feature-x"],
+            app,
+            ["branch", "merge", "feature-x"],
             input="n\n",  # Don't proceed with merge
         )
         assert result.exit_code == 0
