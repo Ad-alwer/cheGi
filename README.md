@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/img/chegi-logo.png" alt="cheGi logo" width="400">
+</p>
+
 # cheGi
 
 **The ultimate Git companion. Type less, do more.**

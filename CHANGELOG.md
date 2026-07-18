@@ -327,6 +327,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Writes `~/.config/chegi/wizard_done` marker to run only once
   - Skips automatically when not in a TTY (CI, piped commands)
 - 11 tests for wizard service
+- Add cheGi logo (`docs/img/chegi-logo.png`) with transparent background, displayed centered at the top of README
 
 ### Changed
 
