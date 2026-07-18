@@ -7,8 +7,8 @@
 **The ultimate Git companion. Type less, do more.**
 
 [![PyPI version](https://img.shields.io/pypi/v/chegi)](https://pypi.org/project/chegi/)
-[![Downloads](https://static.pepy.tech/badge/chegi)](https://pepy.tech/project/chegi)
-[![Python](https://img.shields.io/pypi/pyversion/chegi)](https://pypi.org/project/chegi/)
+[![Downloads](https://img.shields.io/pypi/dm/chegi)](https://pypi.org/project/chegi/)
+[![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)](https://pypi.org/project/chegi/)
 [![Tests](https://github.com/Ad-alwer/cheGi/actions/workflows/ci.yml/badge.svg)](https://github.com/Ad-alwer/cheGi/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-ad--alwer.github.io%2FcheGi-blue)](https://ad-alwer.github.io/cheGi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
