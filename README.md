@@ -4,7 +4,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/chegi)](https://pypi.org/project/chegi/)
 [![Downloads](https://static.pepy.tech/badge/chegi)](https://pepy.tech/project/chegi)
-[![Python](https://img.shields.io/pypi/pyversions/chegi)](https://pypi.org/project/chegi/)
+[![Python](https://img.shields.io/pypi/pyversion/chegi)](https://pypi.org/project/chegi/)
 [![Tests](https://github.com/Ad-alwer/cheGi/actions/workflows/ci.yml/badge.svg)](https://github.com/Ad-alwer/cheGi/actions/workflows/ci.yml)
 [![Documentation](https://img.shields.io/badge/docs-ad--alwer.github.io%2FcheGi-blue)](https://ad-alwer.github.io/cheGi/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix Python version badge by switching from `pyversions` to `pyversion` endpoint — reads `requires-python` instead of PyPI classifiers, so badge works without a new release
+
 ### Added
 
 - `UpgradeService` — new service for self-upgrading:
