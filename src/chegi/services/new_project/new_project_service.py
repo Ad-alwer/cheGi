@@ -23,7 +23,7 @@ from chegi.services.new_project.models import NewProjectConfig, NewProjectResult
 class NewProjectService:
     """Creates a new Git project from scratch with scaffolding."""
 
-    def __init__(self, config: NewProjectConfig):
+    def __init__(self, config: NewProjectConfig) -> None:
         """Initialize the service with project configuration.
 
         Args:

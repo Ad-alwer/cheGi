@@ -11,7 +11,7 @@ class SyncService:
         git_client (GitClient): The core Git client instance.
     """
 
-    def __init__(self, git_client: GitClient):
+    def __init__(self, git_client: GitClient) -> None:
         """Initializes the SyncService.
 
         Args:

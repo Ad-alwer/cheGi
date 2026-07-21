@@ -32,7 +32,7 @@ class SetupService:
         installed_tools (Set[str]): Tracks tools already installed during session.
     """
 
-    def __init__(self, environment: str, auto_yes: bool):
+    def __init__(self, environment: str, auto_yes: bool) -> None:
         """Initializes the SetupService with necessary configurations.
 
         Args:

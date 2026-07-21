@@ -32,7 +32,7 @@ class DoctorService:
     - Stats: Commits, branches, remote, contributors, remote sync
     """
 
-    def __init__(self, path: Optional[Path] = None):
+    def __init__(self, path: Optional[Path] = None) -> None:
         """Initialize the doctor service.
 
         Args:

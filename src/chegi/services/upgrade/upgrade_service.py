@@ -25,7 +25,7 @@ class UpgradeService:
     automatic background checks.
     """
 
-    def __init__(self, repo_path: Optional[Path] = None):
+    def __init__(self, repo_path: Optional[Path] = None) -> None:
         """Initializes the UpgradeService.
 
         Args:
@@ -142,7 +142,7 @@ class UpgradeService:
             Negative if v1 < v2, positive if v1 > v2, 0 if equal.
         """
 
-        def parse(ver: str):
+        def parse(ver: str) -> list[int]:
             try:
                 return [int(p) for p in ver.split(".")]
             except ValueError:

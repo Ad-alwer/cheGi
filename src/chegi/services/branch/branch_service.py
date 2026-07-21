@@ -17,7 +17,7 @@ class BranchService:
     and sync operations using GitClient.
     """
 
-    def __init__(self, repo_path: Optional[Path] = None):
+    def __init__(self, repo_path: Optional[Path] = None) -> None:
         """Initializes the BranchService.
 
         Args:

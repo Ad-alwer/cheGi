@@ -14,6 +14,7 @@ from rich.progress import (
     TextColumn,
 )
 
+from chegi import __version__
 from chegi.config import DEFAULT_SENSITIVE_PATTERNS
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError
@@ -354,7 +355,7 @@ class GuardHistoryService:
       <div class="label">Commits Scanned</div>
     </div>
   </div>
-  <div class="footer">cheGi v0.4.0 "The Guardian"</div>
+  <div class="footer">cheGi {__version__} "The Guardian"</div>
 </body>
 </html>""",
                 encoding="utf-8",
@@ -424,7 +425,7 @@ class GuardHistoryService:
     </tbody>
   </table>
 
-  <div class="footer">cheGi v0.4.0 "The Guardian"</div>
+  <div class="footer">cheGi {__version__} "The Guardian"</div>
 </body>
 </html>""",
             encoding="utf-8",

@@ -82,7 +82,7 @@ class CloneService:
     initialization in a single workflow.
     """
 
-    def __init__(self, config: CloneConfig):
+    def __init__(self, config: CloneConfig) -> None:
         """Initializes the CloneService.
 
         Args:

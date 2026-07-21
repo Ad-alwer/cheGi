@@ -65,7 +65,7 @@ class EnvManager:
         self.db: Dict[str, EnvironmentPreset] = {}
         self.load_environments()
 
-    def _get_preset_files(self):
+    def _get_preset_files(self) -> list:
         """Iterate JSON preset files with Python 3.8+ compatibility."""
         files_fn = getattr(_resources, "files", None)
         if files_fn is not None:

@@ -14,7 +14,7 @@ class RewordService:
         git_client (GitClient): The core Git client for executing commands.
     """
 
-    def __init__(self, git_client: GitClient):
+    def __init__(self, git_client: GitClient) -> None:
         """Initializes the RewordService.
 
         Args:

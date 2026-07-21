@@ -32,7 +32,7 @@ class ScanService:
         config (ChegiConfig): Loaded configuration for the scanner.
     """
 
-    def __init__(self, options: ScanOptions):
+    def __init__(self, options: ScanOptions) -> None:
         """Initializes the ScanService with the provided scan options.
 
         Args:

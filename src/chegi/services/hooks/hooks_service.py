@@ -22,7 +22,7 @@ class HooksService:
     (pre-commit, pre-push) that auto-run cheGi guard.
     """
 
-    def __init__(self, repo_path: Path):
+    def __init__(self, repo_path: Path) -> None:
         """Initializes the HooksService.
 
         Args:

@@ -18,7 +18,7 @@ class CommitService:
         repo_path (Path): The path to the Git repository.
     """
 
-    def __init__(self, repo_path: Path):
+    def __init__(self, repo_path: Path) -> None:
         """Initializes the CommitService.
 
         Args:
