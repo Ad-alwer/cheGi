@@ -7,7 +7,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from chegi.services.git.client import GitClient
-from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
+from chegi.services.git.exceptions import (
+    GitCommandError,
+    GitNotInstalledError,
+    InvalidGitArgumentError,
+)
 
 
 @pytest.fixture
@@ -129,14 +133,14 @@ def test_commit_file_success(mock_run_command, git_client):
 @patch.object(GitClient, "run_command")
 def test_commit_file_rejects_flag_injection(mock_run_command, git_client):
     """Test that file_path starting with '-' is rejected."""
-    with pytest.raises(ValueError, match="must not start with"):
+    with pytest.raises(InvalidGitArgumentError, match="must not start with"):
         git_client.commit_file("--all", "bad flag")
 
 
 @patch.object(GitClient, "run_command")
 def test_commit_file_rejects_newline_in_message(mock_run_command, git_client):
     """Test that commit_msg containing newline is rejected."""
-    with pytest.raises(ValueError, match="must not contain newlines"):
+    with pytest.raises(InvalidGitArgumentError, match="must not contain newlines"):
         git_client.commit_file("test.py", "msg\ninjection")
 
 

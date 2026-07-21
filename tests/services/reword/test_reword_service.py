@@ -4,6 +4,7 @@ import pytest
 
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError
+from chegi.services.reword.exceptions import InvalidHashFormatError, InvalidRangeError
 from chegi.services.reword.reword_service import RewordService
 
 
@@ -27,7 +28,7 @@ class TestCalculatePagination:
         assert limit == 3
 
     def test_start_and_end_invalid(self, reword_service):
-        with pytest.raises(ValueError, match="--start must be less than --end"):
+        with pytest.raises(InvalidRangeError, match="--start must be less than --end"):
             reword_service.calculate_pagination(last=None, start=5, end=2)
 
     def test_only_start(self, reword_service):
@@ -129,29 +130,29 @@ class TestHashValidation:
         reword_service._validate_hash("HEAD")
 
     def test_validate_hash_invalid_chars(self, reword_service):
-        with pytest.raises(ValueError, match="Invalid commit hash format"):
+        with pytest.raises(InvalidHashFormatError, match="Invalid commit hash format"):
             reword_service._validate_hash("abc123; rm -rf /")
 
     def test_validate_hash_empty(self, reword_service):
-        with pytest.raises(ValueError, match="Invalid commit hash format"):
+        with pytest.raises(InvalidHashFormatError, match="Invalid commit hash format"):
             reword_service._validate_hash("")
 
     def test_validate_hash_too_short(self, reword_service):
-        with pytest.raises(ValueError, match="Invalid commit hash format"):
+        with pytest.raises(InvalidHashFormatError, match="Invalid commit hash format"):
             reword_service._validate_hash("abc123")
 
     def test_is_head_rejects_invalid_hash(self, reword_service):
-        with pytest.raises(ValueError, match="Invalid commit hash format"):
+        with pytest.raises(InvalidHashFormatError, match="Invalid commit hash format"):
             reword_service.is_head("abc'; echo pwned #")
 
     def test_get_commit_message_rejects_invalid_hash(self, reword_service):
-        with pytest.raises(ValueError, match="Invalid commit hash format"):
+        with pytest.raises(InvalidHashFormatError, match="Invalid commit hash format"):
             reword_service.get_commit_message("abc'; rm -rf / #")
 
     def test_perform_automated_rebase_rejects_invalid_hash(
         self, reword_service, mock_git_client
     ):
-        with pytest.raises(ValueError, match="Invalid commit hash format"):
+        with pytest.raises(InvalidHashFormatError, match="Invalid commit hash format"):
             reword_service.perform_automated_rebase("abc'; pwn #", "new msg")
 
 
