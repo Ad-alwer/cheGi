@@ -111,7 +111,7 @@ class CommitService:
             cfg = ChegiConfig(str(self.repo_path))
             if cfg.sensitive_patterns:
                 extra = cfg.sensitive_patterns
-        except Exception:
+        except (OSError, ValueError):
             pass
         return SecurityGuard.scan_repo(self.repo_path, extra)
 

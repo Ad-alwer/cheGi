@@ -15,9 +15,11 @@ from chegi.services.clone.models import (
     CloneResult,
 )
 from chegi.services.environment import EnvManager
+from chegi.services.environment.exceptions import EnvManagerError
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
 from chegi.services.init import InitService
+from chegi.services.init.exceptions import InitError
 
 # Regex to detect shorthand user/repo format
 _SHORTHAND_RE = re.compile(r"^[\w.-]+/[\w.-]+$")
@@ -135,7 +137,7 @@ class CloneService:
                         env_mgr = EnvManager()
                         env_mgr.generate_gitignore(techs, str(result.target_dir))
                         result.gitignore_created = True
-                    except Exception:
+                    except EnvManagerError:
                         result.gitignore_created = False
 
         # .chegi/ setup
@@ -143,7 +145,7 @@ class CloneService:
             try:
                 InitService.create_project_directory(result.target_dir)
                 result.chegi_created = True
-            except Exception:
+            except InitError:
                 result.chegi_created = False
 
         return result

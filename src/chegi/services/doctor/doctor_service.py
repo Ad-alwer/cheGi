@@ -19,6 +19,7 @@ from chegi.services.doctor.models import (
 )
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
+from chegi.services.guard.exceptions import HistoryScanError
 from chegi.services.guard.history import GuardHistoryService
 from chegi.services.guard.security import SecurityGuard
 
@@ -293,7 +294,7 @@ class DoctorService:
             cfg = ChegiConfig(str(self.path))
             if cfg.sensitive_patterns:
                 extra = cfg.sensitive_patterns
-        except Exception:
+        except (OSError, ValueError):
             pass
         result = SecurityGuard.scan_repo(self.path, extra)
 
@@ -365,7 +366,7 @@ class DoctorService:
         try:
             scanner = GuardHistoryService(repo_path=self.path)
             result = scanner.scan()
-        except Exception:
+        except HistoryScanError:
             return CheckResult(
                 name="Secrets in History",
                 category=CheckCategory.SECURITY,
