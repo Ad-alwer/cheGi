@@ -5,14 +5,16 @@ Generate shell completion scripts for bash, zsh, fish, and PowerShell.
 ## Synopsis
 
 ```bash
-chegi completions <SHELL>
+chegi completions [SHELL] [OPTIONS]
 ```
 
 ## Description
 
-`chegi completions` prints a shell completion script to stdout. Pipe the output
-into your shell's configuration to enable tab completion for all `chegi`
-subcommands, options, and arguments.
+`chegi completions` generates shell completion scripts for bash, zsh, fish, and PowerShell.
+
+- **With a shell argument** — prints the script to stdout for manual piping
+- **Without arguments** — interactive mode: detects your shell and offers to install
+- **With `--install`** — auto-detects and installs without prompts
 
 ### Supported Shells
 
@@ -23,6 +25,32 @@ subcommands, options, and arguments.
 | Fish | `fish` | Place in `~/.config/fish/completions/` |
 | PowerShell | `powershell` | Windows PowerShell |
 | PowerShell Core | `pwsh` | Cross-platform PowerShell |
+
+### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--install` | `-i` | Auto-detect shell and install completion script | `false` |
+| `--help` | | Show help message | |
+
+### Interactive mode (no arguments)
+
+When run without arguments, `chegi completions` detects your current shell
+and offers to install completions automatically via a guided prompt:
+
+```bash
+chegi completions
+# → Detects: zsh
+# → "Install completions for zsh? [y/n]"
+```
+
+### Auto-install mode
+
+Skip the prompt and install directly:
+
+```bash
+chegi completions --install
+```
 
 ## Install Instructions
 

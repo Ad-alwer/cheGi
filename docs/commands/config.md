@@ -29,7 +29,8 @@ Configuration is stored in `.chegi.json` at the base path you specify (default: 
     ],
     "max_depth": 3,
     "mcts": 10,
-    "mirrors": {}
+    "mirrors": {},
+    "sensitive_patterns": []
 }
 ```
 
@@ -41,6 +42,7 @@ Configuration is stored in `.chegi.json` at the base path you specify (default: 
 | `max_depth` | `int` | Maximum directory traversal depth | `3` |
 | `mcts` | `int` | Maximum concurrent tasks setting | `10` |
 | `mirrors` | `object` | Package-manager mirror URLs | `{}` |
+| `sensitive_patterns` | `string[]` | Extra filename patterns for Security Guard | `[]` |
 
 ### Supported Package Managers (mirrors)
 
@@ -81,8 +83,12 @@ chegi config set KEY VALUE [--path PATH]
 
 | Argument | Description |
 |----------|-------------|
-| `KEY` | `max_depth` or `mcts` |
+| `KEY` | `max_depth` or `mcts` (integer keys only) |
 | `VALUE` | New integer value |
+
+!!! note
+    `sensitive_patterns` is a string array and cannot be set via `chegi config set`.
+    Edit `.chegi.json` directly or use `.chegi/guard-rules.json` for custom patterns.
 
 **Examples:**
 

@@ -122,7 +122,7 @@ The first-run wizard also includes auth setup as a step — run any cheGi comman
 to trigger it:
 
 ```bash
-chegi status  # triggers wizard → includes auth login step
+chegi --help  # triggers wizard → includes auth login step
 ```
 
 **Add a second GitHub account:**
