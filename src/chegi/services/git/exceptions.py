@@ -14,3 +14,9 @@ class GitNotInstalledError(GitCoreError):
     """Raised when git is not found on the system."""
 
     pass
+
+
+class InvalidGitArgumentError(GitCoreError):
+    """Raised when an invalid argument is passed to a git operation."""
+
+    pass

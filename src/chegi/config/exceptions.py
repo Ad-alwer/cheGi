@@ -19,3 +19,9 @@ class InvalidMirrorFormatError(ConfigError):
     """Raised when the mirror string format is invalid."""
 
     pass
+
+
+class InvalidConfigFormatError(ConfigError):
+    """Raised when the config JSON structure is invalid."""
+
+    pass
