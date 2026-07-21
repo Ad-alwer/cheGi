@@ -93,6 +93,8 @@ ci(release): add GitHub Actions workflow for automated builds
 - Never use `subprocess.run` directly in services — use `GitClient.run_command()`
 - Never use `shell=True` — always use command lists and `shlex`
 - Don't replace environment variables — merge with `os.environ.copy()`
+- Never `except Exception: pass` — catch specific exceptions
+- Every `tests/services/*/` directory MUST have an `__init__.py`
 
 ## UX Philosophy
 
