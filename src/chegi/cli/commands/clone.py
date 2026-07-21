@@ -1,7 +1,7 @@
 """CLI command for cloning repositories with smart defaults."""
 
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 import questionary
 import typer
@@ -345,22 +345,6 @@ def _confirm_overwrite(target_dir: Path) -> bool:
         f"Target directory already exists and is not empty: [bold]{target_dir}[/bold]"
     )
     return typer.confirm("Continue cloning into this directory?", default=False)
-
-
-def _select_technologies(available: List[str]) -> List[str]:
-    """Prompts user to select technologies for .gitignore generation.
-
-    Args:
-        available: List of available technology names.
-
-    Returns:
-        List of selected technology names.
-    """
-    selected = questionary.checkbox(
-        "Select technologies for .gitignore:",
-        choices=[questionary.Choice(tech, checked=False) for tech in sorted(available)],
-    ).ask()
-    return selected or []
 
 
 def _execute_clone(config: CloneConfig) -> None:

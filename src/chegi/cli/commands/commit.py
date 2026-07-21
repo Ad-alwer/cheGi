@@ -307,33 +307,6 @@ def _pick_type(types) -> Optional[str]:
     return chosen
 
 
-def _suggest_type(context: "CommitContext") -> str:
-    """Suggests a commit type based on staged file changes.
-
-    Args:
-        context (CommitContext): The commit context.
-
-    Returns:
-        str: The suggested type.
-    """
-    additions = sum(1 for s, _ in context.name_status if s == "A")
-    modifications = sum(1 for s, _ in context.name_status if s == "M")
-    all_paths = [p for _, p in context.name_status]
-
-    is_test = any("test" in p.lower() or "spec" in p.lower() for p in all_paths)
-    is_doc = any(
-        p.endswith((".md", ".rst", ".txt")) or "/docs/" in p for p in all_paths
-    )
-
-    if is_test:
-        return "test"
-    if is_doc:
-        return "docs"
-    if additions > 0 and additions >= modifications:
-        return "feat"
-    return "fix"
-
-
 def _handle_sensitive_files(service: CommitService, context: "CommitContext") -> None:
     """Handles the case where sensitive files are detected in staging.
 
