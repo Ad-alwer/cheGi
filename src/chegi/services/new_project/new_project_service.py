@@ -1,11 +1,14 @@
 """Service for scaffolding new Git projects."""
 
 import datetime
-import subprocess
 from typing import List, Optional
 
 from chegi.services.environment import EnvManager
+from chegi.services.environment.exceptions import EnvManagerError
+from chegi.services.git.client import GitClient
+from chegi.services.git.exceptions import GitCommandError, GitNotInstalledError
 from chegi.services.init import InitService
+from chegi.services.init.exceptions import InitError
 from chegi.services.new_project.constants import (
     AVAILABLE_LICENSES,
     GIT_USER_PLACEHOLDER,
@@ -94,18 +97,11 @@ class NewProjectService:
             GitInitError: If git init fails.
         """
         try:
-            subprocess.run(
-                ["git", "init"],
-                cwd=str(self.project_path),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-        except subprocess.CalledProcessError as e:
-            raise GitInitError(
-                f"Failed to initialize Git repository: {e.stderr.strip()}"
-            ) from e
-        except FileNotFoundError as e:
+            git = GitClient(self.project_path)
+            git.run_command(["git", "init"])
+        except GitCommandError as e:
+            raise GitInitError(f"Failed to initialize Git repository: {e}") from e
+        except GitNotInstalledError as e:
             raise GitInitError("Git is not installed.") from e
 
     def _create_gitignore(self) -> None:
@@ -120,7 +116,7 @@ class NewProjectService:
                 env_manager.generate_gitignore(
                     self.config.technologies, str(self.project_path)
                 )
-            except Exception as e:
+            except EnvManagerError as e:
                 raise ProjectCreationError(f"Failed to generate .gitignore: {e}") from e
         else:
             # Create a minimal .gitignore
@@ -136,7 +132,7 @@ class NewProjectService:
         """Creates .chegi/ project directory using InitService."""
         try:
             InitService.create_project_directory(self.project_path)
-        except Exception as e:
+        except InitError as e:
             raise ProjectCreationError(
                 f"Failed to create .chegi/ directory: {e}"
             ) from e
@@ -184,14 +180,10 @@ class NewProjectService:
             The user name or None.
         """
         try:
-            result = subprocess.run(
-                ["git", "config", "--global", "user.name"],
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return result.stdout.strip() or None
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            git = GitClient(self.project_path)
+            output = git.run_command(["git", "config", "--global", "user.name"])
+            return output or None
+        except (GitCommandError, GitNotInstalledError):
             return None
 
     def _initial_commit(self) -> Optional[str]:
@@ -202,25 +194,14 @@ class NewProjectService:
         """
         msg = self.config.commit_message or INITIAL_COMMIT_MESSAGE
         try:
-            subprocess.run(
-                ["git", "add", "-A"],
-                cwd=str(self.project_path),
-                capture_output=True,
-                check=True,
-            )
-            result = subprocess.run(
-                ["git", "commit", "-m", msg],
-                cwd=str(self.project_path),
-                capture_output=True,
-                text=True,
-                check=True,
-            )
+            git = GitClient(self.project_path)
+            git.run_command(["git", "add", "-A"])
+            output = git.run_command(["git", "commit", "-m", msg])
             # Extract commit hash from output: "[main abc1234] message"
-            output = result.stdout.strip()
             if output:
                 parts = output.split()
                 if len(parts) >= 2:
                     return parts[1].strip("[]")
             return None
-        except (subprocess.CalledProcessError, FileNotFoundError):
+        except (GitCommandError, GitNotInstalledError):
             return None

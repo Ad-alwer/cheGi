@@ -84,22 +84,25 @@ class TestNewProjectServiceCreate:
         with pytest.raises(ProjectAlreadyExistsError, match="already exists"):
             service.create()
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     @patch(
         "chegi.services.new_project.new_project_service.InitService.create_project_directory"
     )
     def test_create_full_success(
         self,
         mock_init: MagicMock,
-        mock_run: MagicMock,
+        mock_git_cls: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test that create scaffolds all files and makes initial commit."""
-        mock_run.return_value = MagicMock(
-            stdout="[main abc1234] Initial commit",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main abc1234] Initial commit",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
         mock_init.return_value = MagicMock()
 
         config = NewProjectConfig(name="my-proj", path=tmp_path, license_type="mit")
@@ -116,14 +119,17 @@ class TestNewProjectServiceCreate:
         assert "README.md" in result.files_created
         assert "LICENSE" in result.files_created
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
-    def test_create_skips_readme(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    @patch("chegi.services.new_project.new_project_service.GitClient")
+    def test_create_skips_readme(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
         """Test that create skips README.md when skip_readme is True."""
-        mock_run.return_value = MagicMock(
-            stdout="[main def5678] chore(new): initial project scaffold via cheGi 🐆",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main def5678] chore(new): initial project scaffold via cheGi",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="no-readme", path=tmp_path, skip_readme=True)
         service = NewProjectService(config)
@@ -132,19 +138,22 @@ class TestNewProjectServiceCreate:
         assert "README.md" not in result.files_created
         assert not (tmp_path / "no-readme" / "README.md").exists()
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     @patch(
         "chegi.services.new_project.new_project_service.InitService.create_project_directory"
     )
     def test_create_skips_gitignore(
-        self, mock_init: MagicMock, mock_run: MagicMock, tmp_path: Path
+        self, mock_init: MagicMock, mock_git_cls: MagicMock, tmp_path: Path
     ) -> None:
         """Test that create skips .gitignore when skip_gitignore is True."""
-        mock_run.return_value = MagicMock(
-            stdout="[main def5678] chore(new): initial project scaffold via cheGi 🐆",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main def5678] chore(new): initial project scaffold via cheGi",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
         mock_init.return_value = MagicMock()
 
         config = NewProjectConfig(
@@ -155,14 +164,17 @@ class TestNewProjectServiceCreate:
 
         assert ".gitignore" not in result.files_created
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
-    def test_create_skips_chegi_dir(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    @patch("chegi.services.new_project.new_project_service.GitClient")
+    def test_create_skips_chegi_dir(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
         """Test that create skips .chegi/ directory when skip_chegi is True."""
-        mock_run.return_value = MagicMock(
-            stdout="[main def5678] chore(new): initial project scaffold via cheGi 🐆",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main def5678] chore(new): initial project scaffold via cheGi",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="no-chegi", path=tmp_path, skip_chegi=True)
         service = NewProjectService(config)
@@ -171,14 +183,17 @@ class TestNewProjectServiceCreate:
         assert ".chegi/" not in result.files_created
         assert not (tmp_path / "no-chegi" / ".chegi").exists()
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
-    def test_create_no_license(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    @patch("chegi.services.new_project.new_project_service.GitClient")
+    def test_create_no_license(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
         """Test that create skips LICENSE when no license_type is set."""
-        mock_run.return_value = MagicMock(
-            stdout="[main abc] chore",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main abc] chore",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="no-lic", path=tmp_path)
         service = NewProjectService(config)
@@ -187,10 +202,14 @@ class TestNewProjectServiceCreate:
         assert "LICENSE" not in result.files_created
         assert not (tmp_path / "no-lic" / "LICENSE").exists()
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
-    def test_git_init_failure(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    @patch("chegi.services.new_project.new_project_service.GitClient")
+    def test_git_init_failure(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
         """Test that create raises GitInitError when git init fails."""
-        mock_run.side_effect = GitInitError("Git is not installed.")
+        from chegi.services.git.exceptions import GitCommandError
+
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = GitCommandError("Git is not installed.")
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="fail-init", path=tmp_path)
         service = NewProjectService(config)
@@ -202,20 +221,23 @@ class TestNewProjectServiceCreate:
 class TestNewProjectServiceCreateGitignore:
     """Tests for .gitignore generation."""
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     @patch("chegi.services.new_project.new_project_service.EnvManager")
     def test_gitignore_with_technologies(
         self,
         mock_env_mgr: MagicMock,
-        mock_run: MagicMock,
+        mock_git_cls: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test that create generates .gitignore with specific technologies."""
-        mock_run.return_value = MagicMock(
-            stdout="[main a1b2c3] init",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main a1b2c3] init",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
         mock_instance = mock_env_mgr.return_value
         mock_instance.get_envs_with_gitignore.return_value = ["python", "node"]
 
@@ -230,20 +252,23 @@ class TestNewProjectServiceCreateGitignore:
             ["python", "node"], str(tmp_path / "with-tech")
         )
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     @patch("chegi.services.new_project.new_project_service.EnvManager")
     def test_gitignore_without_technologies_creates_minimal(
         self,
         mock_env_mgr: MagicMock,
-        mock_run: MagicMock,
+        mock_git_cls: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test that create generates a minimal .gitignore when no technologies."""
-        mock_run.return_value = MagicMock(
-            stdout="[main a1b2c3] init",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            "John Doe",  # git config user.name
+            None,  # git add -A
+            "[main a1b2c3] init",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="minimal", path=tmp_path)
         service = NewProjectService(config)
@@ -261,7 +286,7 @@ class TestNewProjectServiceCreateGitignore:
 class TestNewProjectServiceLicense:
     """Tests for LICENSE generation."""
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     @patch(
         "chegi.services.new_project.new_project_service.NewProjectService._get_git_user",
         return_value="Test Author",
@@ -269,15 +294,17 @@ class TestNewProjectServiceLicense:
     def test_license_with_git_user(
         self,
         mock_get_user: MagicMock,
-        mock_run: MagicMock,
+        mock_git_cls: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test that LICENSE uses the git user name when available."""
-        mock_run.return_value = MagicMock(
-            stdout="[main a1b2c3] init",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            None,  # git add -A
+            "[main a1b2c3] init",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="lic-user", path=tmp_path, license_type="mit")
         service = NewProjectService(config)
@@ -289,7 +316,7 @@ class TestNewProjectServiceLicense:
         content = license_file.read_text()
         assert "Test Author" in content
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     @patch(
         "chegi.services.new_project.new_project_service.NewProjectService._get_git_user",
         return_value=None,
@@ -297,15 +324,17 @@ class TestNewProjectServiceLicense:
     def test_license_with_placeholder_author(
         self,
         mock_get_user: MagicMock,
-        mock_run: MagicMock,
+        mock_git_cls: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test that LICENSE uses placeholder when git user is unavailable."""
-        mock_run.return_value = MagicMock(
-            stdout="[main a1b2c3] init",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            None,  # git add -A
+            "[main a1b2c3] init",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="lic-place", path=tmp_path, license_type="mit")
         service = NewProjectService(config)
@@ -317,18 +346,20 @@ class TestNewProjectServiceLicense:
         content = license_file.read_text()
         assert "<author>" in content
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     def test_license_unknown_type(
         self,
-        mock_run: MagicMock,
+        mock_git_cls: MagicMock,
         tmp_path: Path,
     ) -> None:
         """Test that create raises ProjectCreationError for unknown license type."""
-        mock_run.return_value = MagicMock(
-            stdout="[main a1b2c3] init",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git init
+            None,  # git add -A
+            "[main a1b2c3] init",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(
             name="bad-lic", path=tmp_path, license_type="unknown_license"
@@ -342,23 +373,27 @@ class TestNewProjectServiceLicense:
 class TestNewProjectServiceGitUser:
     """Tests for _get_git_user helper."""
 
-    @patch(
-        "chegi.services.new_project.new_project_service.subprocess.run",
-        return_value=MagicMock(stdout="John Doe\n", stderr="", returncode=0),
-    )
-    def test_get_git_user_success(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    @patch("chegi.services.new_project.new_project_service.GitClient")
+    def test_get_git_user_success(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
         """Test that _get_git_user returns the git user name."""
+        mock_git = MagicMock()
+        mock_git.run_command.return_value = "John Doe"
+        mock_git_cls.return_value = mock_git
+
         config = NewProjectConfig(name="test", path=tmp_path)
         service = NewProjectService(config)
         user = service._get_git_user()
         assert user == "John Doe"
 
-    @patch(
-        "chegi.services.new_project.new_project_service.subprocess.run",
-        side_effect=FileNotFoundError(),
-    )
-    def test_get_git_user_no_git(self, mock_run: MagicMock, tmp_path: Path) -> None:
+    @patch("chegi.services.new_project.new_project_service.GitClient")
+    def test_get_git_user_no_git(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
         """Test that _get_git_user returns None when git is not installed."""
+        from chegi.services.git.exceptions import GitNotInstalledError
+
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = GitNotInstalledError("not installed")
+        mock_git_cls.return_value = mock_git
+
         config = NewProjectConfig(name="test", path=tmp_path)
         service = NewProjectService(config)
         user = service._get_git_user()
@@ -368,16 +403,17 @@ class TestNewProjectServiceGitUser:
 class TestNewProjectServiceInitialCommit:
     """Tests for initial commit."""
 
-    @patch("chegi.services.new_project.new_project_service.subprocess.run")
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     def test_initial_commit_extracts_hash(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_git_cls: MagicMock, tmp_path: Path
     ) -> None:
         """Test that _initial_commit extracts the commit hash from output."""
-        mock_run.return_value = MagicMock(
-            stdout="[main abc1234] chore(new): initial project scaffold via cheGi 🐆",
-            stderr="",
-            returncode=0,
-        )
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = [
+            None,  # git add -A
+            "[main abc1234] chore(new): initial project scaffold via cheGi",  # git commit
+        ]
+        mock_git_cls.return_value = mock_git
 
         config = NewProjectConfig(name="test", path=tmp_path)
         service = NewProjectService(config)
@@ -388,14 +424,17 @@ class TestNewProjectServiceInitialCommit:
         hash_val = service._initial_commit()
         assert hash_val == "abc1234"
 
-    @patch(
-        "chegi.services.new_project.new_project_service.subprocess.run",
-        side_effect=FileNotFoundError(),
-    )
+    @patch("chegi.services.new_project.new_project_service.GitClient")
     def test_initial_commit_failure_returns_none(
-        self, mock_run: MagicMock, tmp_path: Path
+        self, mock_git_cls: MagicMock, tmp_path: Path
     ) -> None:
         """Test that _initial_commit returns None when commit fails."""
+        from chegi.services.git.exceptions import GitCommandError
+
+        mock_git = MagicMock()
+        mock_git.run_command.side_effect = GitCommandError("fail")
+        mock_git_cls.return_value = mock_git
+
         config = NewProjectConfig(name="test", path=tmp_path)
         service = NewProjectService(config)
         service.project_path.mkdir(parents=True)

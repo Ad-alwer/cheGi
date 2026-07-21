@@ -1,10 +1,13 @@
+"""Security guard for detecting sensitive files in Git operations."""
+
 import fnmatch
 import os
-import subprocess
 from pathlib import Path
 from typing import List, Optional, Set, Tuple
 
 from chegi.config import DEFAULT_SENSITIVE_PATTERNS
+from chegi.services.git.client import GitClient
+from chegi.services.git.exceptions import GitCommandError
 from chegi.services.guard.models import GuardScanResult
 
 
@@ -16,22 +19,17 @@ class SecurityGuard:
         """Retrieves a list of currently staged files in a Git repository.
 
         Args:
-            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
+            repo_path: The path to the repository. Defaults to current working directory.
 
         Returns:
-            List[str]: A list of file paths staged for commit. Returns an empty list on failure.
+            A list of file paths staged for commit. Returns an empty list on failure.
         """
         cwd = repo_path if repo_path else Path.cwd()
         try:
-            result = subprocess.run(
-                ["git", "diff", "--name-only", "--cached"],
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return [line.strip() for line in result.stdout.split("\n") if line.strip()]
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            git = GitClient(cwd)
+            output = git.run_command(["git", "diff", "--name-only", "--cached"])
+            return [line.strip() for line in output.split("\n") if line.strip()] if output else []
+        except (GitCommandError, FileNotFoundError):
             return []
 
     @staticmethod
@@ -39,22 +37,17 @@ class SecurityGuard:
         """Retrieves a list of unstaged (modified but not staged) files.
 
         Args:
-            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
+            repo_path: The path to the repository. Defaults to current working directory.
 
         Returns:
-            List[str]: A list of file paths modified but not staged.
+            A list of file paths modified but not staged.
         """
         cwd = repo_path if repo_path else Path.cwd()
         try:
-            result = subprocess.run(
-                ["git", "diff", "--name-only"],
-                cwd=cwd,
-                capture_output=True,
-                text=True,
-                check=True,
-            )
-            return [line.strip() for line in result.stdout.split("\n") if line.strip()]
-        except (subprocess.CalledProcessError, FileNotFoundError):
+            git = GitClient(cwd)
+            output = git.run_command(["git", "diff", "--name-only"])
+            return [line.strip() for line in output.split("\n") if line.strip()] if output else []
+        except (GitCommandError, FileNotFoundError):
             return []
 
     @staticmethod
@@ -92,25 +85,21 @@ class SecurityGuard:
         """Unstages the specified files using git rm --cached.
 
         Args:
-            files_to_unstage (List[str]): Paths of files to unstage.
-            repo_path (Optional[Path]): The path to the repository. Defaults to current working directory.
+            files_to_unstage: Paths of files to unstage.
+            repo_path: The path to the repository. Defaults to current working directory.
 
         Returns:
-            bool: True if unstaged successfully or if list is empty, False otherwise.
+            True if unstaged successfully or if list is empty, False otherwise.
         """
         if not files_to_unstage:
             return True
 
         cwd = repo_path if repo_path else Path.cwd()
         try:
-            subprocess.run(
-                ["git", "rm", "--cached"] + files_to_unstage,
-                cwd=cwd,
-                capture_output=True,
-                check=True,
-            )
+            git = GitClient(cwd)
+            git.run_command(["git", "rm", "--cached"] + files_to_unstage)
             return True
-        except subprocess.CalledProcessError:
+        except (GitCommandError, FileNotFoundError):
             return False
 
     @staticmethod

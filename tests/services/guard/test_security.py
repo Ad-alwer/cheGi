@@ -1,36 +1,36 @@
-import subprocess
+"""Tests for the SecurityGuard service."""
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from chegi.services.git.exceptions import GitCommandError
 from chegi.services.guard.security import SecurityGuard
 
 # Dummy path for testing
 TEST_REPO_PATH = Path("/fake/repo")
 
 
-@patch("subprocess.run")
-def test_get_staged_files_success(mock_run):
+@patch("chegi.services.guard.security.GitClient")
+def test_get_staged_files_success(mock_git_cls):
     """Test retrieving staged files successfully via git diff."""
-    mock_result = MagicMock()
-    mock_result.stdout = "main.py\nconfig.json\n\n"
-    mock_run.return_value = mock_result
+    mock_git = MagicMock()
+    mock_git.run_command.return_value = "main.py\nconfig.json\n\n"
+    mock_git_cls.return_value = mock_git
 
     files = SecurityGuard.get_staged_files(TEST_REPO_PATH)
 
     assert files == ["main.py", "config.json"]
-    mock_run.assert_called_once_with(
+    mock_git.run_command.assert_called_once_with(
         ["git", "diff", "--name-only", "--cached"],
-        cwd=TEST_REPO_PATH,
-        capture_output=True,
-        text=True,
-        check=True,
     )
 
 
-@patch("subprocess.run")
-def test_get_staged_files_failure(mock_run):
+@patch("chegi.services.guard.security.GitClient")
+def test_get_staged_files_failure(mock_git_cls):
     """Test that an empty list is returned when the git command fails."""
-    mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
+    mock_git = MagicMock()
+    mock_git.run_command.side_effect = GitCommandError("fail")
+    mock_git_cls.return_value = mock_git
 
     files = SecurityGuard.get_staged_files(TEST_REPO_PATH)
 
@@ -113,33 +113,33 @@ def test_find_sensitive_files_extra_matches_in_defaults():
     assert len(detected) == 2
 
 
-@patch("subprocess.run")
-def test_unstage_files_success(mock_run):
+@patch("chegi.services.guard.security.GitClient")
+def test_unstage_files_success(mock_git_cls):
     """Test successfully unstaging specific files using git rm."""
+    mock_git = MagicMock()
+    mock_git_cls.return_value = mock_git
+
     result = SecurityGuard.unstage_files([".env", "key.pem"], TEST_REPO_PATH)
 
     assert result is True
-    mock_run.assert_called_once_with(
+    mock_git.run_command.assert_called_once_with(
         ["git", "rm", "--cached", ".env", "key.pem"],
-        cwd=TEST_REPO_PATH,
-        capture_output=True,
-        check=True,
     )
 
 
-@patch("subprocess.run")
-def test_unstage_files_empty_list(mock_run):
+def test_unstage_files_empty_list():
     """Test that unstaging an empty list returns True without executing git commands."""
     result = SecurityGuard.unstage_files([], TEST_REPO_PATH)
 
     assert result is True
-    mock_run.assert_not_called()
 
 
-@patch("subprocess.run")
-def test_unstage_files_failure(mock_run):
+@patch("chegi.services.guard.security.GitClient")
+def test_unstage_files_failure(mock_git_cls):
     """Test that a subprocess failure during unstage returns False."""
-    mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
+    mock_git = MagicMock()
+    mock_git.run_command.side_effect = GitCommandError("fail")
+    mock_git_cls.return_value = mock_git
 
     result = SecurityGuard.unstage_files([".env"], TEST_REPO_PATH)
 
@@ -188,29 +188,27 @@ def test_scan_repo_staged_and_sensitive(mock_get_staged, mock_find_sensitive):
 # --- get_unstaged_files tests ---
 
 
-@patch("subprocess.run")
-def test_get_unstaged_files_success(mock_run):
+@patch("chegi.services.guard.security.GitClient")
+def test_get_unstaged_files_success(mock_git_cls):
     """Test retrieving unstaged files successfully via git diff."""
-    mock_result = MagicMock()
-    mock_result.stdout = "main.py\nconfig.json\n\n"
-    mock_run.return_value = mock_result
+    mock_git = MagicMock()
+    mock_git.run_command.return_value = "main.py\nconfig.json\n\n"
+    mock_git_cls.return_value = mock_git
 
     files = SecurityGuard.get_unstaged_files(TEST_REPO_PATH)
 
     assert files == ["main.py", "config.json"]
-    mock_run.assert_called_once_with(
+    mock_git.run_command.assert_called_once_with(
         ["git", "diff", "--name-only"],
-        cwd=TEST_REPO_PATH,
-        capture_output=True,
-        text=True,
-        check=True,
     )
 
 
-@patch("subprocess.run")
-def test_get_unstaged_files_failure(mock_run):
+@patch("chegi.services.guard.security.GitClient")
+def test_get_unstaged_files_failure(mock_git_cls):
     """Test that an empty list is returned when the git command fails."""
-    mock_run.side_effect = subprocess.CalledProcessError(1, ["git"])
+    mock_git = MagicMock()
+    mock_git.run_command.side_effect = GitCommandError("fail")
+    mock_git_cls.return_value = mock_git
 
     files = SecurityGuard.get_unstaged_files(TEST_REPO_PATH)
 
