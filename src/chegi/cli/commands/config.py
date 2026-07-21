@@ -5,6 +5,7 @@ import typer
 
 from chegi.cli.commands.git_config import app as git_config_app
 from chegi.config import ChegiConfig
+from chegi.config.exceptions import InvalidConfigFormatError
 from chegi.ui import TerminalUI, console
 
 app = typer.Typer(
@@ -225,14 +226,14 @@ def config_mirror_set_all(
 
         # Validate basic structure
         if not isinstance(new_mirrors, dict):
-            raise ValueError(
+            raise InvalidConfigFormatError(
                 "Data must be a valid JSON dictionary format (e.g., {...})."
             )
 
         # Ensure all keys are strings and values are strings or lists of strings
         for k, v in new_mirrors.items():
             if not isinstance(k, str) or not isinstance(v, (str, list)):
-                raise ValueError(
+                raise InvalidConfigFormatError(
                     f"All keys must be strings and values must be strings or lists. Invalid pair: '{k}': {v}"
                 )
 

@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError
+from chegi.services.reword.exceptions import InvalidHashFormatError, InvalidRangeError
 
 GIT_HASH_PATTERN = re.compile(r"^(HEAD|[0-9a-f]{7,40})$")
 
@@ -40,7 +41,7 @@ class RewordService:
         """
         if start is not None and end is not None:
             if start >= end:
-                raise ValueError("--start must be less than --end.")
+                raise InvalidRangeError("--start must be less than --end.")
             return start, end - start
 
         if start is not None:
@@ -90,7 +91,7 @@ class RewordService:
             ValueError: If the hash format is invalid.
         """
         if not GIT_HASH_PATTERN.match(target_hash):
-            raise ValueError(f"Invalid commit hash format: {target_hash}")
+            raise InvalidHashFormatError(f"Invalid commit hash format: {target_hash}")
 
     def is_head(self, target_hash: str) -> bool:
         """Checks if the given commit hash is the current HEAD.
