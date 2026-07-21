@@ -84,6 +84,7 @@ ci(release): add GitHub Actions workflow for automated builds
   - `ruff format src tests` (no issues)
   - `mkdocs build --strict` (no broken links)
   - **`CHANGELOG.md` updated for this change**
+  - **All functions have type hints (return type + parameter types)**
 
 ## Architecture
 
@@ -117,7 +118,11 @@ ci(release): add GitHub Actions workflow for automated builds
 
 ## Code Style
 
-- Type hints for all parameters and return values
+- Type hints for all parameters and return values — **no exceptions**
+  - Every `def` MUST have return type annotation (`-> Type` or `-> None`)
+  - Every `__init__` MUST have `-> None`
+  - Every parameter MUST have a type hint
+  - Never write `def foo(bar):` — always `def foo(bar: str) -> int:`
 - Double quotes (matching `pyproject.toml` config)
 - Max line length: 88
 - Variables/functions: `snake_case`
