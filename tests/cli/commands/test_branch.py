@@ -30,7 +30,7 @@ def _init_repo(tmp_path: Path) -> Path:
     """
     bare = tmp_path / "bare.git"
     bare.mkdir()
-    _git(["init", "--bare", str(bare)], tmp_path)
+    _git(["init", "--bare", "-b", "main", str(bare)], tmp_path)
 
     repo = tmp_path / "repo"
     _git(["clone", str(bare), str(repo)], tmp_path)
