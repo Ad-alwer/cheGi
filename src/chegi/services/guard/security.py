@@ -1,5 +1,7 @@
 """Security guard for detecting sensitive files in Git operations."""
 
+from __future__ import annotations
+
 import fnmatch
 import os
 from pathlib import Path

@@ -1,5 +1,7 @@
 """Service for the first-run wizard."""
 
+from __future__ import annotations
+
 import json
 import os
 import re

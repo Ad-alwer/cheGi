@@ -1,5 +1,7 @@
 """Orchestrator that collects and runs all registered preflight checks."""
 
+from __future__ import annotations
+
 from chegi.cli.core.checks import PreflightCheck
 from chegi.cli.core.checks.git_check import GitRequirementCheck
 

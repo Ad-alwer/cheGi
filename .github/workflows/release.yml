@@ -44,9 +44,20 @@ jobs:
         run: python build_binary.py --version "$VERSION"
         shell: bash
 
+      - name: Extract CHANGELOG body
+        id: changelog
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Extract section between ## [VERSION] and next ## [
+          awk '/^## \['"$VERSION"'\]/{found=1; next} /^## \[/{if(found) exit} found{print}' CHANGELOG.md > /tmp/release_body.md
+          echo "body_path=/tmp/release_body.md" >> $GITHUB_OUTPUT
+
       - name: Upload Releases
         uses: softprops/action-gh-release@v2
         with:
+          name: "v${{ env.VERSION }}"
+          body_path: ${{ steps.changelog.outputs.body_path }}
           files: releases/*
           fail_on_unmatched_files: false
         env:

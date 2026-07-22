@@ -1,5 +1,7 @@
 """CLI command for chegi guard — security scanning."""
 
+from __future__ import annotations
+
 import shlex
 from pathlib import Path
 from typing import List, Optional, Set

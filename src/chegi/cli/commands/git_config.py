@@ -1,5 +1,7 @@
 """CLI commands for reading and modifying Git global config."""
 
+from __future__ import annotations
+
 from typing import List, Optional
 
 import typer

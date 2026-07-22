@@ -1,13 +1,17 @@
-FROM debian:stable-slim AS builder
+FROM python:3.12-slim AS builder
 
 ARG VERSION
-ARG TARGETARCH
 
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
-ADD https://github.com/Ad-alwer/cheGi/releases/download/v${VERSION}/chegi_${VERSION}_linux_${TARGETARCH}.tar.gz /tmp/
-RUN tar xzf /tmp/chegi_*.tar.gz -C /tmp/
+WORKDIR /app
+COPY . .
+RUN pip install --no-cache-dir -e . \
+    && python -c "import shutil; shutil.which('chegi') or print('WARN: chegi not found in PATH')"
 
 FROM debian:stable-slim
-COPY --from=builder /tmp/chegi /usr/local/bin/cheGi
-ENTRYPOINT ["cheGi"]
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin/chegi /usr/local/bin/chegi
+RUN ln -s /usr/local/bin/chegi /usr/local/bin/cheGi
+ENTRYPOINT ["chegi"]

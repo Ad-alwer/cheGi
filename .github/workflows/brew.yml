@@ -15,6 +15,7 @@ jobs:
       - name: Dispatch release event to homebrew-chegi
         run: |
           gh api repos/Ad-alwer/homebrew-chegi/dispatches \
-            --raw-field event_type=release
+            --raw-field event_type=release \
+            -f client_payload[tag]="${{ github.ref_name }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.HOMEBREW_PAT }}

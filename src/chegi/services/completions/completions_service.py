@@ -1,5 +1,7 @@
 """Service for generating shell completion scripts."""
 
+from __future__ import annotations
+
 from pathlib import Path
 
 from typer._completion_classes import (

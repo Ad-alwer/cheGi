@@ -1,5 +1,7 @@
 """Service for checking and performing cheGi upgrades."""
 
+from __future__ import annotations
+
 import json
 import subprocess
 import time

@@ -1,5 +1,7 @@
 """Concurrent directory scanner that detects project types via environment markers."""
 
+from __future__ import annotations
+
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
