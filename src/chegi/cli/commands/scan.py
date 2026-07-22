@@ -1,3 +1,5 @@
+"""Command that scans directories to detect project types and environments."""
+
 from typing import Optional
 
 import typer

@@ -1,3 +1,5 @@
+"""Interactive .gitignore generator command."""
+
 from pathlib import Path
 from typing import Optional
 

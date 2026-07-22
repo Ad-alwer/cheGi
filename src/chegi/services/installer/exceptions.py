@@ -1,3 +1,5 @@
+"""Custom exceptions for system installation failures."""
+
 class InstallerError(Exception):
     """Base exception for all installer-related errors."""
 

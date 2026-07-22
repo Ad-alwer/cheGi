@@ -1,3 +1,5 @@
+"""Cross-platform installer that detects OS and package manager for dependency installation."""
+
 import platform
 import shlex
 import shutil

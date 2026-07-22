@@ -1,3 +1,5 @@
+"""Manages project environment presets and generates .gitignore entries."""
+
 import importlib.resources as _resources
 import json
 from pathlib import Path

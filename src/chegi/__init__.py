@@ -1,3 +1,5 @@
+"""cheGi — The ultimate Git companion. Type less, do more."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:

@@ -1,3 +1,5 @@
+"""Loads, validates, and persists the cheGi JSON configuration file."""
+
 import json
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set

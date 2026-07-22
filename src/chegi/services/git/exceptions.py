@@ -1,3 +1,5 @@
+"""Custom exceptions for Git operations."""
+
 class GitCoreError(Exception):
     """Base exception for all Git-related errors."""
 

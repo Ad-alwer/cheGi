@@ -1,3 +1,5 @@
+"""Business logic for rewriting Git commit messages by hash or range."""
+
 import re
 from typing import List, Optional, Tuple
 

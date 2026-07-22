@@ -1,3 +1,5 @@
+"""Enum and dataclass models for styled terminal message types and layouts."""
+
 from dataclasses import dataclass
 from enum import Enum
 

@@ -1,3 +1,5 @@
+"""CLI command for managing cheGi global configuration."""
+
 import json
 from typing import Optional
 

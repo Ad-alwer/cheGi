@@ -1,3 +1,5 @@
+"""Git-related constants, primarily the minimum supported version tuple."""
+
 from typing import Tuple
 
 # Git Requirements

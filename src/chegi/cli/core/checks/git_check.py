@@ -1,3 +1,5 @@
+"""Preflight check that verifies Git is installed and offers setup if missing."""
+
 from __future__ import annotations
 
 import shutil

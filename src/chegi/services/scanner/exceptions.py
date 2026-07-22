@@ -1,3 +1,5 @@
+"""Custom exceptions for scanner operations."""
+
 class ScannerError(Exception):
     """Base exception for all scanner-related errors."""
 

@@ -1,3 +1,5 @@
+"""Dataclasses for guard scan results, history findings, and summaries."""
+
 from dataclasses import dataclass, field
 from typing import List, Optional
 

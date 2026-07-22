@@ -1,3 +1,5 @@
+"""Abstract base class defining the interface for preflight system checks."""
+
 from abc import ABC, abstractmethod
 
 

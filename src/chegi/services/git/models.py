@@ -1,3 +1,5 @@
+"""Dataclasses representing repository status and metadata."""
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional

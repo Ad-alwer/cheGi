@@ -1,3 +1,5 @@
+"""Public API re-exports for cheGi configuration constants and manager."""
+
 from .constants import (
     DEFAULT_EXCLUDES,
     DEFAULT_MAX_DEPTH,

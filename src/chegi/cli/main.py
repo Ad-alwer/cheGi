@@ -1,3 +1,5 @@
+"""Root Typer application that registers all cheGi CLI commands."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 import typer

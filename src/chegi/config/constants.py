@@ -1,3 +1,5 @@
+"""Default configuration constants for cheGi."""
+
 from typing import Dict, List, Set, Tuple
 
 # Security Constants (Immutable)
