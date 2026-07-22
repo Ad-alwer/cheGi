@@ -79,10 +79,4 @@ jobs:
         if: steps.check_pypi.outputs.exists != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Publish to GitHub Packages (PyPI)
-        if: steps.check_pypi.outputs.exists != 'true'
-        run: |
-          pip install twine
-          twine upload --repository-url https://pypi.pkg.github.com/Ad-alwer/ \
-            -u __token__ -p "${{ secrets.GITHUB_TOKEN }}" \
-            dist/*.tar.gz dist/*.whl
+
