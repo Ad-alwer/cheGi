@@ -11,7 +11,6 @@ from chegi.services.new_project import (
     NewProjectService,
 )
 from chegi.services.new_project.exceptions import (
-    GitInitError,
     NewProjectError,
     ProjectAlreadyExistsError,
     ProjectCreationError,
