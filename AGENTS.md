@@ -121,13 +121,70 @@ ci(release): add GitHub Actions workflow for automated builds
 
 ## Code Style
 
-- Type hints for all parameters and return values — **no exceptions**
-  - Every `def` MUST have return type annotation (`-> Type` or `-> None`)
-  - Every `__init__` MUST have `-> None`
-  - Every parameter MUST have a type hint
-  - Never write `def foo(bar):` — always `def foo(bar: str) -> int:`
 - Double quotes (matching `pyproject.toml` config)
 - Max line length: 88
 - Variables/functions: `snake_case`
 - Classes: `PascalCase`
 - Constants: `UPPER_SNAKE_CASE`
+
+## Type Hints (STRICT — Zero Tolerance)
+
+Every function, method, and callable MUST have complete type hints. No exceptions.
+
+### Rules
+
+- Every `def` MUST have a return type annotation: `-> Type` or `-> None`
+- Every `__init__` MUST have `-> None`
+- Every parameter MUST have a type hint — never write `def foo(bar):`
+- Use `Optional[X]` for parameters that can be `None`, not just `X`
+- Use `List[X]`, `Dict[K, V]`, `Tuple[X, ...]` from `typing` (not bare `list`, `dict`, `tuple` for Python 3.8 compat)
+- `self` and `cls` do NOT need type hints
+- Properties MUST have return type annotations
+- Lambda expressions are exempt
+
+### Examples
+
+```python
+# WRONG
+def process(data, count):
+    return data[:count]
+
+def __init__(self, name):
+    self.name = name
+
+# RIGHT
+def process(data: str, count: int) -> str:
+    return data[:count]
+
+def __init__(self, name: str) -> None:
+    self.name = name
+```
+
+### Pre-commit Gate
+
+Before ANY commit, run the AST type-check test to verify zero violations:
+```bash
+python -c "
+import ast, os
+issues = []
+for root, dirs, files in os.walk('src/chegi'):
+    dirs[:] = [d for d in dirs if d != '__pycache__']
+    for f in files:
+        if not f.endswith('.py'): continue
+        path = os.path.join(root, f)
+        tree = ast.parse(open(path).read())
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.returns is None:
+                    issues.append(f'{path}:{node.lineno} {node.name}() missing return type')
+                for arg in node.args.args + node.args.posonlyargs + node.args.kwonlyargs:
+                    if arg.arg not in ('self', 'cls') and arg.annotation is None:
+                        issues.append(f'{path}:{node.lineno} {node.name}() param \"{arg.arg}\" missing type')
+if issues:
+    for i in issues: print(i)
+    raise SystemExit(f'FAILED: {len(issues)} type hint violations')
+print('OK: all type hints present')
+"
+```
+
+If this script reports ANY violations, fix them before committing.

@@ -68,11 +68,57 @@ Guidelines:
 - Match existing patterns in the module you are editing
 - Keep CLI logic thin — put business logic in `services/`
 - Add or update tests for behavior changes
-- Use type hints for all parameters and return values
 - Use [Google-style docstrings](https://google.github.io/styleguide/pyguide.html#s3.8-comments-and-docstrings) for all functions (one-line for trivial getters/setters)
 - Add a short one-line docstring at the top of every file describing its purpose
 - Test functions must have one-line docstrings describing the scenario
 - Keep commits small and focused with clear commit messages
+
+### Type Hints (STRICT — Zero Tolerance)
+
+Every function, method, and callable MUST have complete type hints. No exceptions.
+
+```python
+# WRONG
+def process(data, count):
+    return data[:count]
+
+# RIGHT
+def process(data: str, count: int) -> str:
+    return data[:count]
+```
+
+Rules:
+- Every `def` MUST have a return type annotation (`-> Type` or `-> None`)
+- Every `__init__` MUST have `-> None`
+- Every parameter MUST have a type hint
+- Use `Optional[X]` for nullable params, `List[X]`, `Dict[K, V]` from `typing`
+- `self`/`cls` do NOT need type hints
+- Properties MUST have return type annotations
+
+Before committing, verify with:
+```bash
+python -c "
+import ast, os
+issues = []
+for root, dirs, files in os.walk('src/chegi'):
+    dirs[:] = [d for d in dirs if d != '__pycache__']
+    for f in files:
+        if not f.endswith('.py'): continue
+        path = os.path.join(root, f)
+        tree = ast.parse(open(path).read())
+        for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                if node.returns is None:
+                    issues.append(f'{path}:{node.lineno} {node.name}() missing return type')
+                for arg in node.args.args + node.args.posonlyargs + node.args.kwonlyargs:
+                    if arg.arg not in ('self', 'cls') and arg.annotation is None:
+                        issues.append(f'{path}:{node.lineno} {node.name}() param \"{arg.arg}\" missing type')
+if issues:
+    for i in issues: print(i)
+    raise SystemExit(f'FAILED: {len(issues)} type hint violations')
+print('OK: all type hints present')
+"
+```
 
 ## Pull Requests
 
