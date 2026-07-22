@@ -164,7 +164,9 @@ class TestNewProjectServiceCreate:
         assert ".gitignore" not in result.files_created
 
     @patch("chegi.services.new_project.new_project_service.GitClient")
-    def test_create_skips_chegi_dir(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
+    def test_create_skips_chegi_dir(
+        self, mock_git_cls: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that create skips .chegi/ directory when skip_chegi is True."""
         mock_git = MagicMock()
         mock_git.run_command.side_effect = [
@@ -373,7 +375,9 @@ class TestNewProjectServiceGitUser:
     """Tests for _get_git_user helper."""
 
     @patch("chegi.services.new_project.new_project_service.GitClient")
-    def test_get_git_user_success(self, mock_git_cls: MagicMock, tmp_path: Path) -> None:
+    def test_get_git_user_success(
+        self, mock_git_cls: MagicMock, tmp_path: Path
+    ) -> None:
         """Test that _get_git_user returns the git user name."""
         mock_git = MagicMock()
         mock_git.run_command.return_value = "John Doe"

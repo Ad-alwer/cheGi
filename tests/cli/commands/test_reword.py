@@ -146,7 +146,9 @@ def test_reword_pagination_invalid_range(mock_git, mock_reword):
     Test handling of invalid pagination arguments (e.g., start > end).
     """
     mock_reword_inst = mock_reword.return_value
-    mock_reword_inst.calculate_pagination.side_effect = InvalidRangeError("Invalid range")
+    mock_reword_inst.calculate_pagination.side_effect = InvalidRangeError(
+        "Invalid range"
+    )
 
     result = runner.invoke(app, ["reword", "--start", "10", "--end", "5"])
 

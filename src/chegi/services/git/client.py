@@ -169,7 +169,9 @@ class GitClient:
             ValueError: If the file_path or commit_msg contain dangerous patterns.
         """
         if file_path.startswith("-"):
-            raise InvalidGitArgumentError(f"File path must not start with '-': {file_path}")
+            raise InvalidGitArgumentError(
+                f"File path must not start with '-': {file_path}"
+            )
         if "\n" in commit_msg:
             raise InvalidGitArgumentError("Commit message must not contain newlines")
         self.run_command(["git", "add", file_path])

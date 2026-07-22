@@ -28,7 +28,11 @@ class SecurityGuard:
         try:
             git = GitClient(cwd)
             output = git.run_command(["git", "diff", "--name-only", "--cached"])
-            return [line.strip() for line in output.split("\n") if line.strip()] if output else []
+            return (
+                [line.strip() for line in output.split("\n") if line.strip()]
+                if output
+                else []
+            )
         except (GitCommandError, FileNotFoundError):
             return []
 
@@ -46,7 +50,11 @@ class SecurityGuard:
         try:
             git = GitClient(cwd)
             output = git.run_command(["git", "diff", "--name-only"])
-            return [line.strip() for line in output.split("\n") if line.strip()] if output else []
+            return (
+                [line.strip() for line in output.split("\n") if line.strip()]
+                if output
+                else []
+            )
         except (GitCommandError, FileNotFoundError):
             return []
 
