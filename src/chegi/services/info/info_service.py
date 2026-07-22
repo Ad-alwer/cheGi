@@ -1,7 +1,7 @@
 """Service for collecting project status information."""
 
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 from chegi.services.git import GitClient
 from chegi.services.git.exceptions import GitCommandError
@@ -47,7 +47,7 @@ class InfoService:
 
         return report
 
-    def _safe_run(self, cmd, check=True) -> str:
+    def _safe_run(self, cmd: List[str], check: bool = True) -> str:
         """Runs a git command safely, returning empty string on failure.
 
         Args:

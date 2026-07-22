@@ -7,7 +7,7 @@ import typer
 from rich.text import Text
 from typing_extensions import Annotated
 
-from chegi.services.doctor import CheckCategory, DoctorService
+from chegi.services.doctor import CheckCategory, CheckResult, DoctorReport, DoctorService
 from chegi.ui import TerminalUI, console
 
 app = typer.Typer(
@@ -54,7 +54,7 @@ def doctor(
         raise typer.Exit(code=1)
 
 
-def _display_report(report) -> None:
+def _display_report(report: DoctorReport) -> None:
     """Displays the doctor report in a Rich table.
 
     Args:
@@ -87,7 +87,7 @@ def _display_category_header(category: CheckCategory) -> None:
     console.print(f"\n  [bold]{icon} {category.value}[/bold]")
 
 
-def _display_check_row(result) -> None:
+def _display_check_row(result: CheckResult) -> None:
     """Displays a single check result row.
 
     Args:
@@ -103,7 +103,7 @@ def _display_check_row(result) -> None:
         console.print(f"       [dim italic]→ {result.suggestion}[/dim italic]")
 
 
-def _display_summary(report) -> None:
+def _display_summary(report: DoctorReport) -> None:
     """Displays the check summary.
 
     Args:

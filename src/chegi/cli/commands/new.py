@@ -414,7 +414,7 @@ def _ssh_url(repo: GitHubRepo) -> str:
     return f"git@github.com:{repo.full_name}.git"
 
 
-def _handle_github_flow(config: NewProjectConfig, result) -> None:
+def _handle_github_flow(config: NewProjectConfig, result: NewProjectResult) -> None:
     """Runs the interactive GitHub flow after project creation.
 
     Args:
@@ -507,7 +507,7 @@ def _handle_github_flow(config: NewProjectConfig, result) -> None:
     _print_github_report(config, remote_url, branch)
 
 
-def _handle_github_noninteractive(config: NewProjectConfig, result) -> None:
+def _handle_github_noninteractive(config: NewProjectConfig, result: NewProjectResult) -> None:
     """Runs the GitHub flow in non-interactive mode.
 
     Args:

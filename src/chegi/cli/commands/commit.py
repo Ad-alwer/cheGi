@@ -1,7 +1,7 @@
 """CLI command for chegi commit — secure Git commits."""
 
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 import questionary
 import typer
@@ -186,7 +186,7 @@ def _guided_commit_flow(
     return message
 
 
-def _pick_style(styles, last_style_name: Optional[str]) -> Optional["CommitStyle"]:
+def _pick_style(styles: List[CommitStyle], last_style_name: Optional[str]) -> Optional[CommitStyle]:
     """Prompts the user to pick a commit style.
 
     Args:
@@ -293,7 +293,7 @@ def _fill_style_fields(
     return values
 
 
-def _pick_type(types) -> Optional[str]:
+def _pick_type(types: List[str]) -> Optional[str]:
     """Prompts the user to pick a commit type.
 
     Args:

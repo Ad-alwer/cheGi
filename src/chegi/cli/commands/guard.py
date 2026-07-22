@@ -9,7 +9,7 @@ from typing_extensions import Annotated
 
 from chegi.config import ChegiConfig
 from chegi.services.git.client import GitClient
-from chegi.services.guard import GuardHistoryService, SecurityGuard
+from chegi.services.guard import GuardHistoryService, HistoryScanResult, SecurityGuard
 from chegi.ui import TerminalUI, console
 
 
@@ -296,7 +296,7 @@ def history(
         raise typer.Exit(code=1)
 
 
-def _handle_history_removal(scanner: GuardHistoryService, result) -> None:
+def _handle_history_removal(scanner: GuardHistoryService, result: HistoryScanResult) -> None:
     """Handles removal of sensitive files from Git history.
 
     Shows strong warnings, lists affected files, and requires explicit
