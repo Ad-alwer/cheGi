@@ -6,7 +6,6 @@ import pytest
 
 from chegi.services.git_config.exceptions import GitConfigError
 from chegi.services.git_config.models import (
-    CATEGORY_MAP,
     GitConfigCategory,
     GitConfigEntry,
     categorize_key,

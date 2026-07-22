@@ -7,7 +7,12 @@ import typer
 from rich.text import Text
 from typing_extensions import Annotated
 
-from chegi.services.doctor import CheckCategory, CheckResult, DoctorReport, DoctorService
+from chegi.services.doctor import (
+    CheckCategory,
+    CheckResult,
+    DoctorReport,
+    DoctorService,
+)
 from chegi.ui import TerminalUI, console
 
 app = typer.Typer(

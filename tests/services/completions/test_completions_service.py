@@ -64,14 +64,14 @@ class TestCompletionsServiceDetectShell:
         result = CompletionsService.detect_shell()
         assert result == "zsh"
 
-    @patch("shellingham.detect_shell", side_effect=Exception("not available"))
+    @patch("shellingham.detect_shell", side_effect=OSError("not available"))
     def test_detect_falls_back_to_shell_env(self, mock_detect: MagicMock) -> None:
         """Test that detect_shell() falls back to $SHELL when shellingham fails."""
         with patch.dict(os.environ, {"SHELL": "/bin/fish"}, clear=True):
             result = CompletionsService.detect_shell()
             assert result == "fish"
 
-    @patch("shellingham.detect_shell", side_effect=Exception("not available"))
+    @patch("shellingham.detect_shell", side_effect=OSError("not available"))
     def test_detect_returns_none_when_no_shell(self, mock_detect: MagicMock) -> None:
         """Test that detect_shell() returns None when nothing is available."""
         with patch.dict(os.environ, {}, clear=True):

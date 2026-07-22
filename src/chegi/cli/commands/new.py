@@ -507,7 +507,9 @@ def _handle_github_flow(config: NewProjectConfig, result: NewProjectResult) -> N
     _print_github_report(config, remote_url, branch)
 
 
-def _handle_github_noninteractive(config: NewProjectConfig, result: NewProjectResult) -> None:
+def _handle_github_noninteractive(
+    config: NewProjectConfig, result: NewProjectResult
+) -> None:
     """Runs the GitHub flow in non-interactive mode.
 
     Args:

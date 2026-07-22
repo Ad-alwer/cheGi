@@ -186,7 +186,9 @@ def _guided_commit_flow(
     return message
 
 
-def _pick_style(styles: List[CommitStyle], last_style_name: Optional[str]) -> Optional[CommitStyle]:
+def _pick_style(
+    styles: List[CommitStyle], last_style_name: Optional[str]
+) -> Optional[CommitStyle]:
     """Prompts the user to pick a commit style.
 
     Args:

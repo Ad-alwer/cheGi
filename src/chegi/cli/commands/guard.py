@@ -297,7 +297,9 @@ def history(
         raise typer.Exit(code=1)
 
 
-def _handle_history_removal(scanner: GuardHistoryService, result: HistoryScanResult) -> None:
+def _handle_history_removal(
+    scanner: GuardHistoryService, result: HistoryScanResult
+) -> None:
     """Handles removal of sensitive files from Git history.
 
     Shows strong warnings, lists affected files, and requires explicit

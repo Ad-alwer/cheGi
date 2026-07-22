@@ -1,5 +1,6 @@
 """Custom exceptions for environment manager operations."""
 
+
 class EnvManagerError(Exception):
     """Base exception for all EnvManager related errors."""
 

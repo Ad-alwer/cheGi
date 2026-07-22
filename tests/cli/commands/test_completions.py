@@ -94,7 +94,7 @@ class TestCompletionsCliInteractive:
         assert install_path.exists()
 
     @patch("questionary.select")
-    @patch("shellingham.detect_shell", side_effect=Exception("no shell"))
+    @patch("shellingham.detect_shell", side_effect=OSError("no shell"))
     def test_interactive_undetected_shell(
         self, mock_detect, mock_select: MagicMock
     ) -> None:
@@ -136,7 +136,7 @@ class TestCompletionsCliInstallFlag:
         assert install_path.exists()
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch("shellingham.detect_shell", side_effect=Exception("no shell"))
+    @patch("shellingham.detect_shell", side_effect=OSError("no shell"))
     def test_install_flag_undetectable(self, mock_detect) -> None:
         """Test that '--install' fails gracefully when shell is undetectable."""
         result = runner.invoke(app, ["completions", "--install"])
