@@ -5,335 +5,53 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Fixed
-
-- Replace pepy.tech downloads badge with shields.io `pypi/dm` (pepy.tech was unreliable with 404 errors)
-- Fix Python version badge — switch to static badge showing supported versions (3.8–3.12) since `shields.io/pypi/pyversion` doesn't exist and `pyversions` depends on unreleased PyPI classifiers
+## [0.4.0] - 2026-07-22
 
 ### Added
 
-- `UpgradeService` — new service for self-upgrading:
-  - `UpgradeInfo` dataclass with current_version, latest_version, is_outdated, changelog_diff
-  - `check_version()` — fetches latest version from PyPI JSON API
-  - `upgrade()` — runs `pip install --upgrade chegi`
-  - `_compare_versions()` — semantic version comparison
-  - `_fetch_changelog_diff()` — fetches raw CHANGELOG from GitHub and extracts release notes
-  - `should_check()` / `mark_checked()` — 24-hour cooldown via marker file in `~/.config/chegi/`
-  - 20 service-layer tests covering version check, upgrade, cooldown, and changelog diff
-- `chegi upgrade` CLI command — self-upgrade with `--check` and `--yes` flags:
-  - Rich output displaying current version, latest version, and changelog diff
-  - `--check` / `-c` — only check without upgrading
-  - `--yes` / `-y` — skip confirmation prompt
-  - Automatic background check in `global_setup()` with 24h cooldown via `~/.config/chegi/.last_upgrade_check`
-  - `questionary.confirm` prompt when auto-check finds a new version
-  - 8 CLI integration tests via `CliRunner`
-- `BranchService` — new service for managing Git branches:
-  - `BranchInfo` dataclass with name, current, remote, last commit, ahead/behind, upstream
-  - CRUD operations: create, list, switch, rename, delete (with protected branch enforcement)
-  - Merge with commit preview, push, push-delete (cleanup workflow), sync (prune), info
-  - 25 service-layer tests covering all operations with real git repos
-- `chegi branch` CLI command — full branch manager:
-  - Interactive questionary menu when run without arguments (9 operations)
-  - Direct subcommands: `list`, `create`, `switch`, `merge`, `rename`, `delete`, `push-delete`, `sync`, `info`
-  - All subcommands support both direct args and interactive fallback
-  - Protected branches: `main`, `master`, `develop` (cannot be deleted)
-  - Merge preview with `git log --oneline`, post-merge push/delete-src prompts
-  - 14 CLI integration tests via `CliRunner`
-- `CloneService` — new service for cloning repositories with smart defaults:
-  - `parse_url()` — supports `user/repo` shorthand and full URLs
-  - `_smart_detect_techs()` — scans cloned directory for `package.json`, `Cargo.toml`, etc.
-  - `CloneConfig`, `CloneResult`, `CloneSource` models for typed configuration
-  - `CloneError`, `CloneUrlError`, `CloneAuthError`, `CloneTargetExistsError` exceptions
-  - `GitClient.clone()` — new method for cloning with optional branch and depth
-  - `GitClient.run_command()` extended with optional `cwd` parameter
-- `chegi clone` CLI command (`feat(clone)`) — clone repos with smart defaults:
-  - Direct mode: `chegi clone user/repo` with user/repo shorthand expansion
-  - Interactive mode with questionary for source selection and location
-  - `--own` flag to browse and clone from your GitHub repos
-  - Flags: `--path`, `--here`, `--branch`, `--depth`, `--no-submodules`, `--no-gitignore`, `--no-chegi`
-  - 11 CLI integration tests via `CliRunner`, 16 service-layer tests
-- `CloneService.execute()` extended with submodule init, `.gitignore` generation,
-  `.chegi/` setup, and safety check for non-empty target directories:
-  - Submodule detection (`.gitmodules`) + `git submodule update --init --recursive`
-  - Smart `.gitignore` generation via `EnvManager` using detected or user-selected technologies
-  - `.chegi/` directory initialization via `InitService`
-  - `CloneTargetExistsError` raised when target dir exists and is not empty
-- `GitClient.submodule_update()` — new method for submodule initialization
-  - `_parse_submodule_output()` helper for extracting submodule names from git output
-  - Interactive `.gitignore` technology checkbox in CLI interactive mode
-  - 10 new service-layer tests covering submodules, gitignore, chegi, and safety check
-  - 2 new `GitClient` tests for `submodule_update()`
-- `chegi clone` progress spinner and Rich report table:
-  - `console.status` spinner during clone operation
-  - Rich `Table` output showing Path, Branch, Origin, Submodules, .gitignore, and .chegi/ status
-- `chegi completions` CLI command — generate shell completion scripts for bash, zsh, fish, and powershell:
-  - `CompletionsService` — new service wrapping Typer's shell completion classes (`BashComplete`, `ZshComplete`, `FishComplete`, `PowerShellComplete`)
-  - `SupportedShell` enum and `UnsupportedShellError` for invalid shell detection
-  - Direct mode: `chegi completions bash` prints script to stdout for piping
-  - `--install` / `-i` flag: `chegi completions -i` detects shell and installs without prompts; `chegi completions -i bash` installs a specific shell directly
-  - Interactive mode: `chegi completions` (no args) detects your shell via shellingham and offers to install automatically with questionary
-  - `detect_shell()` — detects current shell via shellingham with `$SHELL` fallback
-  - `install()` — writes completion script to the standard path for the detected shell
-  - Service-layer tests for all 5 shells, shell detection, installation, and error cases
-  - CLI integration tests via `CliRunner` for direct, interactive, and install-flag modes
-  - `docs/commands/completions.md` with install instructions for each shell
-- `chegi info` CLI command — quick project status overview with Rich dashboard:
-  - `InfoService` with `collect()` — fetches branch, remote, ahead/behind, changes, stash count, last commit, contributors, guard status, hooks, `.chegi/` config, git identity, and latest tag
-  - `InfoReport` dataclass with partial-failure tolerance (each field fetched independently)
-  - Full dashboard with 4 color-coded sections (branch & sync, changes, commit & contributors, security & config)
-  - `--short` / `-s` flag for one-line summary
-  - `--json` / `-j` flag for machine-readable JSON output
-  - `--watch` / `-w` flag for live refresh every 2 seconds
-  - `--path` / `-p` flag to check another directory
-  - 16 service-layer tests covering clean, dirty, diverged, no-remote, no-tag, sensitive files, hooks, stash, identity, JSON, and short modes
-  - 6 CLI integration tests via `CliRunner` for dashboard, JSON, short, non-git, and directory-not-found scenarios
-  - `docs/commands/info.md` with usage examples
+- `chegi upgrade` — self-upgrade with auto-check, 24h cooldown, and changelog diff display
+- `chegi branch` — full branch manager with interactive menu and 9 subcommands (create, switch, merge, rename, delete, push-delete, sync, info, list)
+- `chegi clone` — clone repos with user/repo shorthand, submodule init, smart .gitignore, and .chegi/ setup
+- `chegi commit` — secure replacement for `git commit` with auto security scan and 5 commit styles (Free, Conventional, Scope, Body, Gitmoji)
+- `chegi new` — scaffold projects from scratch with templates (python, node, go, rust, cpp, csharp, ruby) and GitHub push integration
+- `chegi info` — project status dashboard with branch, changes, contributors, security, and JSON/short/watch modes
+- `chegi doctor` — comprehensive health check covering Git, identity, security, hooks, and stats
+- `chegi hooks` — manage pre-commit and pre-push Git hooks with guard scanning
+- `chegi auth` — encrypted token-based auth for GitHub and GitLab with scope validation and credential helper integration
+- `chegi repo` — browse GitHub repos with fuzzy search, language colors, star count, and local cache
+- `chegi completions` — shell completion scripts for bash, zsh, fish, and powershell with auto-install
+- `chegi init` — initialize `.chegi/` project directory with config and guard rules
+- `chegi config git` — manage Git global config (user.identity, editor, pull.rebase, fetch.prune) with interactive wizard
+- `chegi co/br/ci/st` — fast Git alias pass-through commands (checkout, branch, commit, status)
+- First-run wizard for new users — Git check, identity setup, SSH key, GitHub CLI, auth login, theme picker, and sensitive patterns
+- `GitConfigService` — centralized Git global config operations (get, set, unset, get_all, identity)
+- `GitHubRepoService` — create and list GitHub repositories with interactive picker
+- `SecurityGuard` strict mode — scan both staged and unstaged files
+- `SecurityGuard` directory scan — recursive sensitive file detection without Git repo
+- Custom sensitive file patterns via `.chegi.json` config
+- Color theme system with theme switching and `GlobalConfig` persistence
+- macOS universal2 binary builds (Intel + Apple Silicon)
+- Linux ARM64 native binary builds
+- Docker multi-arch images (amd64 + arm64) on Docker Hub and GHCR
+- `--version` / `-v` global flag
 
-- `GitHubRepoService` — create and list GitHub repositories via API:
-  - `create_repo()` — creates repo via `POST /user/repos` with detailed error handling
-  - `list_repos()` — fetches user repos via `GET /user/repos`
-  - `push_project()` — adds remote and pushes via `git push -u`
-- `GhService` — check `gh` CLI installation and authentication status
-- `GitHubRepo` model for repository metadata (name, url, visibility, default_branch)
+### Fixed
 
-- `GitConfigService` — new service for centralised Git global config operations (`get`, `set`, `unset`, `get_all`, `get_identity`, `set_identity`)
-- `GitConfigEntry`, `ConfigChange`, `GitConfigCategory` models with automatic key categorisation
-- `chegi config git` commands (`set` and `get`) for viewing and modifying Git global config:
-  - `set` — interactive 6-step wizard (user.name, user.email, init.defaultBranch, core.editor, pull.rebase, fetch.prune) with live-write-per-step and review+revert phase
-  - `get` — interactive picker with category groups showing all config entries; direct lookup for one or more keys
-- `chegi init` identity step — prompts for user.name/user.email after creating `.chegi/` directory
-- `auth.py` refactored: removed `_get_git_config()`, `_ensure_git_identity()` now uses `GitConfigService.get_identity()` / `set_identity()`
-- Wizard `_step_identity()` upgraded: email validated (must contain `@` + domain dot), name suggested from `$USER`, optional `init.defaultBranch` prompt after identity
-- Removed old `_get_git_config()` and `_set_git_identity()` from `wizard_service.py`; `_step_ssh_key()` and `_step_git_aliases()` now use `GitConfigService.get()`
-- Documentation at `docs/commands/git-config.md` with usage examples for `set` and `get` subcommands
-- `chegi new --github` / `-g` — create local project, optionally create/push to GitHub:
-  - Interactive flow: location → git init → .gitignore → prerequisites → repo pick/create → brand in commit → push → report
-  - Non-interactive mode (`--yes`) auto-creates repo and pushes
-  - `--private` flag for private repos
-  - Lists user's existing repos for selection
-  - Detects default branch from git config
-  - Updates README with actual repo URL
-- `chegi repo list` — list GitHub repositories with interactive fuzzy-select picker:
-  - Rich table with visibility icons, star count, language colors, relative time
-  - Local cache (`~/.config/chegi/repo_cache.json`, 5-minute TTL) with `--refresh`
-  - Filters: `--public`, `--private`, `--owner`, `--limit`, `--sort`
-  - Output formats: `--format interactive` (default), `--format table`, `--format json`
-  - Actions after selection: open in browser, copy SSH/HTTPS URL
-  - Fuzzy-search filtering via questionary
-  - RepoCache service for local caching with age/clear/is_fresh methods
-  - Language color constants for Rich display
-  - `GitHubRepo` model extended with `language`, `stargazers_count`, `forks_count`, `updated_at`, `fork`
-
-- Git alias pass-through commands: `chegi co`, `chegi br`, `chegi ci`, `chegi st`
-  - Thin wrappers that forward all arguments to `git checkout`, `branch`, `commit`, `status`
-  - Wizards step `_step_git_aliases()` offers to configure `git config --global alias.*`
-  - 5 wizard tests + 8 CLI integration tests via `CliRunner`
-  - Documentation at `docs/commands/aliases.md`
-  - Wizard step logs `git_aliases_set` event
-
-- `chegi auth` token-based authentication system for GitHub and GitLab:
-  - `AuthService` with encrypted token storage (Fernet via `cryptography`)
-  - `login()` validates token via provider API before persisting
-  - `logout()` / `status()` / `switch()` for credential management
-  - `get_credential_for_host()` for Git credential helper protocol
-  - Magic provider detection from token prefix (`ghp_` → GitHub, `glpat-` → GitLab)
-  - Multiple account support with label-based switching per host
-  - `Credential` model with `AuthProvider` enum (GitHub, GitLab)
-  - 25 service-layer tests
-- New dependency: `cryptography>=41.0.0` for secure token storage
-- `chegi auth` CLI commands with non-interactive flag support:
-  - `chegi auth login` — interactive and non-interactive (`--token`) modes
-  - `chegi auth logout` — remove stored credentials (with `--all`)
-  - `chegi auth status` — display saved accounts with host info
-  - `chegi auth switch` — change the default account for a host
-  - `chegi auth get-credential` — hidden Git credential helper command
-  - Magic provider detection: auto-detects GitHub/GitLab from token prefix
-  - 11 CLI integration tests using `CliRunner`
-- Git credential helper integration:
-  - `_setup_git_credential_helper()` — runs `git config --global` per host
-  - `_remove_git_credential_helper()` — cleans up on `logout`
-  - Non-interactive login auto-configures the helper; interactive asks confirmation
-  - `get_credential_by_label()` service method for logout cleanup
-  - 4 new CLI tests for helper setup/teardown
-- Deep scope validation on login:
-  - `validate_token()` now extracts scopes from GitHub `X-OAuth-Scopes` header
-  - `check_required_scopes()` compares against recommended scopes per provider
-  - Missing scope warnings shown during login and in `status` output
-  - `login()` accepts pre-validated `username_from_api` + `scopes` to avoid double API call
-  - 6 new scope-related service tests + 3 CLI tests
-- Color theme system with support for switching between preset themes:
-  - `TerminalUI` now loads themes dynamically from `GlobalConfig` with caching
-  - `apply_theme()`, `get_active_theme()`, `_get_style()` methods on `TerminalUI`
-  - `display_results_table()` uses active cheGi theme's `TableTheme` by default
-  - Theme stored in `~/.config/chegi/config.json`, persisted across sessions
-- Auth login step (`_step_auth_login`) added to the first-run wizard:
-  - Prompts for provider, token, label; validates and stores credential
-  - Detects provider from token prefix; warns on mismatch
-  - Checks required scopes; warns if missing
-  - Offers to set up Git credential helper for the host
-  - Logs `auth_login` and `credential_helper_setup` events
-  - 4 wizard integration tests
-- Auto-detect auth failure in `chegi sync` and suggest `chegi auth login`:
-  - Detects keywords like "authentication failed", "403", "access token" in errors
-  - Shows helpful suggestion with the exact command to run
-  - Does not suggest on non-auth errors (connection refused, etc.)
-  - 2 new sync CLI tests
-- Git identity check during `chegi auth login`:
-  - Checks if `user.name` and `user.email` are set in global Git config
-  - Prompts interactively to configure identity if missing
-  - Skips if already configured
-  - Only runs in interactive mode
-  - 2 new auth CLI tests
-- Branded output for auth commands with cheGi mascot and slogan
-- Updated `docs/commands/auth.md` with scope validation, identity check, sync integration
-- First-run wizard now includes a theme picker step after project config:
-  - Lists all available themes, marks the current one
-  - Changes are applied immediately and persisted to global config
-  - Logs `theme_changed` event with the chosen theme name
-- `GlobalConfig` class for global user-level configuration (`~/.config/chegi/config.json`)
-  - Exported from `chegi.config` public API
-  - `theme` field with default value `"default"`
-- 3 new tests for theme picker wizard step
-- 7 new tests for themed TerminalUI
-- First-run wizard now includes an SSH key check step:
-  - Detects existing SSH key pairs (`id_ed25519`, `id_rsa`, etc.) in `~/.ssh/`
-  - Checks if keys are loaded in `ssh-agent`
-  - Offers to generate a new Ed25519 key pair with email label
-  - Displays the public key with links to GitHub/GitLab settings
-  - Offers to add the key to `ssh-agent` automatically
-- `SSH_KEY_TYPES` constant for recognized SSH key filename patterns
-- `_find_ssh_keys`, `_ssh_agent_has_keys`, `_generate_ssh_key`, `_add_key_to_agent`, `_display_public_key` helper methods
-- 16 new tests covering all SSH key check scenarios
-- Custom sensitive file pattern support:
-  - `sensitive_patterns` field in `ChegiConfigModel`, persisted in `.chegi.json`/`.chegi/config.json`
-  - `add_sensitive_pattern()` / `remove_sensitive_pattern()` / `get_all_sensitive_patterns()` in `ChegiConfig`
-  - `SecurityGuard.find_sensitive_files()` accepts `extra_patterns` parameter for project-specific patterns
-  - `SecurityGuard.scan_repo()`, `scan_strict()`, `scan_directory()` forward `extra_patterns`
-  - CLI commands (`guard`, `commit`, `doctor`, `scan`) read custom patterns from config automatically
-  - Wizard step `_step_sensitive_patterns()` asks users to add custom patterns during project setup
-- 7 new config tests, 5 new security guard tests, 3 new wizard tests
-- SSH key wizard step improvements:
-  - Passphrase support — user can optionally protect the key with a passphrase
-  - Backup existing key before overwriting (`id_ed25519.backup` + `.pub.backup`)
-  - Auto-add entry to `~/.ssh/config` for GitHub with `IdentityFile` + `IdentitiesOnly`
-  - Backup `~/.ssh/config` before modification (`config.chegi.backup`)
-  - Event logging to `~/.config/chegi/wizard.log` with ISO timestamps
-  - Restore instructions displayed after changes
-- `_backup_key()`, `_backup_ssh_config()`, `_add_ssh_config_entry()`, `_log_wizard_event()` helper methods
-- 12 new tests covering backup, config entry, and logging
-- Wizard now checks and offers to install/upgrade GitHub CLI (`gh`):
-  - Detects installed version and checks latest release via GitHub API
-  - Offers to install if missing, upgrade if outdated
-  - Automatically skipped when Git is not available
-  - Logs `gh_installed` / `gh_upgraded` events
-- Git check step now offers to install Git instead of exiting:
-  - Shows installed version, prompts to install if missing
-  - Sets `_git_available` flag to skip downstream steps when Git missing
-  - Logs `git_installed` event
-- `_get_git_version()` — returns parsed Git version string
-- `_parse_gh_version()` — extracts version number from `gh --version` output
-- `_check_latest_gh_version()` — fetches latest GitHub CLI release via API
-- 15 new tests covering Git install flow, gh upgrade flow, and version helpers
-
-- `chegi new` command — scaffold complete Git projects from scratch with:
-  - Interactive questionary-first guided flow (project name, tech selection, license, summary confirmation)
-  - Non-interactive mode with `--yes` / `-y` and `--template` / `-t` flags
-  - Git init, `.gitignore` generation (per-technology), `.chegi/` directory, `README.md`, optional `LICENSE`
-  - Automatic initial commit with brand message
-  - Project templates via `--template` (python, node, go, rust, cpp, csharp, ruby)
-  - License options: MIT, Apache 2.0, GNU GPL v3
-- `NewProjectService` — core service for scaffolding projects with:
-  - `NewProjectConfig` and `NewProjectResult` dataclasses
-  - `ProjectAlreadyExistsError`, `GitInitError`, `ProjectCreationError` exceptions
-  - License templates for MIT, Apache 2.0, and GPL v3
-  - Template-to-tech mapping for `--template` flag
-- Full test coverage: 19 service tests + 7 CLI tests
-- Documentation at `docs/commands/new.md`
-- `chegi doctor` command — comprehensive project health check with:
-  - Health checks: Git installation, identity, .gitignore, .chegi/ config
-  - Security checks: staged sensitive files, .env tracking, pre-commit hooks
-  - Stats checks: commit count, branches, remote status
-  - Color-coded Rich output: green (pass), yellow (warn), red (fail)
-  - Actionable suggestions for each issue found
-- `DoctorService` with `DoctorReport`, `CheckResult`, `CheckCategory`, `CheckStatus` models
-  - History secrets scan via `GuardHistoryService`
-  - Contributor count via `git shortlog`
-  - Remote sync status (ahead/behind vs upstream)
-- Full test coverage: 34 service tests + 5 CLI tests
-- Documentation at `docs/commands/doctor.md`
-- `chegi hooks` command — manage Git hooks with automatic guard scanning:
-  - `chegi hooks install` — installs a guard hook (pre-commit by default, `--pre-push` for pre-push)
-  - `chegi hooks remove` — removes the cheGi hook (non-cheGi hooks left untouched)
-  - `chegi hooks status` — check installation status with file path
-  - `--pre-push` flag for all subcommands to target pre-push hooks
-  - `--force` / `-f` flag to overwrite existing hooks
-  - `--path` / `-p` flag for targeting specific repositories
-- `HooksService` with `HookType` enum, `HookInfo` model, `HookInstallError`, `HookRemoveError` exceptions
-  - Generic `install(hook_type, force)`, `remove(hook_type)`, `is_installed(hook_type)` API
-  - Marker-based identification via per-type cheGi markers
-  - Pre-push hook template checks staged files AND unpushed commits
-- Full test coverage: 22 service tests + 12 CLI tests
-- Documentation at `docs/commands/hooks.md`
-
-- `guard --strict` / `-S` — scan both staged and unstaged files with auto-unstage
-- `guard --scan <path>` — recursive directory scan for sensitive files (no Git repo needed)
-- `SecurityGuard.get_unstaged_files()`, `.scan_strict()`, `.scan_directory()` methods
-- 16 new tests for guard strict/scan modes
-- Documentation for `--strict` and `--scan` in `docs/commands/guard.md`
-- `chegi commit` command — secure replacement for `git commit` with:
-  - Auto `SecurityGuard` scan on staged files before each commit
-  - Styled diff display with brand-colored file names
-  - Questionary guided flow with 5 commit styles (Free, Conventional, Scope, Body, Gitmoji)
-  - `--ch` / `--chegi-header` flag for brand signature (` 🐆`) on subject line
-  - One-time brand hint on first single-line interactive commit
-  - Extensible commit styles via `.chegi/commit-styles.json`
-  - Last-used style persistence in `~/.config/chegi/prefs.json`
-  - Interactive sensitive file handling (unstage/force/abort)
-- `CommitService` — core service with `build_message()` (style→message builder) and `apply_brand_suffix()`
-- `CommitStyle` dataclass for defining commit message formats
-- `CommitStyleManager` — manages style preferences, hints, and custom styles
-- `BRAND_SUFFIX` and `BUILTIN_STYLES` constants
-- Documentation at `docs/commands/commit.md`
-- 35+ tests for commit service and CLI
-- `.chegi/` project directory infrastructure with `chegi init` command
-  - `config.json` — per-project configuration overrides
-  - `guard-rules.json` — custom sensitive file patterns
-  - `.chegiignore` — scan exclusion patterns (.gitignore syntax)
-  - Auto-adds `.chegi/` to `.gitignore`
-- Config system now merges `.chegi/config.json` over `.chegi.json` with higher priority
-- `InitService` for creating and loading cheGi projects
-- `InitService.find_project_root()` walks up directories to locate `.chegi/`
-- Full test coverage for init service (14 tests), CLI (5 tests), and config merging (2 tests)
-- `chegi guard history` subcommand — scan Git history for secrets across all branches
-- `chegi guard history --report` — generate HTML report of history scan findings
-- `--version` / `-v` global flag to show cheGi version and exit
-- `chegi guard history --fix` — remove detected files from Git history via `git filter-branch`
-  - Lists all affected files and exact commands to run
-  - Requires explicit user confirmation (`--fix` alone is not enough)
-  - Executes removal per-file and reports success/failure
-  - Shows force-push instructions after completion
-- `GuardHistoryService` for scanning Git history with filename-based pattern matching
-- `GuardHistoryService.remove_file_from_history()` method for programmatic removal
-- History scan respects `.chegi/guard-rules.json` custom patterns and `.chegiignore` excludes
-- HTML report with dark theme, commit details, and per-finding breakdown
-- 14 tests for history scanning service, 4 tests for CLI history subcommand
-- First-run wizard (`WizardService`) — auto-triggers on first `chegi` command
-  - Shows welcome banner with ASCII art cheGi logo
-  - Checks Git installation
-  - Checks Git identity (`user.name`, `user.email`)
-  - Interactive prompt to configure Git identity if not set
-  - Offers to create `.chegi/` project directory via `InitService`
-  - Writes `~/.config/chegi/wizard_done` marker to run only once
-  - Skips automatically when not in a TTY (CI, piped commands)
-- 11 tests for wizard service
-- Add cheGi logo (`docs/img/chegi-logo.png`) with transparent background, displayed centered at the top of README
+- Replace pepy.tech downloads badge with shields.io (pepy.tech had 404 errors)
+- Fix Python version badge to use static badge (shields.io/pyversion endpoint doesn't exist)
+- Replace bare `except Exception` with specific exception types across services
+- Replace `subprocess.run` with `GitClient` in services layer
+- Replace `ValueError` raises with custom exception types in services
+- Add missing type hints to all functions and parameters
+- Add missing module docstrings to 34 source files
+- Add missing `__init__.py` files to test directories
+- Fix `__init__.py` directories that should have been files
 
 ### Changed
 
-- AGENTS.md: enforced changelog updates as pre-commit requirement with CRITICAL section
-- `guard --history` / `--report` / `--auto-remove` flags replaced by `guard history` subcommand with `--report` and `--fix` flags
+- AGENTS.md: enforce strict type hints with AST-based pre-commit gate
+- AGENTS.md: add custom exceptions rule — never raise ValueError/TypeError/RuntimeError in services
+- CONTRIBUTING.md: add strict type hint requirements for contributors
 
 ## [0.3.1] - 2026-07-11
 
@@ -373,7 +91,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Environment presets for Python, JavaScript, Go, Rust, C++, C#, Ruby, and apps
 - Preflight checks for Git installation
 
-[Unreleased]: https://github.com/Ad-alwer/cheGi/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/Ad-alwer/cheGi/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/Ad-alwer/cheGi/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/Ad-alwer/cheGi/releases/tag/v0.3.1
 [0.3.0]: https://github.com/Ad-alwer/cheGi/releases/tag/v0.3.0
 [0.2.1]: https://github.com/Ad-alwer/cheGi/releases/tag/v0.2.1
