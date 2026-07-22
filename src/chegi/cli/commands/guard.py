@@ -8,6 +8,7 @@ import typer
 from typing_extensions import Annotated
 
 from chegi.config import ChegiConfig
+from chegi.config.exceptions import ConfigError
 from chegi.services.git.client import GitClient
 from chegi.services.guard import GuardHistoryService, HistoryScanResult, SecurityGuard
 from chegi.ui import TerminalUI, console
@@ -26,7 +27,7 @@ def _get_extra_patterns(path: Optional[Path] = None) -> Optional[Set[str]]:
         cfg = ChegiConfig(str(path or Path.cwd()))
         if cfg.sensitive_patterns:
             return cfg.sensitive_patterns
-    except Exception:
+    except (OSError, ConfigError):
         pass
     return None
 

@@ -15,6 +15,7 @@ from rich.progress import (
 )
 
 from chegi.config import ChegiConfig
+from chegi.config.exceptions import ConfigError
 from chegi.services.git.client import GitClient
 from chegi.services.git.exceptions import GitCommandError
 from chegi.services.git.models import GitStatus
@@ -275,7 +276,7 @@ class ScanService:
                 cfg = ChegiConfig(str(self.base_path))
                 if cfg.sensitive_patterns:
                     extra_patterns = cfg.sensitive_patterns
-            except Exception:
+            except (OSError, ConfigError):
                 pass
             from functools import partial
 

@@ -18,6 +18,7 @@ import typer
 from chegi.config import ChegiConfig, GlobalConfig
 from chegi.services.auth import AuthProvider, AuthService
 from chegi.services.auth.exceptions import TokenValidationError
+from chegi.services.git_config.exceptions import GitConfigError
 from chegi.services.installer import SystemInstaller
 from chegi.services.wizard.constants import (
     BANNER,
@@ -228,7 +229,7 @@ class WizardService:
                     TerminalUI.print_success(
                         f"init.defaultBranch set to [cyan]{branch_input}[/cyan]"
                     )
-                except Exception:
+                except GitConfigError:
                     pass
 
         console.print()
