@@ -35,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Docker multi-arch images (amd64 + arm64) on Docker Hub and GHCR
 - `--version` / `-v` global flag
 
+### Changed
+
+- `chegi new` .gitignore generation now runs as a separate step with commit confirmation, matching the `chegi gitignore` command flow
+
 ### Fixed
 
 - Improve `chegi auth` help text to clarify token vs SSH usage

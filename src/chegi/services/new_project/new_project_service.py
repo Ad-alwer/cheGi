@@ -60,10 +60,6 @@ class NewProjectService:
             self._git_init()
             files_created.append(".git")
 
-            if not self.config.skip_gitignore:
-                self._create_gitignore()
-                files_created.append(".gitignore")
-
             if not self.config.skip_chegi:
                 self._create_chegi_dir()
                 files_created.append(".chegi/")
@@ -75,6 +71,10 @@ class NewProjectService:
             if self.config.license_type:
                 self._create_license()
                 files_created.append("LICENSE")
+
+            if not self.config.skip_gitignore:
+                self._create_gitignore()
+                files_created.append(".gitignore")
 
             commit_hash = self._initial_commit()
 

@@ -2,7 +2,7 @@
 
 import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import questionary
 import typer
@@ -228,6 +228,9 @@ def _run_interactive(config: NewProjectConfig) -> None:
 
     result = _create_project(config)
 
+    if result and not config.skip_gitignore and config.technologies:
+        _run_gitignore_flow(result.project_path, config.technologies)
+
     if config.github and result:
         _handle_github_flow(config, result)
 
@@ -285,6 +288,49 @@ def _create_project(config: NewProjectConfig) -> Optional[NewProjectResult]:
         console.print(f"  [dim]Message:[/dim] {msg}")
 
     return result
+
+
+def _run_gitignore_flow(project_path: Path, technologies: List[str]) -> None:
+    """Runs the gitignore flow after project creation.
+
+    Generates .gitignore and optionally commits it.
+
+    Args:
+        project_path: The project directory path.
+        technologies: Selected technologies for .gitignore.
+    """
+    from chegi.config import GITIGNORE_COMMIT_MESSAGE
+    from chegi.services.environment import EnvManager
+    from chegi.services.git.client import GitClient
+
+    env_manager = EnvManager()
+    git_client = GitClient(project_path)
+
+    try:
+        created_path = env_manager.generate_gitignore(technologies, str(project_path))
+        console.print(f"\n[bold green]✅ Created:[/bold green] {created_path}")
+    except Exception as e:
+        TerminalUI.print_error(f"Error generating .gitignore: {e}")
+        return
+
+    if git_client.is_valid_repo():
+        should_commit = typer.confirm(
+            "🚀 Do you want to commit this new .gitignore file?", default=True
+        )
+
+        if should_commit:
+            try:
+                console.print("[dim]Adding and committing .gitignore...[/dim]")
+                commit_msg = GITIGNORE_COMMIT_MESSAGE
+                git_client.commit_file(".gitignore", commit_msg)
+                console.print(
+                    f"[bold green]✨ Committed with message:[/bold green] "
+                    f"[cyan]{commit_msg}[/cyan]"
+                )
+            except Exception as e:
+                TerminalUI.print_error(f"Failed to commit .gitignore: {e}")
+        else:
+            console.print("[dim]Skipping commit.[/dim]")
 
 
 # ── GitHub flow ────────────────────────────────────────────
