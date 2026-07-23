@@ -345,7 +345,7 @@ def _handle_history_removal(
     )
 
     if not typer.confirm(
-        "[bold red]Are you ABSOLUTELY SURE you want to proceed?[/bold red]",
+        "Are you ABSOLUTELY SURE you want to proceed?",
         default=False,
     ):
         console.print("[bold blue]Removal cancelled by user.[/bold blue]")
