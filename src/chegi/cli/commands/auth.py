@@ -14,8 +14,11 @@ from chegi.ui import TerminalUI, console
 app = typer.Typer(
     help=(
         "Manage token-based authentication for GitHub and GitLab.\n\n"
-        "Store personal access tokens securely and let cheGi handle Git "
-        "authentication automatically — no more password prompts."
+        "Store personal access tokens (PAT) securely and let cheGi handle "
+        "API authentication automatically.\n\n"
+        "Note: For Git push/pull over HTTPS, configure a credential helper.\n"
+        "For SSH, you don't need this — use ssh-keygen and add your key "
+        "to GitHub/GitLab instead."
     )
 )
 
@@ -38,7 +41,14 @@ def login(
         None, "--label", "-l", help="Account label (e.g. personal, work)"
     ),
 ) -> None:
-    """Authenticate with a Git provider and store the credential securely."""
+    """Authenticate with a Git provider and store the credential securely.
+
+    This is for GitHub/GitLab API access (creating repos, listing repos, etc.)
+    and for setting up a Git credential helper for HTTPS operations.
+
+    If you use SSH for Git (git@github.com:...), you don't need this command.
+    Just configure your SSH key and Git will use it automatically.
+    """
     is_interactive = token is None
 
     # ── Resolve provider (flag → detection → interactive) ─────
@@ -156,7 +166,11 @@ def logout(
         False, "--all", "-a", help="Remove all stored credentials"
     ),
 ) -> None:
-    """Remove stored credentials."""
+    """Remove stored credentials.
+
+    Removes the token from cheGi's secure storage and optionally removes
+    the Git credential helper configuration.
+    """
     if all_:
         creds = AuthService.status()
         for c in creds:
@@ -192,7 +206,10 @@ def logout(
 
 @app.command()
 def status() -> None:
-    """Show all stored credentials."""
+    """Show all stored credentials.
+
+    Lists all stored tokens with their provider, username, and host.
+    """
     creds = AuthService.status()
     if not creds:
         TerminalUI.print_info("No credentials stored. Run [bold]chegi auth login[/].")
@@ -218,7 +235,11 @@ def status() -> None:
 def switch(
     label: str = typer.Argument(..., help="Account label to make default"),
 ) -> None:
-    """Switch the default account for a host."""
+    """Switch the default account for a host.
+
+    When multiple accounts are stored for the same host, this switches
+    which one is used by default for API calls and credential helper.
+    """
     creds = AuthService.status()
     labels = [c.label for c in creds]
 

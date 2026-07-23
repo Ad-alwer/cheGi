@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Improve `chegi auth` help text to clarify token vs SSH usage
 - Fix `chegi completions` crash on Linux with `RuntimeError: Shell detection not implemented for 'posix'`
 - Fix Rich markup tags (`[bold]`, `[dim]`) displayed as raw text in `typer.confirm()` prompts (#39)
 - Replace pepy.tech downloads badge with shields.io (pepy.tech had 404 errors)
