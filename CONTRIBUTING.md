@@ -128,6 +128,16 @@ print('OK: all type hints present')
 4. Ensure lint passes: `ruff check src tests`
 5. Open a pull request with a short description of **what** changed and **why**
 
+## Security & Execution Rules
+
+- **NEVER execute commands without user permission** — always ask first
+- **Git operations** (commit, push, pull, merge, rebase) — ALWAYS ask user before executing
+- **Package installs** (pip, npm, apt) — ALWAYS ask user before executing
+- **Destructive operations** (delete files, force push, drop branches) — ALWAYS ask and confirm
+- **File modifications** — present diff for review before applying
+- **System commands** (chmod, chown, rm -rf) — ALWAYS ask with clear warning
+- **Exception**: Read-only commands (ls, cat, grep, git status, git log) are safe to run without asking
+
 ## Reporting Issues
 
 - Use [GitHub Issues](https://github.com/Ad-alwer/cheGi/issues) for bugs and feature requests

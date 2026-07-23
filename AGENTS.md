@@ -64,6 +64,16 @@ ci(release): add GitHub Actions workflow for automated builds
 - After approval, stage and commit only when told to
 - After fixing a GitHub issue: comment with the fix summary + closing commit hash, then close the issue
 
+## Security & Execution Rules
+
+- **NEVER execute commands without user permission** — always ask first
+- **Git operations** (commit, push, pull, merge, rebase) — ALWAYS ask user before executing
+- **Package installs** (pip, npm, apt) — ALWAYS ask user before executing
+- **Destructive operations** (delete files, force push, drop branches) — ALWAYS ask and confirm
+- **File modifications** — present diff for review before applying
+- **System commands** (chmod, chown, rm -rf) — ALWAYS ask with clear warning
+- **Exception**: Read-only commands (ls, cat, grep, git status, git log) are safe to run without asking
+
 ## Changelog (CRITICAL)
 
 - **EVERY notable change** (feat/fix/refactor) MUST have a corresponding entry in `CHANGELOG.md`
