@@ -157,17 +157,23 @@ def _run_interactive(config: NewProjectConfig) -> None:
     env_manager = EnvManager()
     available_envs = env_manager.get_envs_with_gitignore()
     if available_envs and not config.skip_gitignore:
-        choices = [env.capitalize() for env in sorted(available_envs)]
-        selected_caps = questionary.checkbox(
-            "Select technologies for .gitignore (Space to select, Enter to confirm):",
-            choices=choices,
+        want_gitignore = questionary.confirm(
+            "Do you want to generate a .gitignore file?", default=True
         ).ask()
+        if want_gitignore:
+            choices = [env.capitalize() for env in sorted(available_envs)]
+            selected_caps = questionary.checkbox(
+                "Select technologies for .gitignore (Space to select, Enter to confirm):",
+                choices=choices,
+            ).ask()
 
-        if selected_caps is None:
-            TerminalUI.print_error("Operation cancelled.")
-            raise typer.Exit(1)
+            if selected_caps is None:
+                TerminalUI.print_error("Operation cancelled.")
+                raise typer.Exit(1)
 
-        config.technologies = [lang.lower() for lang in selected_caps]
+            config.technologies = [lang.lower() for lang in selected_caps]
+        else:
+            config.technologies = []
 
     if not config.license_type:
         license_choices = list(AVAILABLE_LICENSES.values())

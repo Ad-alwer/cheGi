@@ -212,19 +212,25 @@ def _run_interactive(
 
     # Interactive .gitignore technology selection
     if not no_gitignore:
-        env_mgr = EnvManager()
-        available = env_mgr.get_envs_with_gitignore()
-        if available:
-            selected = questionary.checkbox(
-                "Select technologies for .gitignore:",
-                choices=[
-                    questionary.Choice(tech, checked=False)
-                    for tech in sorted(available)
-                ],
-            ).ask()
-            if selected is None:
-                raise typer.Exit(0)
-            technologies = selected
+        want_gitignore = questionary.confirm(
+            "Do you want to generate a .gitignore file?", default=True
+        ).ask()
+        if want_gitignore:
+            env_mgr = EnvManager()
+            available = env_mgr.get_envs_with_gitignore()
+            if available:
+                selected = questionary.checkbox(
+                    "Select technologies for .gitignore:",
+                    choices=[
+                        questionary.Choice(tech, checked=False)
+                        for tech in sorted(available)
+                    ],
+                ).ask()
+                if selected is None:
+                    raise typer.Exit(0)
+                technologies = selected
+            else:
+                technologies = []
         else:
             technologies = []
     else:
