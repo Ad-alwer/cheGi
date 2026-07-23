@@ -51,6 +51,9 @@ def login(
     """
     is_interactive = token is None
 
+    if is_interactive:
+        _show_ssh_hint()
+
     # ── Resolve provider (flag → detection → interactive) ─────
     detected_provider: Optional[AuthProvider] = None
     if token:
@@ -425,6 +428,42 @@ def _ensure_git_identity() -> None:
 def _check_git_installed() -> bool:
     """Returns True if Git is installed and accessible."""
     return shutil.which("git") is not None
+
+
+def _has_ssh_key() -> bool:
+    """Checks if SSH keys exist in ~/.ssh/.
+
+    Returns:
+        True if any SSH key files (id_rsa, id_ed25519, etc.) are found.
+    """
+    from pathlib import Path
+
+    ssh_dir = Path.home() / ".ssh"
+    if not ssh_dir.exists():
+        return False
+
+    key_names = [
+        "id_rsa",
+        "id_ed25519",
+        "id_dsa",
+        "id_ecdsa",
+    ]
+    for name in key_names:
+        if (ssh_dir / name).exists():
+            return True
+    return False
+
+
+def _show_ssh_hint() -> None:
+    """Shows a hint if SSH keys are detected."""
+    if _has_ssh_key():
+        console.print(
+            "[dim]SSH key detected. "
+            "This token is for GitHub/GitLab API access, not Git push/pull. "
+            "If you use SSH for Git (git@github.com:...), you don't need this "
+            "token for Git operations.[/dim]"
+        )
+        console.print()
 
 
 def _helper_value() -> str:
