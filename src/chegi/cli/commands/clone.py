@@ -256,7 +256,9 @@ def _pick_own_repo() -> Optional[str]:
     cred = AuthService.get_credential_for_host("github.com")
     if not cred:
         TerminalUI.print_warning("No GitHub token found.")
-        if typer.confirm("Would you like to set one up with 'chegi auth login'?"):
+        if typer.confirm(
+            "Would you like to set one up with [bold]chegi auth login[/bold]?"
+        ):
             from chegi.cli.commands.auth import login
 
             login()

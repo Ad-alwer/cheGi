@@ -611,7 +611,7 @@ class WizardService:
 
         if key_path.exists():
             overwrite = typer.confirm(
-                f"{key_path} already exists. Overwrite?", default=False
+                f"[bold]{key_path}[/bold] already exists. Overwrite?", default=False
             )
             if not overwrite:
                 console.print("[dim]Skipping SSH key generation.[/dim]")
@@ -682,7 +682,7 @@ class WizardService:
             )
 
         should_configure = typer.confirm(
-            "Add this key to ~/.ssh/config for GitHub?", default=True
+            "Add this key to [bold]~/.ssh/config[/bold] for GitHub?", default=True
         )
         if should_configure:
             if self._add_ssh_config_entry(key_path):
@@ -983,8 +983,8 @@ class WizardService:
             return
 
         should_create = typer.confirm(
-            "Would you like to create a .chegi/ project directory?"
-            "\n  This enables project-specific guard rules and config overrides.",
+            "Would you like to create a [bold].chegi/[/bold] project directory?"
+            "\n[dim]This enables project-specific guard rules and config overrides.[/dim]",
             default=True,
         )
         if not should_create:
@@ -1011,9 +1011,9 @@ class WizardService:
     def _step_sensitive_patterns(self) -> None:
         """Ask user for custom sensitive file patterns and save them."""
         has_custom = typer.confirm(
-            "Do you want to add custom sensitive file patterns for 'chegi guard'"
-            " to scan?\n  These will be checked in addition to the default patterns"
-            " (e.g. .env, *.pem, credentials.json).",
+            "Do you want to add custom sensitive file patterns for [bold]chegi guard[/bold]"
+            " to scan?\n[dim]These will be checked in addition to the default patterns"
+            " (e.g. .env, *.pem, credentials.json).[/dim]",
             default=False,
         )
         if not has_custom:

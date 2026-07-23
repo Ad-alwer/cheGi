@@ -42,7 +42,7 @@ class CompletionsService:
 
             name, _cmd = detect_shell()
             return name
-        except (ImportError, OSError, AttributeError, RuntimeError):
+        except (ImportError, OSError, AttributeError):
             pass
 
         import os
