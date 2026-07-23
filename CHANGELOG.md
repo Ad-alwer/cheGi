@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Ask user before generating .gitignore in `chegi clone` and `chegi new`
+- Ask user about GitHub connection in `chegi new` wizard
 - Fix .gitignore creation when user selects no technologies
 - AGENTS.md: enforce strict type hints with AST-based pre-commit gate
 - AGENTS.md: add custom exceptions rule — never raise ValueError/TypeError/RuntimeError in services

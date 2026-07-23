@@ -191,6 +191,17 @@ def _run_interactive(config: NewProjectConfig) -> None:
             reverse_map = {v: k for k, v in AVAILABLE_LICENSES.items()}
             config.license_type = reverse_map.get(license_choice)
 
+    # GitHub connection
+    if not config.github:
+        want_github = questionary.confirm(
+            "Do you want to connect this project to GitHub?", default=False
+        ).ask()
+        if want_github:
+            config.github = True
+            config.private = questionary.confirm(
+                "Should the repository be private?", default=False
+            ).ask()
+
     tech_str = ", ".join(config.technologies) if config.technologies else "None"
     lic_str = (
         AVAILABLE_LICENSES.get(config.license_type, "None")
