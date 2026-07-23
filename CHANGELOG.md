@@ -41,6 +41,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix Rich markup tags (`[bold]`, `[dim]`) displayed as raw text in `typer.confirm()` prompts (#39)
 - Replace pepy.tech downloads badge with shields.io (pepy.tech had 404 errors)
 - Fix Python version badge to use static badge (shields.io/pyversion endpoint doesn't exist)
+- Fix Docker build: use `python:3.12-slim` instead of `debian:stable-slim` for final stage
+- Fix Docker build: use non-editable pip install to avoid source path references
+- Add `.dockerignore` to exclude `.git`, `__pycache__`, build artifacts
 - Replace bare `except Exception` with specific exception types across services
 - Replace `subprocess.run` with `GitClient` in services layer
 - Replace `ValueError` raises with custom exception types in services
