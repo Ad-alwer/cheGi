@@ -229,9 +229,12 @@ def _run_interactive(
                 if selected is None:
                     raise typer.Exit(0)
                 technologies = selected
+                if not technologies:
+                    no_gitignore = True
             else:
                 technologies = []
         else:
+            no_gitignore = True
             technologies = []
     else:
         technologies = []

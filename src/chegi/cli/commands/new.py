@@ -171,9 +171,12 @@ def _run_interactive(config: NewProjectConfig) -> None:
                 TerminalUI.print_error("Operation cancelled.")
                 raise typer.Exit(1)
 
-            config.technologies = [lang.lower() for lang in selected_caps]
+            if selected_caps:
+                config.technologies = [lang.lower() for lang in selected_caps]
+            else:
+                config.skip_gitignore = True
         else:
-            config.technologies = []
+            config.skip_gitignore = True
 
     if not config.license_type:
         license_choices = list(AVAILABLE_LICENSES.values())
